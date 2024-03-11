@@ -1,0 +1,7 @@
+_(int num): talk {
+    print("whatever")
+}
+
+_(): main {
+    print("hello")
+}
