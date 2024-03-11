@@ -4,5 +4,4 @@ _(string word): talk {
 
 _(): main {
     print("hello")
-    print(10)
 }

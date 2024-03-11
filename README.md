@@ -36,3 +36,4 @@ _(): main {
     print(nums[1])
 }
 ```
+for more info, look at the <a href="./DOCS.md">Docs</a>
