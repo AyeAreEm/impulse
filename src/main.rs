@@ -1,17 +1,6 @@
 use std::{collections::HashMap, env, fs, process::exit};
 
-#[derive(Debug)]
-enum Expr {
-    Func(Func),
-    FuncParam(String),
-    Print(Box<Expr>),
-    StrLit(String),
-    VarName(String),
-    IntLit(String),
-    EndBlock,
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 enum Types {
     Int,
     Str,
@@ -19,20 +8,29 @@ enum Types {
     None,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 enum Keyword {
     Int,
     Str,
-    Void,
     Print,
     None,
 }
 
-#[derive(Debug)]
-struct Func {
-    type_of: Types,
-    name: String,
-    parameters: Option<Vec<(Types, Expr)>>
+#[derive(Debug, Clone)]
+enum Expr {
+    Func(Box<(Types, Expr, Expr)>), // Expr1 = FuncParams, Expr2 = FuncName
+    FuncName(String),
+    FuncParams(Box<Vec<(Types, Expr)>>), // Expr = VarName
+
+    StrLit(String),
+    IntLit(String),
+
+    Var(Box<(Types, Expr, Expr)>), // Expr1 = VarName, Expr2 = Literal
+    VarName(String),
+
+    Print(Box<Expr>), // Expr = 
+    EndBlock,
+    None,
 }
 
 #[derive(Debug, Clone)]
@@ -50,186 +48,257 @@ enum Token {
     None,
 }
 
-#[derive(Debug)]
-struct Properties {
-    has_name: String,
+#[derive(Debug, Clone)]
+struct ExprWeights {
     has_type: Types,
     has_lbrack: bool,
     has_rbrack: bool,
-    has_lcurl: bool,
     has_colon: bool,
-    has_pass_params: (Token, String),
-    has_seen_print: bool,
-    calling_print: bool,
-    start_params_index: usize,
-    end_params_index: usize,
+    has_name: String,
+    has_lcurl: bool,
+    has_predef_func: Keyword,
+    has_strlit: bool,
+    start_param_ix: usize,
+    end_param_ix: usize,
+    has_ref_name: Vec<Expr>,
+
+    tokens: Vec<Token>,
+    current_token: usize,
+    keyword_map: HashMap<String, Keyword>,
+    functions: Vec<String>,
+    variables: Vec<String>,
 }
 
-impl Properties {
-    fn new() -> Properties {
-        Properties{
+impl ExprWeights {
+    fn new(tokens: Vec<Token>) -> ExprWeights {
+        let token_to_keyword: HashMap<String, Keyword> = HashMap::from([
+            ("print".to_string(), Keyword::Print),
+            ("int".to_string(), Keyword::Int),
+            ("string".to_string(), Keyword::Str),
+        ]);
+
+        ExprWeights {
             has_type: Types::None,
-            has_name: String::from(""),
-            has_colon: false,
-            has_lcurl: false,
             has_lbrack: false,
             has_rbrack: false,
-            has_pass_params: (Token::None, String::from("")),
-            has_seen_print: false,
-            calling_print: false,
-            start_params_index: 0,
-            end_params_index: 0,
+            has_colon: false,
+            has_name: String::new(),
+            has_lcurl: false,
+            has_predef_func: Keyword::None,
+            has_strlit: false,
+            start_param_ix: 0,
+            end_param_ix: 0,
+            has_ref_name: Vec::new(),
+
+            tokens,
+            current_token: 0,
+            keyword_map: token_to_keyword,
+            functions: Vec::new(),
+            variables: Vec::new(),
         }
     }
 
-    fn try_make_func(&mut self, params: Option<Vec<(Types, Expr)>>) -> Option<Func> {
-        if self.has_colon && self.has_lbrack && self.has_rbrack && self.has_lcurl && !self.has_name.is_empty() && self.has_type != Types::None {
-            return Some(Func {
-                type_of: self.has_type.clone(),
-                name: self.has_name.clone(),
-                parameters: params,
-            })
-        }
-        None
+    fn clear(&mut self) {
+            self.has_type = Types::None;
+            self.has_lbrack = false;
+            self.has_rbrack = false;
+            self.has_colon = false;
+            self.has_name = String::new();
+            self.has_lcurl = false;
+            self.has_predef_func = Keyword::None;
+            self.has_strlit = false;
+            self.start_param_ix = 0;
+            self.end_param_ix = 0;
+            self.has_ref_name = Vec::new();
     }
 
-    fn try_make_params(&mut self, arr: &Vec<Token>) -> Option<Vec<(Types, Expr)>> {
-        if self.start_params_index >= self.end_params_index {
-            return None
+    fn check_exist_ident(&mut self, ident: String) -> bool {
+        let mut found = false;
+        for func in &self.functions {
+            if func == &ident {
+                self.has_ref_name.push(Expr::FuncName(ident.clone()));
+                found = true; 
+            }
         }
 
-        let param_slice = &arr[self.start_params_index..self.end_params_index];
-        let mut params: Vec<(Types, Expr)> = Vec::new();
-        let mut type_of = Types::None;
-        let mut name: Expr;
+        for var in &self.variables {
+            if var == &ident {
+                self.has_ref_name.push(Expr::VarName(ident.clone()));
+                found = true; 
+            }
+        }
 
-        for token in param_slice {
+        if !found {
+            self.has_name = ident;
+        }
+
+        found
+    }
+
+    fn handle_keywords(&mut self, keyword: Keyword) {
+        match keyword {
+            Keyword::Print => {
+                self.has_predef_func = keyword;
+            },
+            Keyword::Int => {
+                self.has_type = Types::Int;
+            },
+            Keyword::Str => {
+                self.has_type = Types::Str;
+            },
+            Keyword::None => (),
+        }
+    }
+
+    fn get_params(&mut self) -> Option<Vec<(Types, Expr)>> {
+        let params_slice = &self.tokens[self.start_param_ix..self.end_param_ix];
+        let mut params: Vec<(Types, Expr)> = vec![];
+        let mut ty = Types::None;
+        let mut vn: Expr; // VarName
+
+        for token in params_slice {
             match token {
-                Token::Ident(identif) => {
-                    if identif == "int" {
-                        type_of = Types::Int;
-                    } else if identif == "string" {
-                        type_of = Types::Str;
+                Token::Ident(word) => {
+                    let keyword_res = self.keyword_map.get(word);
+                    let keyword: (bool, Keyword) = match keyword_res {
+                        Some(k) => (true, k.clone()),
+                        None => (false, Keyword::None),
+                    };
+
+                    if keyword.0 {
+                        match keyword.1 {
+                            Keyword::Int => {
+                                ty = Types::Int;
+                            },
+                            Keyword::Str => {
+                                ty = Types::Int;
+                            },
+                            _ => (),
+                        }
                     } else {
-                        name = Expr::VarName(identif.to_string());
-                        params.push((type_of.clone(), name));
+                        vn = Expr::VarName(word.to_string());
+                        params.push((ty.clone(), vn));
                     }
                 },
-                // Token::Str(word) => {
-                //     println!("{}", word);
-                // },
                 _ => (),
             }
         }
 
-        if params.len() >= 1 {
-            Some(params)
-        } else {
+        if params.is_empty() {
             None
+        } else {
+            Some(params)
+        }
+    }
+
+    fn check_block(&mut self) -> Expr {
+        // function compatability
+        let mut expr = Expr::None;
+
+        if let Types::None = self.has_type {
+            return expr
         }
 
+        if self.has_lbrack && self.has_rbrack && self.has_colon && !self.has_name.is_empty() && self.has_lcurl {
+            let params_res = self.get_params();
+            let params = match params_res {
+                Some(params) => params,
+                None => vec![(Types::None, Expr::None)],
+            };
+
+            for param in &params {
+                match &param.1 {
+                    Expr::VarName(name) => {
+                        self.variables.push(name.to_string());
+                    },
+                    _ => (),
+                }
+            }
+
+            expr = Expr::Func(Box::new((self.has_type.clone(), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
+            self.functions.push(self.has_name.clone());
+
+            self.clear();
+        }
+
+        expr
     }
-}
 
-fn parser(tokens: Vec<Token>) {
-    let token_to_keyword: HashMap<String, Keyword> = HashMap::from([
-        ("print".to_string(), Keyword::Print),
-    ]);
-
-    let mut exprs: Vec<Expr> = Vec::new();
-    let mut current_token: usize = 0;
-    let mut props = Properties::new();
-
-    while current_token < tokens.len() {
-        match &tokens[current_token] {
+    fn parse_to_expr(&mut self) -> Expr {
+        let mut expr = Expr::None;
+        match &self.tokens[self.current_token] {
             Token::Underscore => {
-                props.has_type = Types::Void;
+                self.has_type = Types::Void;
             },
             Token::Lbrack => {
-                props.has_lbrack = true;
-                if props.has_seen_print {
-                    props.calling_print = true;
-                    current_token += 1;
-                    continue;
-                }
-
-                props.start_params_index = current_token;
+                self.has_lbrack = true; 
+                self.start_param_ix = self.current_token;
             },
             Token::Rbrack => {
-                props.has_rbrack = true;
-                if props.calling_print {
-                    props.calling_print = !false;
-                    current_token += 1;
-                    continue;
-                }
-
-                props.end_params_index = current_token;
+                self.has_rbrack = true;
+                self.end_param_ix = self.current_token;
             },
             Token::Colon => {
-                props.has_colon = true;
+                self.has_colon = true;
             },
-            Token::Ident(identif) => {
-                let keyword_res = token_to_keyword.get(identif);
-                let keyword: (bool, Keyword);
-                match keyword_res {
-                    Some(k) => keyword = (true, k.clone()),
-                    None => keyword = (false, Keyword::None),
-                }
+            Token::Ident(word)  => {
+                let keyword_res = self.keyword_map.get(word);
+                let keyword: (bool, Keyword) = match keyword_res {
+                    Some(k) => (true, k.clone()),
+                    None => (false, Keyword::None),
+                };
 
                 if keyword.0 {
-                     match keyword.1 {
-                         Keyword::Print => {
-                            props.has_seen_print = true;
-                         },
-                         _ => println!("haven;t done yet")
-                     }
+                    self.handle_keywords(keyword.1);
                 } else {
-                    props.has_name = String::from(identif);
+                    let found_existing = self.check_exist_ident(word.to_string());
 
-                    if let Token::Lcurl = &tokens[current_token+1] {
-                        let params = props.try_make_params(&tokens);
-                        props.has_lcurl = true;
-
-                        let func_res = props.try_make_func(params);
-                        props = Properties::new();
-                        let func: (bool, Func);
-                        match func_res {
-                            Some(f) => func = (true, f),
-                            None => func = (false, Func {
-                                type_of: Types::None,
-                                name: String::from(""),
-                                parameters: None,
-                            }),
+                    if let Keyword::Print = self.has_predef_func {
+                        if found_existing {
+                            expr = Expr::Print(Box::new(self.has_ref_name[0].clone()));
                         }
-
-                        if func.0 {
-                            exprs.push(Expr::Func(func.1));
-                        }
-
-                        current_token += 1;
-                    }
+                    } 
                 }
             },
             Token::Lcurl => {
-                ()
+                self.has_lcurl = true;
+                expr = self.check_block();
             },
-            Token::Str(words) => {
-                if props.calling_print {
-                    exprs.push(Expr::Print(Box::new(Expr::StrLit(words.to_string()))));
-                    props.calling_print = false;
-                    props.has_seen_print = false;
+            Token::Str(word) => {
+                self.has_strlit = true;
+                match self.has_predef_func {
+                    Keyword::None => (),
+                    Keyword::Print => {
+                        expr = Expr::Print(Box::new(Expr::StrLit(word.to_string())));
+                        self.clear();
+                    },
+                    _ => (),
                 }
             },
             Token::Quote => (),
-            Token::Rcurl => exprs.push(Expr::EndBlock),
+            Token::Rcurl => {
+                expr = Expr::EndBlock;
+                self.clear();
+            },
             Token::None => (),
         }
 
-        current_token += 1;
+        self.current_token += 1;
+        expr
     }
 
-    for expr in exprs {
-        println!("{:?}", expr);
+    fn parser(&mut self) -> Vec<Expr> {
+        let mut program: Vec<Expr> = Vec::new();
+
+        while self.current_token < self.tokens.len() {
+            let expr = self.parse_to_expr();
+            match expr {
+                Expr::None => (),
+                _ => program.push(expr),
+            }
+        }
+
+        program
     }
 }
 
@@ -292,6 +361,10 @@ fn tokeniser(file: String) -> Vec<Token> {
         }
     }
 
+    // for token in &tokens {
+    //     println!("{:?}", token);
+    // }
+
     tokens
 }
 
@@ -306,7 +379,12 @@ fn build(filename: &String) {
     };
 
     let tokens = tokeniser(content);
-    let parsed = parser(tokens);
+    let mut parse = ExprWeights::new(tokens);
+    let expressions = parse.parser();
+
+    for expr in expressions {
+        println!("{:?}", expr);
+    }
 }
 
 fn usage() {
