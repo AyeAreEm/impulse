@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, fs, process::exit};
+use std::{collections::HashMap, env, fs, process::{exit, Command}};
 
 #[derive(Debug, Clone)]
 enum Types {
@@ -13,6 +13,7 @@ enum Keyword {
     Int,
     Str,
     Print,
+    Underscore,
     None,
 }
 
@@ -22,13 +23,14 @@ enum Expr {
     FuncName(String),
     FuncParams(Box<Vec<(Types, Expr)>>), // Expr = VarName
 
-    StrLit(String),
-    IntLit(String),
 
     Var(Box<(Types, Expr, Expr)>), // Expr1 = VarName, Expr2 = Literal
     VarName(String),
 
-    Print(Box<Expr>), // Expr = 
+    Print(Box<Vec<Expr>>), // Expr = 
+
+    StrLit(String),
+    IntLit(String),
     EndBlock,
     None,
 }
@@ -62,6 +64,8 @@ struct ExprWeights {
     end_param_ix: usize,
     has_ref_name: Vec<Expr>,
 
+    // expr_buffer: Vec<Expr>,
+
     tokens: Vec<Token>,
     current_token: usize,
     keyword_map: HashMap<String, Keyword>,
@@ -75,6 +79,7 @@ impl ExprWeights {
             ("print".to_string(), Keyword::Print),
             ("int".to_string(), Keyword::Int),
             ("string".to_string(), Keyword::Str),
+            ("_".to_string(), Keyword::Underscore), 
         ]);
 
         ExprWeights {
@@ -89,6 +94,8 @@ impl ExprWeights {
             start_param_ix: 0,
             end_param_ix: 0,
             has_ref_name: Vec::new(),
+
+            // expr_buffer: Vec::new(),
 
             tokens,
             current_token: 0,
@@ -137,15 +144,10 @@ impl ExprWeights {
 
     fn handle_keywords(&mut self, keyword: Keyword) {
         match keyword {
-            Keyword::Print => {
-                self.has_predef_func = keyword;
-            },
-            Keyword::Int => {
-                self.has_type = Types::Int;
-            },
-            Keyword::Str => {
-                self.has_type = Types::Str;
-            },
+            Keyword::Print => self.has_predef_func = keyword,
+            Keyword::Int => self.has_type = Types::Int,
+            Keyword::Str => self.has_type = Types::Str,
+            Keyword::Underscore => self.has_type = Types::Void,
             Keyword::None => (),
         }
     }
@@ -191,14 +193,49 @@ impl ExprWeights {
         }
     }
 
-    fn check_block(&mut self) -> Expr {
-        // function compatability
-        let mut expr = Expr::None;
+    fn check_print(&mut self) -> Expr {
+        let expr = Expr::None;
+        let mut met_criteria = false;
 
-        if let Types::None = self.has_type {
+        match self.has_type {
+            Types::None => {
+                if self.has_lbrack && self.has_rbrack && !self.has_colon && !self.has_lcurl {
+                    // expr = Expr::Print(Box::new(self.expr_buffer));
+                    met_criteria = true;
+                }
+            },
+            _ => (),
+        }
+        if !met_criteria {
             return expr
         }
 
+        let params_slice = &self.tokens[self.start_param_ix..self.end_param_ix];
+        let mut params: Vec<Expr> = Vec::new();
+        for token in params_slice {
+            match token {
+                Token::Ident(word) => {
+                    let int_word = word.parse::<i32>();
+                    match int_word {
+                        Ok(n) => params.push(Expr::IntLit(n.to_string())),
+                        Err(_) => {
+                            for var in &self.variables {
+                                if var == word {
+                                    params.push(Expr::VarName(word.to_string()));
+                                }
+                            }
+                        },
+                    }
+                },
+                Token::Str(word) => params.push(Expr::StrLit(word.to_string())),
+                _ => (),
+            }
+        }
+
+        Expr::Print(Box::new(params))
+    }
+
+    fn check_func(&mut self) -> Option<Expr> {
         if self.has_lbrack && self.has_rbrack && self.has_colon && !self.has_name.is_empty() && self.has_lcurl {
             let params_res = self.get_params();
             let params = match params_res {
@@ -215,10 +252,29 @@ impl ExprWeights {
                 }
             }
 
-            expr = Expr::Func(Box::new((self.has_type.clone(), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
+            let expr = Expr::Func(Box::new((self.has_type.clone(), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
             self.functions.push(self.has_name.clone());
+            return Some(expr)
+        }
 
-            self.clear();
+        if !self.has_name.is_empty() {
+            println!("\x1b[93mwarning\x1b[0m: tried to make a function without a name.");
+        }
+
+        None
+    }
+
+    fn check_block(&mut self) -> Expr {
+        // function compatability
+        let mut expr = Expr::None;
+
+        if let Types::None = self.has_type {
+            return expr
+        }
+
+        match self.check_func() {
+            Some(e) => expr = e,
+            None => (),
         }
 
         expr
@@ -237,11 +293,27 @@ impl ExprWeights {
             Token::Rbrack => {
                 self.has_rbrack = true;
                 self.end_param_ix = self.current_token;
+
+                match self.has_predef_func {
+                    Keyword::Print => {
+                        expr = self.check_print();
+                    },
+                    _ => (),
+                }
             },
             Token::Colon => {
                 self.has_colon = true;
             },
             Token::Ident(word)  => {
+                // first convert to int
+                // let mut num = Expr::None;
+                // let int_word = word.parse::<i32>();
+                // match int_word {
+                //     Ok(n) => num = Expr::IntLit(n.to_string()),
+                //     Err(_) => (),
+                // }
+
+                // if not check for keywords
                 let keyword_res = self.keyword_map.get(word);
                 let keyword: (bool, Keyword) = match keyword_res {
                     Some(k) => (true, k.clone()),
@@ -251,13 +323,21 @@ impl ExprWeights {
                 if keyword.0 {
                     self.handle_keywords(keyword.1);
                 } else {
-                    let found_existing = self.check_exist_ident(word.to_string());
-
-                    if let Keyword::Print = self.has_predef_func {
-                        if found_existing {
-                            expr = Expr::Print(Box::new(self.has_ref_name[0].clone()));
-                        }
-                    } 
+                    // found variable or constant, print that thang
+                    self.check_exist_ident(word.to_string());
+                    // let found_existing = self.check_exist_ident(word.to_string());
+                    // match self.has_predef_func {
+                    //     Keyword::Print => {
+                    //         if found_existing {
+                    //             for ref_name in &self.has_ref_name {
+                    //                 self.expr_buffer.push(ref_name.clone());
+                    //             }
+                    //         } else {
+                    //             self.expr_buffer.push(num);
+                    //         }
+                    //     },
+                    //     _ => (),
+                    // }
                 }
             },
             Token::Lcurl => {
@@ -266,19 +346,12 @@ impl ExprWeights {
             },
             Token::Str(word) => {
                 self.has_strlit = true;
-                match self.has_predef_func {
-                    Keyword::None => (),
-                    Keyword::Print => {
-                        expr = Expr::Print(Box::new(Expr::StrLit(word.to_string())));
-                        self.clear();
-                    },
-                    _ => (),
-                }
+
+                // add variable making thing
             },
             Token::Quote => (),
             Token::Rcurl => {
                 expr = Expr::EndBlock;
-                self.clear();
             },
             Token::None => (),
         }
@@ -294,11 +367,149 @@ impl ExprWeights {
             let expr = self.parse_to_expr();
             match expr {
                 Expr::None => (),
-                _ => program.push(expr),
+                _ => {
+                    program.push(expr);
+                    self.clear();
+                },
             }
         }
 
         program
+    }
+}
+
+fn generate(expressions: Vec<Expr>) {
+    let mut imports = String::new();
+    let mut code = String::new();
+
+    for (index, expr) in expressions.into_iter().enumerate() {
+        match expr {
+            Expr::Print(value) => {
+                imports.push_str("#include <stdio.h>\n");
+
+                let mut print_code = String::from(format!("printf(\""));
+                let mut param_buf = String::new();
+                let mut var_buf = String::new();
+
+                for v in *value {
+                    match v {
+                        Expr::StrLit(string) => {
+                                param_buf.push_str(&format!("{string}"));
+                        },
+                        Expr::IntLit(integer) => {
+                                param_buf.push_str(&format!("%d"));
+                                var_buf.push_str(&format!(", {integer}"));
+                        },
+                        Expr::VarName(_) => (),
+                        _ => (),
+                    }
+
+                    // match v {
+                    //     Expr::StrLit(str) => code.push_str(&format!("printf(\"{str}\");")),
+                    //     Expr::IntLit(integer) => code.push_str(&format!("printf(\"%d\", {integer});")),
+                    //     _ => (),
+                    // }
+                }
+
+                print_code.push_str(&param_buf);
+                print_code.push('"');
+                print_code.push_str(&var_buf);
+                print_code.push_str(");");
+                code.push_str(&print_code);
+            }
+            Expr::EndBlock => {
+                code.push_str("}");
+            },
+            Expr::Func(f) => {
+                let ty = &f.0;
+                let params = &f.1;
+                let name = &f.2;
+                let f_ty: String;
+                let mut f_params = String::new();
+                let mut f_params_touched = false;
+                let mut f_name = String::new();
+
+                match params {
+                    Expr::FuncParams(ps) => {
+                        for p in *ps.clone() {
+                            let mut this_ty = String::new();
+                            let mut this_name = String::new();
+
+                            match p.0 {
+                                Types::Void => this_ty = String::from("void"),
+                                Types::Int => this_ty = String::from("int"),
+                                Types::Str => this_ty = String::from("char*"),
+                                Types::None => (),
+                            }
+
+                            match p.1 {
+                                Expr::VarName(vn) => this_name = vn,
+                                Expr::None => (),
+                                _ => {
+                                    println!("\x1b[91merror\x1b[0m: line {index}, unexpected expression");
+                                    exit(1)
+                                },
+                            }
+
+                            if f_params_touched {
+                                f_params.push_str(&format!(", {this_ty} {this_name}"));
+                            } else {
+                                f_params.push_str(&format!("{this_ty} {this_name}"));
+                                f_params_touched = true;
+                            }
+                        }
+                    },
+                    _ => (),
+                }
+
+                match name {
+                    Expr::FuncName(n) => f_name = n.to_string(),
+                    _ => (),
+                }
+
+                match ty {
+                    Types::Void => {
+                        if f_name == String::from("main") {
+                            f_ty = String::from("int");
+                        } else {
+                            f_ty = String::from("void");
+                        }
+                    },
+                    Types::Int => f_ty = String::from("int"),
+                    Types::Str => f_ty = String::from("char*"),
+                    Types::None => {
+                        println!("\x1b[91merror\x1b[0m: line {index}, unexpected type");
+                        exit(1)
+                    },
+                }
+
+                let func = format!("{f_ty} {f_name}({f_params}) {{");
+                code.push_str(&func);
+            },
+            _ => (),
+        }
+    }
+
+    let c_code = format!("{imports}{code}");
+    match fs::write("./output.c", c_code) {
+        Ok(_) => (),
+        Err(err) => {
+            println!("{err}");
+            exit(1);
+        }
+    }
+
+    let out = Command::new("cmd")
+        .args(["/C", "gcc output.c -o output"])
+        .output();
+
+    match out {
+        Ok(_) => (),
+        Err(err) => {
+            println!("\x1b[91merror\x1b[0m: failed to compile");
+            println!("{err}");
+            exit(1)
+        },
     }
 }
 
@@ -361,10 +572,6 @@ fn tokeniser(file: String) -> Vec<Token> {
         }
     }
 
-    // for token in &tokens {
-    //     println!("{:?}", token);
-    // }
-
     tokens
 }
 
@@ -381,10 +588,11 @@ fn build(filename: &String) {
     let tokens = tokeniser(content);
     let mut parse = ExprWeights::new(tokens);
     let expressions = parse.parser();
-
-    for expr in expressions {
+    for expr in &expressions {
         println!("{:?}", expr);
     }
+
+    generate(expressions);
 }
 
 fn usage() {
@@ -398,9 +606,9 @@ fn main() {
         exit(1)
     }
 
-    if &args[1] == "build" {
+    if &args[1] == "-b" {
         build(&args[2]);
-    } else if &args[1] == "help" {
+    } else if &args[1] == "-h" {
         println!("help step");
     } else {
         usage();

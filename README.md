@@ -3,7 +3,7 @@
 bodge (v.) - make or repair (something) badly or clumsly.
 
 ## Description
-### Impulse is made using rust as the compiler but will compile to an .exe file using fasm (flat assembler).
+### Impulse is made using rust as the compiler but will compile to an .exe file using c.
 
 ## Features
 - Non null terminated strings
@@ -18,17 +18,17 @@ The main jist of Impulsive is if you're declaring, it goes `<TYPE> <NAME>: <VALU
 <br>
 For example,
 ```
-_(string word): talk {
+_(string word) talk: {
     print(word)
 }
 
-_(): main {
+_() main: {
     talk(word)
 }
 ```
 or
 ```
-_(): main {
+_() main: {
     []int nums: [10, 20, 30]
 
     nums[1]: nums[1] * 2

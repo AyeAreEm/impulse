@@ -4,15 +4,17 @@
 ## Types
 Impulse has the basics.
 <br>
+```
 int -> 32 bit integer
-string -> dynamic array of chars / 8 bit unsigned integers
+string -> structure array of chars and length
 _ -> void
+```
 
 ## Functions / Procedures
 We don't care what they're called, even to the point where it isn't included in the language
 To create a function that returns void or nothing. it'd look something like this:
 ```
-_(): main {
+_() main: {
     print("hello world")
 }
 ```
@@ -47,13 +49,17 @@ if x = 10 {
 There's always been the `for` and `while` loop which accomplish practically the same thing.
 So ours is like so:
 ```
-_(): main {
-    loop int x: 0 < 10 +{
-        print("hello")
-    }
+int i: 0
+loop i < 10 +{
+    print("hello")
+}
 
-    loop bool running: true {
-        print("ahhhhhhhh")
-    }
+loop int j: 0 < 10 +{
+    print("hello")
+}
+
+bool game_over: false
+loop !game_over {
+    print("hello")
 }
 ```
