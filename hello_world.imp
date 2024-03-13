@@ -1,7 +1,4 @@
-_(string x) talk: {
-    print(x)
-}
-
 _() main: {
-    talk("hello there")
+    @array int nums: |1 2 3|
+    @array string strings: |"hello" "world"|
 }

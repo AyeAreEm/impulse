@@ -49,8 +49,10 @@ _() main: {
 
 ### Ideas
 ```
-@arr || -> array
 bool -> boolean
 f64 -> 64 bit float
+
+@import "base/io.imp" -> library of imp files
+@import "libc/stdio.h" -> library of c files
 ```
 for more info, look at the <a href="./DOCS/DOCS.md">Docs</a>

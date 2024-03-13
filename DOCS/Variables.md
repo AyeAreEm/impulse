@@ -5,7 +5,7 @@ int x: 10
 string msg: "Hello"
 bool ahh: true # couldn't think of a name
 
-[]int arr: [0 1 2]
+@array int arr: |0 1 2|
 ```
 There's a few things to note here. First, the `:` - this is the assigment operator in impulse. And yes, that does mean that the equality operator is `=` and not `==`
 <br>

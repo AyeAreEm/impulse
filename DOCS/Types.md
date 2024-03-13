@@ -7,12 +7,4 @@ string -> structure array of chars and length
 _ -> void
 ```
 
-## Ideas
-```
-bool -> boolean
-f64 -> 64 bit float
-[1 2 3 4] -> array
-|"hello" 10| -> tuple
-```
-
 <a href="./Variables.md">Next -> Variables</a>

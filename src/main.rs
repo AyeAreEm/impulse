@@ -18,6 +18,12 @@ enum Keyword {
 }
 
 #[derive(Debug, Clone)]
+enum Macros {
+    Import,
+    Arr,
+}
+
+#[derive(Debug, Clone)]
 enum Expr {
     Func(Box<(Types, Expr, Expr)>), // Expr1 = FuncParams, Expr2 = FuncName
     FuncName(String),
@@ -27,10 +33,12 @@ enum Expr {
     Var(Box<(Expr, Expr)>), // Expr1 = VarName, Expr2 = Literal
     VarName((Types, String)),
 
-    Print(Box<Vec<Expr>>), // Expr = 
+    Print(Box<Vec<Expr>>), // Expr = StrLit | IntLit | VarName
 
     StrLit(String),
     IntLit(String),
+
+    Arr(Box<(Expr, Vec<Expr>)>), // Expr1 = VarName, Expr2 = StrLit | IntLit | VarName
     EndBlock,
     None,
 }
@@ -38,6 +46,7 @@ enum Expr {
 #[derive(Debug, Clone)]
 enum Token {
     Quote,
+    Macro,
     Lbrack,
     Rbrack,
 
@@ -48,6 +57,8 @@ enum Token {
     Rcurl,
     Underscore,
     Colon,
+    Pipe,
+
     Ident(String),
     Str(String),
     Int(String),
@@ -64,16 +75,24 @@ struct ExprWeights {
     has_predef_func: Keyword,
     has_strlit: bool,
     has_intlit: bool,
+    has_macro: bool,
+    has_macro_name: String,
+    has_pipe: bool,
+
     start_param_ix: usize,
     end_param_ix: usize,
+
     start_intlit_ix: usize,
     end_intlit_ix: usize,
 
+    start_pipe_ix: usize,
+    end_pipe_ix: usize,
     // expr_buffer: Vec<Expr>,
 
     tokens: Vec<Token>,
     current_token: usize,
     keyword_map: HashMap<String, Keyword>,
+    macros_map: HashMap<String, Macros>,
     functions: Vec<String>,
     variables: Vec<Expr>,
 }
@@ -87,6 +106,10 @@ impl ExprWeights {
             ("_".to_string(), Keyword::Underscore), 
         ]);
 
+        let ident_to_macro: HashMap<String, Macros> = HashMap::from([
+            ("array".to_string(), Macros::Arr),
+        ]);
+
         ExprWeights {
             has_type: Types::None,
             has_lbrack: false,
@@ -97,16 +120,24 @@ impl ExprWeights {
             has_predef_func: Keyword::None,
             has_strlit: false,
             has_intlit: false,
+            has_macro: false,
+            has_macro_name: String::new(),
+            has_pipe: false,
+
             start_param_ix: 0,
             end_param_ix: 0,
+
             start_intlit_ix: 0,
             end_intlit_ix: 0,
 
+            start_pipe_ix: 0,
+            end_pipe_ix: 0,
             // expr_buffer: Vec::new(),
 
             tokens,
             current_token: 0,
             keyword_map: token_to_keyword,
+            macros_map: ident_to_macro,
             functions: Vec::new(),
             variables: Vec::new(),
         }
@@ -122,10 +153,18 @@ impl ExprWeights {
             self.has_predef_func = Keyword::None;
             self.has_strlit = false;
             self.has_intlit = false;
+            self.has_macro = false;
+            self.has_macro_name = String::new();
+            self.has_pipe = false;
+
             self.start_param_ix = 0;
             self.end_param_ix = 0;
+
             self.start_intlit_ix = 0;
             self.end_intlit_ix = 0;
+
+            self.start_pipe_ix = 0;
+            self.end_pipe_ix = 0;
     }
 
     fn check_exist_ident(&mut self, ident: String) -> bool {
@@ -300,7 +339,7 @@ impl ExprWeights {
         match value {
             Expr::StrLit(v) => {
                 if let Types::Str = self.has_type {
-                    if self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl {
+                    if self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl && self.has_macro_name.is_empty() {
                         let varname = Expr::VarName((Types::Str, self.has_name.clone()));
                         expr = Expr::Var(Box::new((varname.clone(), Expr::StrLit(v))));
                         self.variables.push(varname);
@@ -309,7 +348,7 @@ impl ExprWeights {
             },
             Expr::IntLit(v) => {
                 if let Types::Int = self.has_type {
-                    if self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl {
+                    if self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl && self.has_macro_name.is_empty() {
                         let varname = Expr::VarName((Types::Int, self.has_name.clone()));
                         expr = Expr::Var(Box::new((varname.clone(), Expr::IntLit(v))));
                         self.variables.push(varname);
@@ -317,6 +356,43 @@ impl ExprWeights {
                 }
             },
             _ => (),
+        }
+
+        expr
+    }
+
+    fn try_arr(&mut self) -> Expr {
+        let mut expr = Expr::None;
+        if self.has_macro_name == String::from("array") &&
+            self.has_colon &&
+            !self.has_name.is_empty() &&
+            !self.has_lbrack &&
+            !self.has_rbrack &&
+            !self.has_lcurl
+        {
+            let values = &self.tokens[self.start_pipe_ix..self.end_pipe_ix];
+            let mut expr_value: Vec<Expr> = Vec::new();
+
+            for value in values {
+                match value {
+                    Token::Str(string) => expr_value.push(Expr::StrLit(string.clone())),
+                    Token::Int(integer) => expr_value.push(Expr::IntLit(integer.clone())),
+                    Token::Ident(ident) => {
+                        let ident_num = ident.parse::<i32>();
+                        match ident_num {
+                            Ok(_) => {
+                                expr_value.push(Expr::IntLit(ident.clone()));
+                            },
+                            Err(_) => {
+                                expr_value.push(Expr::VarName((self.has_type.clone(), ident.clone())));
+                            },
+                        }
+                    },
+                    _ => (),
+                }
+            }
+
+            expr = Expr::Arr(Box::new((Expr::VarName((self.has_type.clone(), self.has_name.clone())), expr_value)));
         }
 
         expr
@@ -412,6 +488,13 @@ impl ExprWeights {
             },
             Token::Ident(word)  => {
                 // if not check for keywords
+                if self.has_macro {
+                    self.has_macro_name = word.to_string();
+                    self.current_token += 1;
+                    self.has_macro = false;
+                    return expr
+                }
+
                 let int_word = word.parse::<i32>();
                 let  num: (bool, Expr);
                 match int_word {
@@ -449,9 +532,22 @@ impl ExprWeights {
                 self.has_intlit = true;
                 expr = self.try_variable(Expr::IntLit(integer.to_string()));
             },
+            Token::Macro => {
+                self.has_macro = true;
+            }
             Token::Lsquare => (),
             Token::Rsquare => (),
             Token::Quote => (),
+            Token::Pipe => {
+                if self.has_pipe {
+                    self.end_pipe_ix = self.current_token;
+                    self.has_pipe = false;
+                    expr = self.try_arr();
+                } else {
+                    self.start_pipe_ix = self.current_token;
+                    self.has_pipe = true;
+                }
+            },
         }
 
         self.current_token += 1;
@@ -476,7 +572,7 @@ impl ExprWeights {
     }
 }
 
-fn generate(expressions: Vec<Expr>) {
+fn generate(expressions: Vec<Expr>, out_filename: String) {
     let mut imports = String::new();
     let mut code = String::new();
 
@@ -515,6 +611,54 @@ fn generate(expressions: Vec<Expr>) {
 
                 func_call.push_str(");");
                 code.push_str(&func_call);
+            },
+            Expr::Arr(value) => {
+                let mut arr_var = String::new();
+                let mut first_elem = true;
+
+                match value.0 {
+                    Expr::VarName((typ, name)) => {
+                        match typ {
+                            Types::Str => arr_var.push_str(&format!("char* {name}[] = {{")),
+                            Types::Int => arr_var.push_str(&format!("int {name}[] = {{")),
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+
+                for v in value.1 {
+                    match v {
+                        Expr::StrLit(string) => {
+                            if first_elem {
+                                arr_var.push_str(&format!("\"{string}\""));
+                                first_elem = !first_elem;
+                            } else {
+                                arr_var.push_str(&format!(",\"{string}\""));
+                            }
+                        },
+                        Expr::IntLit(integer) => {
+                            if first_elem {
+                                arr_var.push_str(&format!("{integer}"));
+                                first_elem = !first_elem;
+                            } else {
+                                arr_var.push_str(&format!(",{integer}"));
+                            }
+                        },
+                        Expr::VarName((_, name)) => {
+                            if first_elem {
+                                arr_var.push_str(&format!("{name}"));
+                                first_elem = !first_elem;
+                            } else {
+                                arr_var.push_str(&format!(",{name}"));
+                            }
+                        },
+                        _ => (),
+                    }
+                }
+
+                arr_var.push_str("};");
+                code.push_str(&arr_var);
             },
             Expr::Var(value) => {
                 let mut variable = String::new();
@@ -670,8 +814,9 @@ fn generate(expressions: Vec<Expr>) {
         }
     }
 
+    let com = format!("gcc output.c -o {out_filename}");
     let out = Command::new("cmd")
-        .args(["/C", "gcc output.c -o output"])
+        .args(["/C", &com])
         .output();
 
     match out {
@@ -695,6 +840,8 @@ fn tokeniser(file: String) -> Vec<Token> {
         ('"', Token::Quote),
         ('_', Token::Underscore),
         (':', Token::Colon),
+        ('@', Token::Macro),
+        ('|', Token::Pipe),
     ]);
 
     let mut tokens: Vec<Token> = Vec::new();
@@ -769,7 +916,7 @@ fn tokeniser(file: String) -> Vec<Token> {
     tokens
 }
 
-fn build(filename: &String) {
+fn build(filename: &String, out_filename: &String, keep_c: bool) {
     let file_res = fs::read_to_string(filename);
     let content = match file_res {
         Ok(content) => content,
@@ -786,28 +933,77 @@ fn build(filename: &String) {
 
     let mut parse = ExprWeights::new(tokens);
     let expressions = parse.parser();
-    // for expr in &expressions {
-    //     println!("{:?}", expr);
-    // }
+    for expr in &expressions {
+        println!("{:?}", expr);
+    }
 
-    generate(expressions);
+    generate(expressions, out_filename.clone());
+
+    if !keep_c {
+        match fs::remove_file("output.c") {
+            Ok(_) => (),
+            Err(_) => {
+                println!("\x1b[91merror\x1b[0m: error handling code generation.");
+                exit(1)
+            },
+        }
+    }
+}
+
+fn usage_c() {
+    println!("| -c: generate c file | impulse -b FILE.imp OUTPUT_NAME |");
+}
+
+fn usage_build() {
+    println!("| -b: build | impulse -b FILE.imp OUTPUT_NAME |");
 }
 
 fn usage() {
-    println!("cargo run <COMMAND> [file.imp]")
+    println!("USAGE:");
+    println!("impulse <COMMAND> [file.imp] <OUTPUT_NAME>");
+    println!("cargo run -- <COMMAND> [file.imp] <OUTPUT_NAME>");
+    println!();
+    println!("-----------------------------------------------------");
+    println!();
+    println!("COMMANDS:");
+    println!("| -h: help | impulse -h |");
+    println!("| -r: run | impulse -b FILE.imp OUTPUT_NAME |");
+    usage_build();
+    usage_c();
+    println!();
+    println!("-----------------------------------------------------");
+    println!();
+}
+
+fn incorrect_usage(args: &Vec<String>, usage_type: fn()) {
+    if args.len() < 4 {
+        println!("USAGE: ");
+        usage_type();
+        println!();
+        println!("-----------------------------------------------------");
+        println!();
+        exit(1);
+    }
 }
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() <= 1 {
+    if args.len() < 1 {
+        usage();
         println!("\x1b[91merror\x1b[0m: invalid usage");
         exit(1)
     }
 
-    if &args[1] == "-b" {
-        build(&args[2]);
-    } else if &args[1] == "-h" {
-        println!("help step");
+    if &args[1] == "-h" {
+        usage();
+    } else if &args[1] == "-b" {
+        incorrect_usage(&args, usage_build);
+        build(&args[2], &args[3], false);
+    } else if &args[1] == "-c" {
+        incorrect_usage(&args, usage_c);
+        build(&args[2], &args[3], true);
+    } else if &args[1] == "-r" {
+        println!("run step")
     } else {
         usage();
         println!("\x1b[91merror\x1b[0m: unknown command, \x1b[93m{}\x1b[0m", &args[1]);
