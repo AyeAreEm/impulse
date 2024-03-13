@@ -46,4 +46,11 @@ _() main: {
     print(nums[1])
 }
 ```
+
+### Ideas
+```
+@arr || -> array
+bool -> boolean
+f64 -> 64 bit float
+```
 for more info, look at the <a href="./DOCS/DOCS.md">Docs</a>

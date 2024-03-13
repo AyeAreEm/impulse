@@ -1,3 +1,7 @@
+_(string x) talk: {
+    print(x)
+}
+
 _() main: {
-    print("i love " 69 " lol")
+    talk("hello there")
 }
