@@ -1,4 +1,4 @@
 _() main: {
-    @array int nums: |1 2 3|
-    @array string strings: |"hello" "world"|
+    string name: "hello world"
+    print(name)
 }

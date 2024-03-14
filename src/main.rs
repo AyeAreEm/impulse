@@ -33,6 +33,8 @@ enum Expr {
     Var(Box<(Expr, Expr)>), // Expr1 = VarName, Expr2 = Literal
     VarName((Types, String)),
 
+    ReVar(Box<(Expr, Expr)>), // Expr1 = VarName, Expr2 = StrLit | IntLit | VarName
+
     Print(Box<Vec<Expr>>), // Expr = StrLit | IntLit | VarName
 
     StrLit(String),
@@ -78,6 +80,7 @@ struct ExprWeights {
     has_macro: bool,
     has_macro_name: String,
     has_pipe: bool,
+    has_ref_name: Vec<Expr>,
 
     start_param_ix: usize,
     end_param_ix: usize,
@@ -123,6 +126,7 @@ impl ExprWeights {
             has_macro: false,
             has_macro_name: String::new(),
             has_pipe: false,
+            has_ref_name: Vec::new(),
 
             start_param_ix: 0,
             end_param_ix: 0,
@@ -156,6 +160,7 @@ impl ExprWeights {
             self.has_macro = false;
             self.has_macro_name = String::new();
             self.has_pipe = false;
+            self.has_ref_name = Vec::new();
 
             self.start_param_ix = 0;
             self.end_param_ix = 0;
@@ -171,7 +176,7 @@ impl ExprWeights {
         let mut found = false;
         for func in &self.functions {
             if func == &ident {
-                found = true; 
+                found = true;
             }
         }
 
@@ -179,7 +184,8 @@ impl ExprWeights {
             match var {
                 Expr::VarName((_, name)) => {
                     if name == &ident {
-                        found = true; 
+                        self.has_ref_name.push(var.clone());
+                        found = true;
                     }
                 }
                 _ => (),
@@ -328,7 +334,75 @@ impl ExprWeights {
         None
     }
 
-    fn try_variable(&mut self, value: Expr) -> Expr {
+    fn try_reassign_variable(&mut self, ident: Expr) -> Expr {
+        let mut expr = Expr::None;
+        let mut found_match = false;
+        let mut typ = Types::None;
+        let mut name = String::new();
+
+        if let Types::None = self.has_type {
+            if !self.has_macro_name.is_empty() || self.has_ref_name.is_empty() {
+                return expr
+            }
+
+            for var in &self.variables {
+                match var {
+                    Expr::VarName((_, list_name)) => {
+                        match &self.has_ref_name[0] {
+                            Expr::VarName((var_typ, var_name)) => {
+                                if var_name == list_name {
+                                    typ = var_typ.clone();
+                                    name = var_name.clone();
+                                    found_match = true;
+                                }
+                            },
+                            _ => (),
+                        }
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        if found_match && self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl {
+            match ident {
+                Expr::StrLit(ref string) => {
+                    if let Types::Str = typ {
+                        expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), name.clone())), ident)));
+                    } else {
+                        println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m\"{}\"\x1b[0m", typ, name, string);
+                        println!("\x1b[91merror\x1b[0m: mismatch types");
+                        exit(1);
+                    }
+                },
+                Expr::IntLit(ref integer) => {
+                    if let Types::Int = typ {
+                        expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), name.clone())), ident)));
+                    } else {
+                        println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", typ, name, integer);
+                        println!("\x1b[91merror\x1b[0m: mismatch types");
+                        exit(1);
+                    }
+                },
+                Expr::VarName((ref var_typ, ref var_name)) => {
+                    match (typ.clone(), var_typ) {
+                        (Types::Int, Types::Int) => expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), name.clone())), ident))),
+                        (Types::Str, Types::Str) => expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), name.clone())), ident))),
+                        _ => {
+                            println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", typ, name, var_name);
+                            println!("\x1b[91merror\x1b[0m: mismatch types");
+                            exit(1);
+                        },
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        expr
+    }
+
+    fn try_variable(&mut self, value: &Expr) -> Expr {
         let mut expr = Expr::None;
 
         match self.has_type {
@@ -336,22 +410,34 @@ impl ExprWeights {
             _ => (),
         }
 
+        if self.has_name.is_empty() {
+            return expr
+        }
+
         match value {
             Expr::StrLit(v) => {
-                if let Types::Str = self.has_type {
-                    if self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl && self.has_macro_name.is_empty() {
-                        let varname = Expr::VarName((Types::Str, self.has_name.clone()));
-                        expr = Expr::Var(Box::new((varname.clone(), Expr::StrLit(v))));
+                if self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl && self.has_macro_name.is_empty() {
+                    let varname = Expr::VarName((Types::Str, self.has_name.clone()));
+                    if let Types::Str = self.has_type {
+                        expr = Expr::Var(Box::new((varname.clone(), Expr::StrLit(v.to_string()))));
                         self.variables.push(varname);
+                    } else {
+                        println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m\"{}\"\x1b[0m", self.has_type, self.has_name, v);
+                        println!("\x1b[91merror\x1b[0m: mismatch types");
+                        exit(1);
                     }
                 }
             },
             Expr::IntLit(v) => {
-                if let Types::Int = self.has_type {
-                    if self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl && self.has_macro_name.is_empty() {
-                        let varname = Expr::VarName((Types::Int, self.has_name.clone()));
-                        expr = Expr::Var(Box::new((varname.clone(), Expr::IntLit(v))));
+                if self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl && self.has_macro_name.is_empty() {
+                    let varname = Expr::VarName((Types::Int, self.has_name.clone()));
+                    if let Types::Int = self.has_type {
+                        expr = Expr::Var(Box::new((varname.clone(), Expr::IntLit(v.to_string()))));
                         self.variables.push(varname);
+                    } else {
+                        println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
+                        println!("\x1b[91merror\x1b[0m: mismatch types");
+                        exit(1);
                     }
                 }
             },
@@ -510,12 +596,21 @@ impl ExprWeights {
 
                 if keyword.0 {
                     self.handle_keywords(keyword.1);
-                } else {
-                    if num.0 {
+                } else if num. 0{
                         // if we have a number, try see if we can make a variable
-                        expr = self.try_variable(num.1.clone());
-                    } else {
-                        self.check_exist_ident(word.clone());
+                        expr = self.try_variable(&num.1);
+
+                        if let Expr::None = expr {
+                            expr = self.try_reassign_variable(num.1.clone());
+                        }
+                    
+                } else {
+                    if self.check_exist_ident(word.to_string()) {
+                        if self.has_ref_name.len() == 2 {
+                            if let Expr::VarName(value) = &self.has_ref_name[1] {
+                                expr = self.try_reassign_variable(Expr::VarName(value.clone()));
+                            }
+                        }
                     }
                 }
             },
@@ -526,11 +621,21 @@ impl ExprWeights {
             Token::Rcurl => expr = Expr::EndBlock,
             Token::Str(word) => {
                 self.has_strlit = true;
-                expr = self.try_variable(Expr::StrLit(word.to_string()));
+                let strlit = Expr::StrLit(word.to_string());
+                expr = self.try_variable(&strlit);
+
+                if let Expr::None = expr {
+                    expr = self.try_reassign_variable(strlit);
+                }
             },
             Token::Int(integer) => {
                 self.has_intlit = true;
-                expr = self.try_variable(Expr::IntLit(integer.to_string()));
+                let intlit = Expr::IntLit(integer.to_string());
+                expr = self.try_variable(&intlit);
+
+                if let Expr::None = expr {
+                    expr = self.try_reassign_variable(intlit);
+                }
             },
             Token::Macro => {
                 self.has_macro = true;
@@ -666,20 +771,8 @@ fn generate(expressions: Vec<Expr>, out_filename: String) {
                 match value.0 {
                     Expr::VarName((typ, name)) => {
                         match typ {
-                            Types::Str => {
-                                if name.is_empty() {
-                                    println!("\x1b[91merror\x1b[0m: no or reused variable name. around line {}", index + 1);
-                                    exit(1)
-                                }
-                                variable.push_str(&format!("char* {name}="));
-                            },
-                            Types::Int => {
-                                if name.is_empty() {
-                                    println!("\x1b[91merror\x1b[0m: no or reused variable name. around line {}", index + 1);
-                                    exit(1)
-                                }
-                                variable.push_str(&format!("int {name}="))
-                            },
+                            Types::Str => variable.push_str(&format!("char* {name}=")),
+                            Types::Int => variable.push_str(&format!("int {name}=")),
                             _ => (),
                         }
                     },
@@ -693,6 +786,32 @@ fn generate(expressions: Vec<Expr>, out_filename: String) {
                 }
 
                 code.push_str(&variable);
+            },
+            Expr::ReVar(value) => {
+                let mut re_var = String::new();
+                let mut var_name = String::new();
+
+                match value.0 {
+                    Expr::VarName((_, name)) => {
+                        var_name = name;
+                    },
+                    _ => (),
+                }
+
+                match value.1 {
+                    Expr::StrLit(string) => {
+                        re_var.push_str(&format!("{var_name} = \"{string}\";"));
+                    },
+                    Expr::IntLit(integer) => {
+                        re_var.push_str(&format!("{var_name} = {integer};"));
+                    },
+                    Expr::VarName((_, name)) => {
+                        re_var.push_str(&format!("{var_name} = {name};"));
+                    },
+                    _ => (),
+                }
+
+                code.push_str(&re_var);
             },
             Expr::Print(value) => {
                 if !imports.contains("#include <stdio.h>\n") {
@@ -927,9 +1046,9 @@ fn build(filename: &String, out_filename: &String, keep_c: bool) {
     };
 
     let tokens = tokeniser(content);
-    // for token in &tokens {
-    //     println!("{:?}", token);
-    // }
+    for token in &tokens {
+        println!("{:?}", token);
+    }
 
     let mut parse = ExprWeights::new(tokens);
     let expressions = parse.parser();

@@ -14,10 +14,9 @@ This way with my own language with detailed docs and one day examples, I think I
 ## Features
 - Non null terminated strings
 - Structs
-- Procedural with OOP elements
 - Pointers (odin syntax)
 - Odin / Jai like syntax
-- Macros (run - run a function immediately after creation)
+- Decorators (run - run a function immediately after creation)
 
 ## Syntax
 A big inspiration fo Impulse's syntax is Odin and Jai with some C. Simplistic minimalism as I would call it.
@@ -46,6 +45,21 @@ _() main: {
     print(nums[1])
 }
 ```
+
+## Installation
+-- Note: Only Windows Support Currently --
+
+### Requirements
+GNU Compiler Collection (gcc) - <a href="https://gcc.gnu.org/install/binaries.html">https://gcc.gnu.org/install/binaries.html</a><br>
+Git - <a href="https://git-scm.com/downloads">https://git-scm.com/downloads</a>
+
+### Download Steps
+Open a terminal:<br>
+`$ cd ~`<br>
+`$ mkdir impulse`<br>
+`$ cd impulse`<br>
+`$ git clone https://github.com/AyeAreEm/impulse.git`<br>
+`$ impulse`
 
 ### Ideas
 ```
