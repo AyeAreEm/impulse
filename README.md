@@ -3,7 +3,7 @@
 bodge (v.) - make or repair (something) badly or clumsly.
 
 ## Description
-### Impulse is made using rust as the compiler but will compile to an .exe file using c.
+### Impulse is made using rust as the translator while using gcc or node as the compiler / runtime.
 
 ## Why Impulse
 I like rust but man is it verbose. I have been writing a lot of Odin recently and it's amazing but I feel like it's not my perfect language.
@@ -35,7 +35,7 @@ _() main: {
 or
 ```
 _() main: {
-    []int nums: [10 20 30]
+    @array nums: |10 20 30|
     int new_num: 10
 
     nums[0]: nums[0] * new_num
@@ -68,5 +68,15 @@ f64 -> 64 bit float
 
 @import "base/io.imp" -> library of imp files
 @import "libc/stdio.h" -> library of c files
+
+this code below doesn't work. solution: maybe use a hashmap with func name and list of its variables as key value pairs respectively
+_(string word) talk: {
+    print(word)
+}
+
+_() main: {
+    string word: "hello"
+    talk(word)
+}
 ```
 for more info, look at the <a href="./DOCS/DOCS.md">Docs</a>

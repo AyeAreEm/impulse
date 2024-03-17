@@ -1,4 +1,10 @@
 _() main: {
-    string name: "hello world"
-    print(name)
+    @array int x: |0 1 2|
+    x|0|: 69
+    x|1|: 420
+    x|2|: 69420
+
+    print(x|0|)
+    print(x|1|)
+    print(x|2|)
 }
