@@ -1,10 +1,8 @@
-_() main: {
-    @array int x: |0 1 2|
-    x|0|: 69
-    x|1|: 420
-    x|2|: 69420
+_(string word_msg) say_msg: {
+    print(word_msg) 
+}
 
-    print(x|0|)
-    print(x|1|)
-    print(x|2|)
+_() main: {
+    string my_msg: "hello world"
+    say_msg(my_msg)
 }

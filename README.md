@@ -47,7 +47,7 @@ _() main: {
 ```
 
 ## Installation
--- Note: Only Windows Support Currently --
+-- Note: Only Windows Support Currently (tho it could still work) --
 
 ### Requirements
 GNU Compiler Collection (gcc) - <a href="https://gcc.gnu.org/install/binaries.html">https://gcc.gnu.org/install/binaries.html</a><br>

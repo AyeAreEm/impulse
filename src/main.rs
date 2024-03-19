@@ -76,6 +76,7 @@ struct ExprWeights {
     has_rbrack: bool,
     has_colon: bool,
     has_name: String,
+    has_func_name: String,
     has_lcurl: bool,
     has_predef_func: Keyword,
     has_strlit: bool,
@@ -126,6 +127,7 @@ impl ExprWeights {
             has_rbrack: false,
             has_colon: false,
             has_name: String::new(),
+            has_func_name: String::new(),
             has_lcurl: false,
             has_predef_func: Keyword::None,
             has_strlit: false,
@@ -163,6 +165,7 @@ impl ExprWeights {
             self.has_rbrack = false;
             self.has_colon = false;
             self.has_name = String::new();
+            self.has_func_name = String::new();
             self.has_lcurl = false;
             self.has_predef_func = Keyword::None;
             self.has_strlit = false;
@@ -187,14 +190,19 @@ impl ExprWeights {
         for func in &self.functions {
             if func == &ident {
                 found = true;
+                break;
             }
+        }
+
+        if found {
+            self.has_func_name = ident.clone();
         }
 
         let variables_res = self.func_to_vars.get(&self.current_func);
         let variables = match variables_res {
             Some(var) => var,
             None => {
-                self.has_name = ident;
+                self.has_name = ident.clone();
                 return found;
             },
         };
@@ -212,7 +220,7 @@ impl ExprWeights {
         }
 
         if !found {
-            self.has_name = ident;
+            self.has_name.push_str(&ident);
         }
 
         found
@@ -232,8 +240,19 @@ impl ExprWeights {
                 }
             },
             Keyword::Underscore => {
-                if let Types::None = self.has_type {
+                if self.current_token <= 0 {
                     self.has_type = Types::Void;
+                    return;
+                }
+                match &self.tokens[self.current_token-1] {
+                    Token::Ident(_) => {
+                        self.has_name.push('_');
+                    }
+                    _ => {
+                        if let Types::None = self.has_type {
+                            self.has_type = Types::Void;
+                        }
+                    },
                 }
             },
             Keyword::None => (),
@@ -647,18 +666,16 @@ impl ExprWeights {
         let mut expr = Expr::None;
         let mut name = String::new();
         let mut met_criteria = false;
+        // println!("{}", self.has_func_name);
 
-        if let Types::None = self.has_type {
-            for func in &self.functions {
-                match &self.tokens[self.start_param_ix-1] {
-                    Token::Ident(word) => {
-                        if func == word && self.has_lbrack && self.has_rbrack && !self.has_colon {
-                            name = word.clone();
-                            met_criteria = true
-                        }
-                    },
-                    _ => (),
-                }
+        if self.has_func_name.is_empty() {
+            return expr
+        }
+
+        for func in &self.functions {
+            if func == &self.has_func_name && self.has_lbrack && self.has_rbrack && !self.has_lcurl {
+                name = self.has_func_name.clone();
+                met_criteria = true;
             }
         }
 
@@ -708,7 +725,7 @@ impl ExprWeights {
         let mut expr = Expr::None;
         match &self.tokens[self.current_token] {
             Token::Underscore => {
-                self.has_type = Types::Void;
+                self.handle_keywords(Keyword::Underscore);
             },
             Token::Lbrack => {
                 self.has_lbrack = true; 
@@ -718,14 +735,14 @@ impl ExprWeights {
                 self.has_rbrack = true;
                 self.end_param_ix = self.current_token;
 
-                expr = self.try_func_call();
+                match self.has_predef_func {
+                    Keyword::Print => {
+                        expr = self.check_print();
+                    },
+                    _ => (),
+                }
                 if let Expr::None = expr {
-                    match self.has_predef_func {
-                        Keyword::Print => {
-                            expr = self.check_print();
-                        },
-                        _ => (),
-                    }
+                    expr = self.try_func_call();
                 }
             },
             Token::Colon => {
@@ -1192,6 +1209,15 @@ fn tokeniser(file: String) -> Vec<Token> {
 
         if in_quotes {
             buf.push(c);
+            continue;
+        }
+
+        if c == '_' {
+            if !buf.is_empty() {
+                buf.push(c);
+            } else {
+                tokens.push(Token::Underscore);
+            }
             continue;
         }
 
