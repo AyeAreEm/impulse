@@ -1,8 +1,8 @@
-_(string word_msg) say_msg: {
-    print(word_msg) 
+_(@array string greets) greet: {
+    print(greets|0| " " greets|1| " " greets|2|)
 }
 
 _() main: {
-    string my_msg: "hello world"
-    say_msg(my_msg)
+    @array string words: |"hello" "world" "lol"|
+    greet(words)
 }

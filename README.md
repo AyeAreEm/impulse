@@ -19,6 +19,8 @@ This way with my own language with detailed docs and one day examples, I think I
 - Decorators (run - run a function immediately after creation)
 
 ## Syntax
+-- Note: Take a look at the `hello_world.imp` file to see recently added features in action --<br>
+
 A big inspiration fo Impulse's syntax is Odin and Jai with some C. Simplistic minimalism as I would call it.
 The main jist of Impulsive is if you're declaring, it goes `<TYPE> <NAME>: <VALUE>`. If you're reading it's `<NAME><TYPE?>: <VALUE>`
 <br>
@@ -29,20 +31,20 @@ _(string word) talk: {
 }
 
 _() main: {
-    talk("hello")
+    talk("hello world")
 }
 ```
 or
 ```
 _() main: {
-    @array nums: |10 20 30|
+    @array int nums: |10 20 30|
     int new_num: 10
 
-    nums[0]: nums[0] * new_num
-    nums[1]: nums[1] * new_num
-    nums[2]: nums[2] * new_num
+    nums|0|: nums|0| * new_num
+    nums|1|: nums|1| * new_num
+    nums|2|: nums|2| * new_num
 
-    print(nums[1])
+    print(nums|1|)
 }
 ```
 
@@ -68,15 +70,5 @@ f64 -> 64 bit float
 
 @import "base/io.imp" -> library of imp files
 @import "libc/stdio.h" -> library of c files
-
-this code below doesn't work. solution: maybe use a hashmap with func name and list of its variables as key value pairs respectively
-_(string word) talk: {
-    print(word)
-}
-
-_() main: {
-    string word: "hello"
-    talk(word)
-}
 ```
 for more info, look at the <a href="./DOCS/DOCS.md">Docs</a>

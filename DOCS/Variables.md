@@ -1,11 +1,12 @@
 # Variables
-I don't like keywords like `let` or `var`, that's why impulse's approach to variables is similar to C, Odin and Jai. Here's some examples:
+I don't like keywords like `let` or `var`, that's why impulse's approach to variables is similar to C. Here's some examples:
 ```
 int x: 10
 string msg: "Hello"
-bool ahh: true # couldn't think of a name
-
+bool foo: true 
 @array int arr: |0 1 2|
+
+^int address_num: 10
 ```
 There's a few things to note here. First, the `:` - this is the assigment operator in impulse. And yes, that does mean that the equality operator is `=` and not `==`
 <br>
@@ -18,11 +19,10 @@ This only applies when declaring something, anything in impulse, even functions.
 ```
 x: 20
 msg: "World"
-ahh: false
-
+foo: false
 arr[0]: 1
-arr[1]: 2
-arr[2]: 3
+
+address_num^: 10
 ```
 
 <a href="./Functions.md">Next -> Functions</a>
