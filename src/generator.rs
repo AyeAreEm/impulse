@@ -1,4 +1,5 @@
 use std::{fs, process::{exit, Command}};
+use rand::Rng;
 use crate::parser::Expr;
 use crate::declare_types::*;
 
@@ -8,6 +9,19 @@ pub struct Gen {
     code: String,
     out_file: String,
     lang: Lang,
+}
+
+fn rand_varname() -> String {
+    let alphabet = String::from("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    let mut varname = String::new();
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..5 {
+        let r = rng.gen_range(0..alphabet.len());
+        varname.push(alphabet.chars().nth(r).unwrap());
+    }
+
+    varname
 }
 
 impl Gen {
@@ -21,10 +35,10 @@ impl Gen {
         }
     }
 
-    fn import_string(&mut self) {
+    fn import_dynam(&mut self) {
         if !self.imports.contains("#include \"libc/dynamic.h\"\n") {
             self.imports.push_str("#include \"libc/dynamic.h\"\n");
-            self.comp_imports.push_str(".\\libc\\dynamic.c ");
+            self.comp_imports.push_str("./libc/dynamic.c ");
         }
     }
 
@@ -52,18 +66,61 @@ impl Gen {
                             },
                             Expr::StrLit(string) => {
                                 if first_param {
-                                    func_call.push_str(&format!("\"{string}\""));
+                                    func_call.push_str(&format!("string_from(\"{string}\")"));
                                     first_param = false;
                                 } else {
-                                    func_call.push_str(&format!(",\"{string}\""));
+                                    func_call.push_str(&format!(",string_from(\"{string}\")"));
                                 }
-                            }
+                            },
                             _ => (),
                         }
                     }
 
                     func_call.push_str(");");
                     self.code.push_str(&func_call);
+                },
+                Expr::Dynam(value) => {
+                    let mut dynam_var = String::new();
+                    let mut dynam_name = String::new();
+
+                    match value.0 {
+                        Expr::VarName((typ, name)) => {
+                            match typ {
+                                Types::Dynam(dynam_typ) => {
+                                    match *dynam_typ {
+                                        _ => {
+                                            self.import_dynam();
+                                            dynam_name = name.clone();
+                                            dynam_var.push_str(&format!("dynam {name}=dynam_new();"));
+                                        },
+                                    }
+                                },
+                                _ => (),
+                            }
+                        },
+                        _ => (),
+                    }
+
+                    for v in value.1 {
+                        match v {
+                            Expr::StrLit(string) => {
+                                let varname = rand_varname();
+                                dynam_var.push_str(&format!("string {varname}=string_from(\"{string}\");"));
+                                dynam_var.push_str(&format!("dynam_push(&{dynam_name},&{varname});"));
+                            },
+                            Expr::IntLit(integer) => {
+                                let varname = rand_varname();
+                                dynam_var.push_str(&format!("int {varname}={integer};"));
+                                dynam_var.push_str(&format!("dynam_push(&{dynam_name},&{varname});"));
+                            },
+                            Expr::VarName((_, name)) => {
+                                dynam_var.push_str(&format!("dynam_push(&{dynam_name},&{name});"));
+                            },
+                            _ => (),
+                        }
+                    }
+
+                    self.code.push_str(&dynam_var);
                 },
                 Expr::Arr(value) => {
                     let mut arr_var = String::new();
@@ -75,7 +132,7 @@ impl Gen {
                                 Types::Arr(arr_typ) => {
                                     match *arr_typ {
                                         Types::Str => {
-                                            self.import_string();
+                                            self.import_dynam();
                                             arr_var.push_str(&format!("string {name}[]={{"));
                                         },
                                         Types::Int => arr_var.push_str(&format!("int {name}[]={{")),
@@ -151,7 +208,7 @@ impl Gen {
                         Expr::VarName((typ, name)) => {
                             match typ {
                                 Types::Str => {
-                                    self.import_string();
+                                    self.import_dynam();
                                     variable.push_str(&format!("string {name}=string_from("))
                                 },
                                 Types::Int => variable.push_str(&format!("int {name}=")),
@@ -288,15 +345,29 @@ impl Gen {
                                         this_name = name;
                                         match typ {
                                             Types::Str => {
-                                                self.import_string();
-                                                this_typ = String::from("char*");
+                                                self.import_dynam();
+                                                this_typ = String::from("string");
                                             },
                                             Types::Int => this_typ = String::from("int"),
                                             Types::Void => this_typ = String::from("void"),
                                             Types::Arr(arr_typ) => {
                                                 match *arr_typ {
                                                     Types::Str => {
-                                                        self.import_string();
+                                                        self.import_dynam();
+                                                        this_typ = String::from("string");
+                                                        this_name.push_str("[]");
+                                                    },
+                                                    Types::Int => {
+                                                        this_typ = String::from("int");
+                                                        this_name.push_str("[]");
+                                                    },
+                                                    _ => (),
+                                                }
+                                            },
+                                            Types::Dynam(dynam_typ) => {
+                                                match *dynam_typ {
+                                                    Types::Str => {
+                                                        self.import_dynam();
                                                         this_typ = String::from("string");
                                                         this_name.push_str("[]");
                                                     },
@@ -339,13 +410,23 @@ impl Gen {
                         },
                         Types::Int => f_ty = String::from("int"),
                         Types::Str => {
-                            self.import_string();
+                            self.import_dynam();
                             f_ty = String::from("string");
                         },
                         Types::Arr(arr_typ) => {
                             match **arr_typ {
                                 Types::Str => {
-                                    self.import_string();
+                                    self.import_dynam();
+                                    f_ty = String::from("[]string");
+                                },
+                                Types::Int => f_ty = String::from("[]int"),
+                                _ => (),
+                            }
+                        },
+                        Types::Dynam(dynam_typ) => {
+                            match **dynam_typ {
+                                Types::Str => {
+                                    self.import_dynam();
                                     f_ty = String::from("[]string");
                                 },
                                 Types::Int => f_ty = String::from("[]int"),
@@ -360,6 +441,23 @@ impl Gen {
 
                     let func = format!("{f_ty} {f_name}({f_params}) {{");
                     self.code.push_str(&func);
+                },
+                Expr::Return(value) => {
+                    let mut ret = String::new();
+                    match *value {
+                        Expr::StrLit(string) => {
+                            ret.push_str(&format!("return {string};"));
+                        },
+                        Expr::IntLit(integer) => {
+                            println!("{integer}");
+                            ret.push_str(&format!("return {integer};"));
+                        },
+                        Expr::VarName((_, name)) => {
+                            ret.push_str(&format!("return {name};"));
+                        },
+                        _ => (),
+                    }
+                    self.code.push_str(&ret);
                 },
                 _ => (),
             }

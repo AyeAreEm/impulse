@@ -8,6 +8,7 @@ pub enum Types {
     Int,
     Str,
     Arr(Box<Types>),
+    Dynam(Box<Types>),
     Void,
     None,
 }
@@ -25,5 +26,6 @@ pub enum Keyword {
 pub enum Macros {
     Import,
     Arr,
+    Dynam,
     None,
 }

@@ -16,6 +16,7 @@ pub enum Token {
     Colon,
     Pipe,
     Newline,
+    Return,
 
     Ident(String),
     Str(String),
@@ -43,6 +44,11 @@ pub fn tokeniser(file: String) -> Vec<Token> {
     let mut in_squares = false;
 
     for c in file.chars() {
+        if buf == String::from("return") {
+            tokens.push(Token::Return);
+            buf.clear();
+        }
+
         if c == '"' {
             in_quotes = !in_quotes;
 
@@ -58,6 +64,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             buf.push(c);
             continue;
         }
+
 
         if c == '_' {
             if !buf.is_empty() {
@@ -86,7 +93,6 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             buf.clear();
             continue;
         }
-
 
         if c == ' ' || c == '\n' || c == '\r' {
             if buf.len() > 0 {
