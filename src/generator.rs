@@ -194,7 +194,7 @@ impl Gen {
 
                     match value.2 {
                         Expr::IntLit(integer) => re_arr.push_str(&format!("={integer};")),
-                        Expr::StrLit(string) => re_arr.push_str(&format!("=\"{string}\";")),
+                        Expr::StrLit(string) => re_arr.push_str(&format!("=string_from(\"{string}\");")),
                         Expr::VarName(_) => (),
                         _ => (),
                     }
@@ -209,7 +209,7 @@ impl Gen {
                             match typ {
                                 Types::Str => {
                                     self.import_dynam();
-                                    variable.push_str(&format!("string {name}=string_from("))
+                                    variable.push_str(&format!("string {name}="))
                                 },
                                 Types::Int => variable.push_str(&format!("int {name}=")),
                                 _ => (),
@@ -219,8 +219,24 @@ impl Gen {
                     }
 
                     match value.1 {
-                        Expr::StrLit(value) => variable.push_str(&format!("\"{value}\");")),
+                        Expr::StrLit(value) => variable.push_str(&format!("string_from(\"{value}\");")),
                         Expr::IntLit(value) => variable.push_str(&format!("{value};")),
+                        Expr::VarName((_, value)) => variable.push_str(&format!("{value};")),
+                        Expr::ArrIndex(value) => {
+                            // value.0 = Varname -> (typ, name)
+                            // value.1 = IntLit -> index
+
+                            let mut arr_name = String::new();
+                            match value.0 {
+                                Expr::VarName((_, name)) => arr_name = name,
+                                _ => (),
+                            }
+
+                            match value.1 {
+                                Expr::IntLit(num) => variable.push_str(&format!("{arr_name}[{num}];")),
+                                _ => (),
+                            }
+                        }
                         _ => (),
                     }
 

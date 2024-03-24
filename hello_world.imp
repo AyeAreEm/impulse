@@ -1,8 +1,5 @@
-int(int num) square: {
-    int x: [num * num]
-    return x
-}
-
 _() main: {
-    print([square(10)])
+    @array string words: |"hello" "world"|
+    string world: words|1|
+    print(world)
 }
