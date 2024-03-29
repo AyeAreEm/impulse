@@ -20,9 +20,10 @@ pub enum Expr {
     StrLit(String),
     IntLit(String),
 
-    Arr(Box<(Expr, Vec<Expr>)>), // Expr1 = VarName, Expr2 = StrLit | IntLit | VarName
+    Array(Box<Vec<Expr>>),
+    Dynamic(Box<Vec<Expr>>),
+
     ArrIndex(Box<(Expr, Expr)>), // Exp1 = VarName, Expr2 = IntLit
-    Dynam(Box<(Expr, Vec<Expr>)>), // Expr1 = VarName, Expr2 = StrLit | IntLit | VarName
     Return(Box<Expr>), // Expr = StrLit | IntLit | VarName
     EndBlock,
     None,
@@ -161,6 +162,36 @@ impl ExprWeights {
         cur_func.to_string()
     }
 
+    fn make_arr_index(&mut self, arr_name: Expr, index: &String) -> Expr {
+        let mut expr = Expr::None;
+        let index_num_res = index.parse::<usize>();
+        let index_num = match index_num_res {
+            Ok(val) => val,
+            Err(_) => {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: index out of array size.");
+                exit(1);
+            }
+        };
+
+        if let Expr::Var(var) = arr_name {
+            match var.1 {
+                Expr::Array(arr) => {
+                    if arr.len() > index_num {
+                        expr = Expr::ArrIndex(Box::new((var.0, Expr::IntLit(index.clone()))));
+                    } else {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: index out of array size.");
+                        exit(1);
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        expr
+    }
+
     fn check_exist_ident(&mut self, ident: String) -> bool {
         let mut found = false;
         for func in &self.functions {
@@ -196,12 +227,17 @@ impl ExprWeights {
 
         for var in variables {
             match var {
-                Expr::VarName((_, name)) => {
-                    if name == &ident {
-                        self.has_ref_name.push(var.clone());
-                        found = true;
+                Expr::Var(var_info) => {
+                    match &var_info.0 {
+                        Expr::VarName((_, name)) => {
+                            if name == &ident {
+                                self.has_ref_name.push(var.clone());
+                                found = true;
+                            }
+                        },
+                        _ => (),
                     }
-                },
+                }
                 _ => (),
             }
         }
@@ -359,10 +395,15 @@ impl ExprWeights {
                             let mut found_var = false;
                             for var in variables {
                                 match var {
-                                    Expr::VarName((_, name)) => {
-                                        if name == word {
-                                            params.push(var.clone());
-                                            found_var = true;
+                                    Expr::Var(var_info) => {
+                                        match &var_info.0 {
+                                            Expr::VarName((_, name)) => {
+                                                if name == word {
+                                                    params.push(var.clone());
+                                                    found_var = true;
+                                                }
+                                            },
+                                            _ => (),
                                         }
                                     },
                                     _ => (),
@@ -463,18 +504,28 @@ impl ExprWeights {
 
             for var in variables {
                 match var {
-                    Expr::VarName((_, list_name)) => {
-                        match &self.has_ref_name[0] {
-                            Expr::VarName((var_typ, var_name)) => {
-                                if var_name == list_name {
-                                    typ = var_typ.clone();
-                                    name = var_name.clone();
-                                    found_match = true;
+                    Expr::Var(var_info) => {
+                        match &var_info.0 {
+                            Expr::VarName((_, list_name)) => {
+                                match &self.has_ref_name[0] {
+                                    Expr::Var(var_info) => {
+                                        match &var_info.0 {
+                                            Expr::VarName((var_typ, var_name)) => {
+                                                if var_name == list_name {
+                                                    typ = var_typ.clone();
+                                                    name = var_name.clone();
+                                                    found_match = true;
+                                                }
+                                            },
+                                            _ => (),
+                                        }
+                                    },
+                                    _ => (),
                                 }
-                            },
+                            }
                             _ => (),
                         }
-                    }
+                    },
                     _ => (),
                 }
             }
@@ -554,7 +605,7 @@ impl ExprWeights {
 
                         let cur_func = self.extract_func_name();
                         if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                            vars.push(varname);
+                            vars.push(expr.clone());
                         }
                     } else {
                         println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
@@ -569,63 +620,61 @@ impl ExprWeights {
                     // GOD PLEASE FORGIVE ME
                     let varname = Expr::VarName((Types::Int, self.has_name.clone()));
                     if !self.has_ref_name.is_empty() {
-                        match &self.has_ref_name[0] {
-                            Expr::VarName((typ, _)) => {
-                                match typ {
-                                    Types::Arr(arr_typ) => {
-                                        let new_var = Expr::VarName((self.has_type.clone(), self.has_name.clone()));
-                                        match **arr_typ {
-                                            Types::Int => {
-                                                if let Types::Int = self.has_type {
-                                                    expr = Expr::Var(Box::new((new_var.clone(), Expr::ArrIndex(Box::new((self.has_ref_name[0].clone(), Expr::IntLit(v.clone())))))));
+                        let arr_index = self.make_arr_index(self.has_ref_name[0].clone(), v);
+                        let new_var = Expr::VarName((self.has_type.clone(), self.has_name.clone()));
 
-                                                    let cur_func = self.extract_func_name();
-                                                    if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                                        vars.push(new_var);
-                                                    }
-                                                } else {
-                                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                                    println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                                                    // THIS ONE
-                                                    println!("\x1b[91merror\x1b[0m: mismatch types"); 
-                                                    exit(1);
+                        if let Expr::ArrIndex(ref arr_info) = arr_index {
+                            if let Expr::VarName((var_typ, _)) = &arr_info.0 {
+                                if let Types::Arr(arr_typ) = var_typ {
+                                    match **arr_typ {
+                                        Types::Int => {
+                                            if let Types::Int = self.has_type {
+                                                expr = Expr::Var(Box::new((new_var, arr_index)));
+                                                
+                                                let cur_func = self.extract_func_name();
+                                                if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+                                                    vars.push(expr.clone());
                                                 }
-                                            },
-                                            Types::Str => {
-                                                if let Types::Str = self.has_type {
-                                                    expr = Expr::Var(Box::new((Expr::VarName((self.has_type.clone(), self.has_name.clone())), Expr::ArrIndex(Box::new((self.has_ref_name[0].clone(), Expr::IntLit(v.clone())))))));
-
-                                                    let cur_func = self.extract_func_name();
-                                                    if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                                        vars.push(new_var);
-                                                    }
-                                                } else {
-                                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                                    println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                                                    // THIS ONE
-                                                    println!("\x1b[91merror\x1b[0m: mismatch types"); 
-                                                    exit(1);
+                                            } else {
+                                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                                println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
+                                                println!("\x1b[91merror\x1b[0m: mismatch types"); 
+                                                exit(1);
+                                            }
+                                        },
+                                        Types::Str => {
+                                            if let Types::Str = self.has_type {
+                                                expr = Expr::Var(Box::new((new_var, arr_index)));
+                                                
+                                                let cur_func = self.extract_func_name();
+                                                if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+                                                    vars.push(expr.clone());
                                                 }
-                                            },
-                                            _ => (),
-                                        }
-                                    },
-                                    _ => (),
+                                            } else {
+                                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                                println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
+                                                println!("\x1b[91merror\x1b[0m: mismatch types"); 
+                                                exit(1);
+                                            }
+                                        },
+                                        _ => {
+                                            println!("unsupported type rn lols mb");
+                                            exit(1);
+                                        },
+                                    }
                                 }
                             }
-                            _ => (),
                         }
                     } else if let Types::Int = self.has_type {
-                        expr = Expr::Var(Box::new((varname.clone(), Expr::IntLit(v.to_string()))));
+                        expr = Expr::Var(Box::new((varname, Expr::IntLit(v.to_string()))));
 
                         let cur_func = self.extract_func_name();
                         if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                            vars.push(varname);
+                            vars.push(expr.clone());
                         }
                     } else {
                         println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
                         println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                        // THIS ONE
                         println!("\x1b[91merror\x1b[0m: mismatch types");
                         exit(1);
                     }
@@ -635,11 +684,11 @@ impl ExprWeights {
                         Types::Int => {
                             let varname = Expr::VarName((Types::Int, self.has_name.clone()));
                             if let Types::Int = self.has_type {
-                                expr = Expr::Var(Box::new((varname.clone(), Expr::VarName((Types::Int, v.clone())))));
+                                expr = Expr::Var(Box::new((varname, Expr::VarName((Types::Int, v.clone())))));
 
                                 let cur_func = self.extract_func_name();
                                 if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                    vars.push(varname);
+                                    vars.push(expr.clone());
                                 }
                             } else {
                                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
@@ -651,11 +700,11 @@ impl ExprWeights {
                         Types::Str => {
                             let varname = Expr::VarName((Types::Str, self.has_name.clone()));
                             if let Types::Str = self.has_type {
-                                expr = Expr::Var(Box::new((varname.clone(), Expr::VarName((Types::Str, v.clone())))));
+                                expr = Expr::Var(Box::new((varname, Expr::VarName((Types::Str, v.clone())))));
 
                                 let cur_func = self.extract_func_name();
                                 if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                    vars.push(varname);
+                                    vars.push(expr.clone());
                                 }
 
                             } else {
@@ -800,17 +849,19 @@ impl ExprWeights {
 
             match mac.1 {
                 Macros::Dynam => {
-                    expr = Expr::Dynam(Box::new((Expr::VarName((Types::Dynam(Box::new(self.has_type.clone())), self.has_name.clone())), expr_value)));
+                    let expr_name = Expr::VarName((Types::Dynam(Box::new(self.has_type.clone())), self.has_name.clone()));
+                    expr = Expr::Var(Box::new((expr_name, Expr::Dynamic(Box::new(expr_value)))));
                     let cur_func = self.extract_func_name();
                     if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                        vars.push(Expr::VarName((Types::Dynam(Box::new(self.has_type.clone())), self.has_name.clone())));
+                        vars.push(expr.clone());
                     }
                 },
                 Macros::Arr => {
-                    expr = Expr::Arr(Box::new((Expr::VarName((Types::Arr(Box::new(self.has_type.clone())), self.has_name.clone())), expr_value)));
+                    let expr_name = Expr::VarName((Types::Arr(Box::new(self.has_type.clone())), self.has_name.clone()));
+                    expr = Expr::Var(Box::new((expr_name, Expr::Array(Box::new(expr_value)))));
                     let cur_func = self.extract_func_name();
                     if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                        vars.push(Expr::VarName((Types::Arr(Box::new(self.has_type.clone())), self.has_name.clone())));
+                        vars.push(expr.clone());
                     }
                 },
                 _ => {
@@ -984,21 +1035,18 @@ impl ExprWeights {
         let mut expr = Expr::None;
 
         if self.check_exist_ident(ident.clone()) {
-            if self.has_ref_name.len() == 1 {
-                if let Expr::VarName(value) = &self.has_ref_name[0] {
-                    if let Types::None = self.has_type {
-                        expr = self.try_reassign_variable(Expr::VarName(value.clone()));
-                    } else {
-                        expr = self.try_variable(&Expr::VarName(value.clone()));
-                    }
-                }
-            } else if self.has_ref_name.len() == 2 {
-                if let Expr::VarName(value) = &self.has_ref_name[1] {
-                    if let Types::None = self.has_type {
-                        expr = self.try_reassign_variable(Expr::VarName(value.clone()));
-                    } else {
-                        expr = self.try_variable(&Expr::VarName(value.clone()));
-                    }
+            if !self.has_ref_name.is_empty() {
+                match &self.has_ref_name[self.has_ref_name.len()-1] {
+                    Expr::Var(var_info) => {
+                        if let Expr::VarName(value) = &var_info.0 {
+                            if let Types::None = self.has_type {
+                                expr = self.try_reassign_variable(Expr::VarName(value.clone()));
+                            } else {
+                                expr = self.try_variable(&Expr::VarName(value.clone()));
+                            }
+                        }
+                    },
+                    _ => (),
                 }
             } else if self.has_return {
                 let cur_func = &self.extract_func_name();
@@ -1011,10 +1059,15 @@ impl ExprWeights {
                 };
 
                 for v in vars.clone() {
-                    if let Expr::VarName(value) = v {
-                        if value.1 == ident {
-                            expr = self.try_return(Expr::VarName(value));
+                    match v {
+                        Expr::Var(var_info) => {
+                            if let Expr::VarName(value) = var_info.0 {
+                                if value.1 == ident {
+                                    expr = self.try_return(Expr::VarName(value));
+                                }
+                            }
                         }
+                        _ => (),
                     }
                 }
             }

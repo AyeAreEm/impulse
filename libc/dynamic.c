@@ -71,17 +71,16 @@ void resize_string(string *str, size_t modifier) {
 }
 
 string string_from(char *str) {
-    string from;
-    from.data = NULL;
+    string new = string_new();
 
-    from.len = strlen(str);
-    resize_string(&from, 0);
+    if (strlen(str) > new.cap) {
+        resize_string(&new, 0);
+    }
 
-    strcpy_s(from.data, from.cap + 1, str);
-    from.data[from.cap + 1] = '\0';
-    return from;
+    new.len = strlen(str);
+    strcpy_s(new.data, new.cap + 1, str);
+    return new;
 }
-
 
 void print_s(string str) {
     for (size_t i = 0; i < str.len; i++) {

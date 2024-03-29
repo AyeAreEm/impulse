@@ -1,5 +1,11 @@
+int(int nth) fib {
+    if (nth = 0) {return [0]}
+    orif (nth = 1) {return [1]}
+    else {
+        return [fib(nth-1) + fib(nth-2)]
+    }
+}
+
 _() main: {
-    @array string words: |"hello" "world"|
-    string world: words|1|
-    print(world)
+    print([fib(10)])
 }

@@ -16,7 +16,7 @@ fn rand_varname() -> String {
     let mut varname = String::new();
     let mut rng = rand::thread_rng();
 
-    for _ in 0..5 {
+    for _ in 0..6 {
         let r = rng.gen_range(0..alphabet.len());
         varname.push(alphabet.chars().nth(r).unwrap());
     }
@@ -40,6 +40,85 @@ impl Gen {
             self.imports.push_str("#include \"libc/dynamic.h\"\n");
             self.comp_imports.push_str("./libc/dynamic.c ");
         }
+    }
+
+    fn make_arr_var(&mut self, typ: Types, name: String, elems: Expr) -> String {
+        let mut arr_var = String::new();
+        let mut first_elem = true;
+
+        match typ {
+            Types::Int => arr_var.push_str(&format!("int {name}[]={{")),
+            Types::Str => {
+                self.import_dynam();
+                arr_var.push_str(&format!("string {name}[]={{"));
+            },
+            _ => (),
+        }
+
+        if let Expr::Array(elem) = elems {
+            for v in *elem {
+                match v {
+                    Expr::StrLit(string) => {
+                        if first_elem {
+                            arr_var.push_str(&format!("string_from(\"{string}\")"));
+                            first_elem = !first_elem;
+                        } else {
+                            arr_var.push_str(&format!(",string_from(\"{string}\")"));
+                        }
+                    },
+                    Expr::IntLit(integer) => {
+                        if first_elem {
+                            arr_var.push_str(&format!("{integer}"));
+                            first_elem = !first_elem;
+                        } else {
+                            arr_var.push_str(&format!(",{integer}"));
+                        }
+                    },
+                    Expr::VarName((_, name)) => {
+                        if first_elem {
+                            arr_var.push_str(&format!("{name}"));
+                            first_elem = !first_elem;
+                        } else {
+                            arr_var.push_str(&format!(",{name}"));
+                        }
+                    },
+                    _ => (),
+                }
+            }
+        }
+        arr_var.push_str("};");
+        arr_var
+        // self.code.push_str(&arr_var);
+    }
+
+    fn make_dynam_var(&mut self, name: String, elems: Expr) -> String {
+        let mut dynam_var = String::new();
+
+        self.import_dynam();
+        dynam_var.push_str(&format!("dynam {name}=dynam_new();"));
+
+        if let Expr::Dynamic(elem) = elems {
+            for v in *elem {
+                match v {
+                    Expr::StrLit(string) => {
+                        let varname = rand_varname();
+                        dynam_var.push_str(&format!("string {varname}=string_from(\"{string}\");"));
+                        dynam_var.push_str(&format!("dynam_push(&{name},&{varname});"));
+                    },
+                    Expr::IntLit(integer) => {
+                        let varname = rand_varname();
+                        dynam_var.push_str(&format!("int {varname}={integer};"));
+                        dynam_var.push_str(&format!("dynam_push(&{name},&{varname});"));
+                    },
+                    Expr::VarName((_, varname)) => {
+                        dynam_var.push_str(&format!("dynam_push(&{name},&{varname});"));
+                    },
+                    _ => (),
+                }
+            }
+        }
+
+        dynam_var
     }
 
     pub fn generate(&mut self, expressions: Vec<Expr>) {
@@ -79,105 +158,6 @@ impl Gen {
                     func_call.push_str(");");
                     self.code.push_str(&func_call);
                 },
-                Expr::Dynam(value) => {
-                    let mut dynam_var = String::new();
-                    let mut dynam_name = String::new();
-
-                    match value.0 {
-                        Expr::VarName((typ, name)) => {
-                            match typ {
-                                Types::Dynam(dynam_typ) => {
-                                    match *dynam_typ {
-                                        _ => {
-                                            self.import_dynam();
-                                            dynam_name = name.clone();
-                                            dynam_var.push_str(&format!("dynam {name}=dynam_new();"));
-                                        },
-                                    }
-                                },
-                                _ => (),
-                            }
-                        },
-                        _ => (),
-                    }
-
-                    for v in value.1 {
-                        match v {
-                            Expr::StrLit(string) => {
-                                let varname = rand_varname();
-                                dynam_var.push_str(&format!("string {varname}=string_from(\"{string}\");"));
-                                dynam_var.push_str(&format!("dynam_push(&{dynam_name},&{varname});"));
-                            },
-                            Expr::IntLit(integer) => {
-                                let varname = rand_varname();
-                                dynam_var.push_str(&format!("int {varname}={integer};"));
-                                dynam_var.push_str(&format!("dynam_push(&{dynam_name},&{varname});"));
-                            },
-                            Expr::VarName((_, name)) => {
-                                dynam_var.push_str(&format!("dynam_push(&{dynam_name},&{name});"));
-                            },
-                            _ => (),
-                        }
-                    }
-
-                    self.code.push_str(&dynam_var);
-                },
-                Expr::Arr(value) => {
-                    let mut arr_var = String::new();
-                    let mut first_elem = true;
-
-                    match value.0 {
-                        Expr::VarName((typ, name)) => {
-                            match typ {
-                                Types::Arr(arr_typ) => {
-                                    match *arr_typ {
-                                        Types::Str => {
-                                            self.import_dynam();
-                                            arr_var.push_str(&format!("string {name}[]={{"));
-                                        },
-                                        Types::Int => arr_var.push_str(&format!("int {name}[]={{")),
-                                        _ => (),
-                                    }
-                                },
-                                _ => (),
-                            }
-                        },
-                        _ => (),
-                    }
-
-                    for v in value.1 {
-                        match v {
-                            Expr::StrLit(string) => {
-                                if first_elem {
-                                    arr_var.push_str(&format!("string_from(\"{string}\")"));
-                                    first_elem = !first_elem;
-                                } else {
-                                    arr_var.push_str(&format!(",string_from(\"{string}\")"));
-                                }
-                            },
-                            Expr::IntLit(integer) => {
-                                if first_elem {
-                                    arr_var.push_str(&format!("{integer}"));
-                                    first_elem = !first_elem;
-                                } else {
-                                    arr_var.push_str(&format!(",{integer}"));
-                                }
-                            },
-                            Expr::VarName((_, name)) => {
-                                if first_elem {
-                                    arr_var.push_str(&format!("{name}"));
-                                    first_elem = !first_elem;
-                                } else {
-                                    arr_var.push_str(&format!(",{name}"));
-                                }
-                            },
-                            _ => (),
-                        }
-                    }
-
-                    arr_var.push_str("};");
-                    self.code.push_str(&arr_var);
-                },
                 Expr::ReArr(value) => {
                     let mut re_arr = String::new();
                     let pos = value.1;
@@ -203,6 +183,10 @@ impl Gen {
                 },
                 Expr::Var(value) => {
                     let mut variable = String::new();
+                    let mut is_arr = false;
+                    let mut is_dynam = false;
+                    let mut coll_typ = Types::None;
+                    let mut coll_name = String::new();
 
                     match value.0 {
                         Expr::VarName((typ, name)) => {
@@ -212,32 +196,51 @@ impl Gen {
                                     variable.push_str(&format!("string {name}="))
                                 },
                                 Types::Int => variable.push_str(&format!("int {name}=")),
+                                Types::Arr(arr_typ) => {
+                                    is_arr = true;
+                                    coll_typ = *arr_typ;
+                                    coll_name = name;
+                                },
+                                Types::Dynam(_) => {
+                                    is_dynam = true;
+                                    coll_name = name;
+                                },
                                 _ => (),
                             }
                         },
                         _ => (),
                     }
 
-                    match value.1 {
-                        Expr::StrLit(value) => variable.push_str(&format!("string_from(\"{value}\");")),
-                        Expr::IntLit(value) => variable.push_str(&format!("{value};")),
-                        Expr::VarName((_, value)) => variable.push_str(&format!("{value};")),
-                        Expr::ArrIndex(value) => {
-                            // value.0 = Varname -> (typ, name)
-                            // value.1 = IntLit -> index
+                    if is_arr {
+                        let arr_var = self.make_arr_var(coll_typ, coll_name, value.1);
+                        self.code.push_str(&arr_var);
+                        continue;
+                    } else if is_dynam {
+                        let dynam_var = self.make_dynam_var(coll_name, value.1);
+                        self.code.push_str(&dynam_var);
+                        continue;
+                    } else {
+                        match value.1 {
+                            Expr::StrLit(value) => variable.push_str(&format!("string_from(\"{value}\");")),
+                            Expr::IntLit(value) => variable.push_str(&format!("{value};")),
+                            Expr::VarName((_, value)) => variable.push_str(&format!("{value};")),
+                            Expr::ArrIndex(value) => {
+                                // value.0 = Varname -> (typ, name)
+                                // value.1 = IntLit -> index
 
-                            let mut arr_name = String::new();
-                            match value.0 {
-                                Expr::VarName((_, name)) => arr_name = name,
-                                _ => (),
-                            }
+                                let mut arr_name = String::new();
+                                match value.0 {
+                                    Expr::VarName((_, name)) => arr_name = name,
+                                    _ => (),
+                                }
 
-                            match value.1 {
-                                Expr::IntLit(num) => variable.push_str(&format!("{arr_name}[{num}];")),
-                                _ => (),
+                                match value.1 {
+                                    Expr::IntLit(num) => variable.push_str(&format!("{arr_name}[{num}];")),
+                                    _ => (),
+                                }
                             }
+                            _ => (),
                         }
-                        _ => (),
                     }
 
                     self.code.push_str(&variable);
@@ -301,33 +304,38 @@ impl Gen {
                                     var_buf.push_str(&format!(", {integer}"));
                                 }
                             },
-                            Expr::VarName((typ, name)) => {
-                                match typ {
-                                    Types::Arr(arr_typ) => {
-                                        arr_name = name;
-                                        is_arr = true;
-                                        match *arr_typ {
+                            Expr::Var(var_info) => {
+                                match var_info.0 {
+                                    Expr::VarName((typ, name)) => {
+                                        match typ {
+                                            Types::Arr(arr_typ) => {
+                                                arr_name = name;
+                                                is_arr = true;
+                                                match *arr_typ {
+                                                    Types::Int => {
+                                                        param_buf.push_str(&format!("%d"));
+                                                    },
+                                                    Types::Str => {
+                                                        is_string = true;
+                                                        param_buf.push_str(&format!("%s"));
+                                                    },
+                                                    _ => (),
+                                                }
+                                            },
                                             Types::Int => {
                                                 param_buf.push_str(&format!("%d"));
+                                                var_buf.push_str(&format!(", {name}"));
                                             },
                                             Types::Str => {
-                                                is_string = true;
                                                 param_buf.push_str(&format!("%s"));
+                                                var_buf.push_str(&format!(", {name}.data"));
                                             },
                                             _ => (),
                                         }
                                     },
-                                    Types::Int => {
-                                        param_buf.push_str(&format!("%d"));
-                                        var_buf.push_str(&format!(", {name}"));
-                                    },
-                                    Types::Str => {
-                                        param_buf.push_str(&format!("%s"));
-                                        var_buf.push_str(&format!(", {name}.data"));
-                                    },
                                     _ => (),
                                 }
-                            },
+                            }
                             _ => (),
                         }
                     }
@@ -465,7 +473,6 @@ impl Gen {
                             ret.push_str(&format!("return {string};"));
                         },
                         Expr::IntLit(integer) => {
-                            println!("{integer}");
                             ret.push_str(&format!("return {integer};"));
                         },
                         Expr::VarName((_, name)) => {
