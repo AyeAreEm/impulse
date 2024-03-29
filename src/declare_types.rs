@@ -17,8 +17,19 @@ pub enum Types {
 pub enum Keyword {
     Int,
     Str,
+
     Print,
+
     Underscore,
+    Return,
+
+    If,
+    OrIf,
+    Else,
+
+    Or,
+    And,
+
     None,
 }
 

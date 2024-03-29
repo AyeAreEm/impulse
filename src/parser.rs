@@ -20,11 +20,21 @@ pub enum Expr {
     StrLit(String),
     IntLit(String),
 
+    If(Box<Expr>), // Expr = Condition
+    OrIf(Box<Expr>),
+    Else,
+    Condition(Box<Vec<Expr>>), // Literally anything
+
+    Or,
+    And,
+
     Array(Box<Vec<Expr>>),
     Dynamic(Box<Vec<Expr>>),
 
     ArrIndex(Box<(Expr, Expr)>), // Exp1 = VarName, Expr2 = IntLit
     Return(Box<Expr>), // Expr = StrLit | IntLit | VarName
+
+    Equal,
     EndBlock,
     None,
 }
@@ -46,6 +56,10 @@ pub struct ExprWeights {
     has_pipe: bool,
     has_ref_name: Vec<Expr>,
     has_return: bool,
+    has_if: bool,
+    has_orif: bool,
+    has_else: bool,
+    has_equal: bool,
 
     start_param_ix: usize,
     end_param_ix: usize,
@@ -73,6 +87,12 @@ impl ExprWeights {
             ("print".to_string(), Keyword::Print),
             ("int".to_string(), Keyword::Int),
             ("string".to_string(), Keyword::Str),
+            ("return".to_string(), Keyword::Return),
+            ("if".to_string(), Keyword::If),
+            ("orif".to_string(), Keyword::OrIf),
+            ("else".to_string(), Keyword::Else),
+            ("or".to_string(), Keyword::Or),
+            ("and".to_string(), Keyword::And),
             ("_".to_string(), Keyword::Underscore), 
         ]);
 
@@ -99,6 +119,10 @@ impl ExprWeights {
             has_pipe: false,
             has_ref_name: Vec::new(),
             has_return: false,
+            has_if: false,
+            has_orif: false,
+            has_else: false,
+            has_equal: false,
 
             start_param_ix: 0,
             end_param_ix: 0,
@@ -137,6 +161,10 @@ impl ExprWeights {
             self.has_macro_name = String::new();
             self.has_pipe = false;
             self.has_ref_name = Vec::new();
+            self.has_if = false;
+            self.has_orif = false;
+            self.has_else = false;
+            self.has_equal = false;
 
             self.start_param_ix = 0;
             self.end_param_ix = 0;
@@ -262,6 +290,18 @@ impl ExprWeights {
                     self.has_type = Types::Str;
                 }
             },
+            Keyword::Return => {
+                self.has_return = true;
+            },
+            Keyword::If => {
+                self.has_if = true;
+            },
+            Keyword::OrIf => {
+                self.has_orif = true;
+            },
+            Keyword::Else => {
+                self.has_else = true;
+            }
             Keyword::Underscore => {
                 if self.current_token <= 0 {
                     self.has_type = Types::Void;
@@ -278,6 +318,8 @@ impl ExprWeights {
                     },
                 }
             },
+            Keyword::Or => (),
+            Keyword::And => (),
             Keyword::None => (),
         }
     }
@@ -333,13 +375,13 @@ impl ExprWeights {
                         if get_macro_type {
                             match macro_name {
                                 Macros::Arr => {
-                                    params.push(Expr::VarName((Types::Arr(Box::new(ty.clone())), word.to_string())));
+                                    params.push(Expr::Var(Box::new((Expr::VarName((Types::Arr(Box::new(ty.clone())), word.to_string())), Expr::None))));
                                 },
                                 _ => (),
                             }
                             get_macro_type = false;
                         } else {
-                            params.push(Expr::VarName((ty.clone(), word.to_string())));
+                            params.push(Expr::Var(Box::new((Expr::VarName((ty.clone(), word.to_string())), Expr::None))));
                         }
                     }
                 },
@@ -427,9 +469,15 @@ impl ExprWeights {
         Expr::Print(Box::new(params))
     }
 
-    fn check_func(&mut self) -> Option<Expr> {
+    fn check_func(&mut self) -> Expr {
+        let mut expr = Expr::None;
+
+        if let Types::None = self.has_type {
+            return expr
+        }
+
         if self.has_lbrack && self.has_rbrack && self.has_colon && !self.has_name.is_empty() && self.has_lcurl {
-            println!("\x1b[96m{}\x1b[0m", self.has_macro_name);
+            println!("\x1b[96m{}\x1b[0m", self.has_macro_name); // don't remember why this is here
             if let Types::None = self.has_type {
                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
                 println!("\x1b[91merror\x1b[0m: unknown type for function {}", self.has_name);
@@ -440,22 +488,23 @@ impl ExprWeights {
             let params_res = self.get_params();
             let params = match params_res {
                 Some(params) => params,
-                None => vec![Expr::VarName((Types::None, String::new()))],
+                None => vec![],
             };
 
-            for param in &params {
-                match &param {
-                    Expr::VarName(_) => temp_vars.push(param.clone()),
-                    _ => (),
+            if !params.is_empty() {
+                for param in &params {
+                    match &param {
+                        Expr::Var(_) => temp_vars.push(param.clone()),
+                        _ => (),
+                    }
                 }
             }
 
             if self.has_macro_name.is_empty() {
-                let expr = Expr::Func(Box::new((self.has_type.clone(), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
+                expr = Expr::Func(Box::new((self.has_type.clone(), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
                 self.functions.push(expr.clone());
                 self.current_func = Expr::FuncName(self.has_name.clone());
                 self.func_to_vars.entry(self.has_name.clone()).or_insert(temp_vars);
-                return Some(expr)
             } else {
                 let macro_res = self.macros_map.get(&self.has_macro_name);
                 let mac: (bool, Macros) = match macro_res {
@@ -464,11 +513,10 @@ impl ExprWeights {
                 };
 
                 if mac.0 {
-                    let expr = Expr::Func(Box::new((Types::Arr(Box::new(self.has_type.clone())), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
+                    expr = Expr::Func(Box::new((Types::Arr(Box::new(self.has_type.clone())), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
                     self.functions.push(expr.clone());
                     self.current_func = Expr::FuncName(self.has_name.clone());
                     self.func_to_vars.entry(self.has_name.clone()).or_insert(temp_vars);
-                    return Some(expr)
                 } else {
                     println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
                     println!("\x1b[91merror\x1b[0m: unknown identifier {}", self.has_macro_name);
@@ -477,7 +525,129 @@ impl ExprWeights {
             }
         }
 
-        None
+        expr
+    }
+
+    fn check_if(&mut self) -> Expr {
+        let mut expr = Expr::None;
+        let stmnt = if self.has_if {
+            Keyword::If
+        } else if self.has_orif {
+            Keyword::OrIf
+        } else {
+            Keyword::Else
+        };
+
+        if self.has_colon {
+            return expr
+        }
+
+        if let Types::None = self.has_type {
+            if let Keyword::Else = stmnt {
+                expr = Expr::Else;
+                return expr
+            }
+
+            let cur_func = self.extract_func_name();
+            let params = &self.tokens[self.start_param_ix..self.end_param_ix];
+            let mut arr_expr = Vec::new();
+
+            if params.is_empty() {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: empty condition in if statement");
+                exit(1);
+            }
+
+            for param in params {
+                match param {
+                    Token::Ident(ident) => {
+                        let int_word = ident.parse::<i32>();
+                        let num = match int_word {
+                            Ok(_) => (true, Expr::IntLit(ident.to_string())),
+                            Err(_) => (false, Expr::None),
+                        };
+
+                        if num.0 {
+                            arr_expr.push(num.1);
+                            continue;
+                        }
+
+                        let keyword_res = self.keyword_map.get(ident);
+                        let keyword: (bool, Keyword) = match keyword_res {
+                            Some(k) => (true, k.clone()),
+                            None => (false, Keyword::None),
+                        };
+
+                        if keyword.0 {
+                            match keyword.1 {
+                                Keyword::Or => {
+                                    arr_expr.push(Expr::Or);
+                                    continue;
+                                },
+                                Keyword::And => {
+                                    arr_expr.push(Expr::And);
+                                    continue;
+                                },
+                                _ => {
+                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                    println!("\x1b[91merror\x1b[0m: forbidden keyword in statement block {:?}", keyword.1);
+                                    exit(1);
+                                },
+                            }
+                        }
+
+                        let variables_res = self.func_to_vars.get(&cur_func);
+                        let variables = match variables_res {
+                            Some(var) => var,
+                            None => {
+                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                println!("\x1b[91merror\x1b[0m: unknown identifier {:?}", ident);
+                                exit(1);
+                            }
+                        };
+
+                        for var in variables {
+                            match var {
+                                Expr::Var(var_info) => {
+                                    match &var_info.0 {
+                                        Expr::VarName((_, varname)) => {
+                                            if ident == varname {
+                                                arr_expr.push(var_info.0.clone());
+                                            }
+                                        },
+                                        _ => (),
+                                    }
+                                },
+                                _ => (),
+                            }
+                        }
+                    },
+                    Token::Equal => arr_expr.push(Expr::Equal),
+                    _ => (),
+                }
+            }
+
+            if let Expr::Equal = arr_expr[arr_expr.len()-1] {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                exit(1);
+            }
+
+            if let Expr::Or = arr_expr[arr_expr.len()-1] {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                exit(1);
+            }
+
+            match stmnt {
+                Keyword::If => expr = Expr::If(Box::new(Expr::Condition(Box::new(arr_expr)))),
+                Keyword::OrIf => expr = Expr::OrIf(Box::new(Expr::Condition(Box::new(arr_expr)))),
+                _ => (),
+            }
+
+        }
+
+        expr
     }
 
     fn try_reassign_variable(&mut self, ident: Expr) -> Expr {
@@ -1012,20 +1182,18 @@ impl ExprWeights {
     }
 
     fn check_block(&mut self) -> Expr {
-        // function compatability
         let mut expr = Expr::None;
 
-        if let Types::None = self.has_type {
-            return expr
+        if self.has_if || self.has_orif || self.has_else {
+            expr = self.check_if();
+        } else {
+            expr = self.check_func();
         }
 
-        match self.check_func() {
-            Some(e) => expr = e,
-            None => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: unknown code block declaration, {}", self.has_name);
-                exit(1);
-            },
+        if let Expr::None = expr {
+            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+            println!("\x1b[91merror\x1b[0m: unknown code block declaration, {}", self.has_name);
+            exit(1);
         }
 
         expr
@@ -1188,9 +1356,7 @@ impl ExprWeights {
                     self.has_pipe = true;
                 }
             },
-            Token::Return => {
-                self.has_return = true;
-            },
+            Token::Equal => self.has_equal = true,
             Token::Newline => self.line_num += 1,
             Token::Lsquare => (),
             Token::Rsquare => (),

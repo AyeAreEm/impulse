@@ -88,7 +88,6 @@ impl Gen {
         }
         arr_var.push_str("};");
         arr_var
-        // self.code.push_str(&arr_var);
     }
 
     fn make_dynam_var(&mut self, name: String, elems: Expr) -> String {
@@ -121,6 +120,28 @@ impl Gen {
         dynam_var
     }
 
+    fn make_ifor(&mut self, mut stmnt: String, condition: Expr) {
+        match condition {
+            Expr::Condition(cond) => {
+                for con in *cond {
+                    match con {
+                        Expr::VarName((_, name)) => stmnt.push_str(&format!("{name}")),
+                        Expr::Equal => stmnt.push_str("=="),
+                        Expr::IntLit(integer) => stmnt.push_str(&format!("{integer}")),
+                        Expr::StrLit(string) => stmnt.push_str(&format!("{string}")),
+                        Expr::Or => stmnt.push_str("||"),
+                        Expr::And => stmnt.push_str("&&"),
+                        _ => (),
+                    }
+                }
+            },
+            _ => (),
+        }
+
+        stmnt.push_str("){");
+        self.code.push_str(&stmnt);
+    }
+
     pub fn generate(&mut self, expressions: Vec<Expr>) {
         for (index, expr) in expressions.into_iter().enumerate() {
             match expr {
@@ -135,12 +156,17 @@ impl Gen {
 
                     for param in f.1 {
                         match param {
-                            Expr::VarName((_, name)) => {
-                                if first_param {
-                                    func_call.push_str(&format!("{name}"));
-                                    first_param = false;
-                                } else {
-                                    func_call.push_str(&format!(",{name}"));
+                            Expr::Var(var_info) => {
+                                match var_info.0 {
+                                    Expr::VarName((_, name)) => {
+                                        if first_param {
+                                            func_call.push_str(&format!("{name}"));
+                                            first_param = false;
+                                        } else {
+                                            func_call.push_str(&format!(",{name}"));
+                                        }
+                                    },
+                                    _ => (),
                                 }
                             },
                             Expr::StrLit(string) => {
@@ -365,46 +391,51 @@ impl Gen {
                                 let mut this_name = String::new();
 
                                 match p {
-                                    Expr::VarName((typ, name)) => {
-                                        this_name = name;
-                                        match typ {
-                                            Types::Str => {
-                                                self.import_dynam();
-                                                this_typ = String::from("string");
-                                            },
-                                            Types::Int => this_typ = String::from("int"),
-                                            Types::Void => this_typ = String::from("void"),
-                                            Types::Arr(arr_typ) => {
-                                                match *arr_typ {
+                                    Expr::Var(var_info) => {
+                                        match var_info.0 {
+                                            Expr::VarName((typ, name)) => {
+                                                this_name = name;
+                                                match typ {
                                                     Types::Str => {
                                                         self.import_dynam();
                                                         this_typ = String::from("string");
-                                                        this_name.push_str("[]");
                                                     },
-                                                    Types::Int => {
-                                                        this_typ = String::from("int");
-                                                        this_name.push_str("[]");
+                                                    Types::Int => this_typ = String::from("int"),
+                                                    Types::Void => this_typ = String::from("void"),
+                                                    Types::Arr(arr_typ) => {
+                                                        match *arr_typ {
+                                                            Types::Str => {
+                                                                self.import_dynam();
+                                                                this_typ = String::from("string");
+                                                                this_name.push_str("[]");
+                                                            },
+                                                            Types::Int => {
+                                                                this_typ = String::from("int");
+                                                                this_name.push_str("[]");
+                                                            },
+                                                            _ => (),
+                                                        }
                                                     },
-                                                    _ => (),
+                                                    Types::Dynam(dynam_typ) => {
+                                                        match *dynam_typ {
+                                                            Types::Str => {
+                                                                self.import_dynam();
+                                                                this_typ = String::from("string");
+                                                                this_name.push_str("[]");
+                                                            },
+                                                            Types::Int => {
+                                                                this_typ = String::from("int");
+                                                                this_name.push_str("[]");
+                                                            },
+                                                            _ => (),
+                                                        }
+                                                    },
+                                                    Types::None => (),
                                                 }
                                             },
-                                            Types::Dynam(dynam_typ) => {
-                                                match *dynam_typ {
-                                                    Types::Str => {
-                                                        self.import_dynam();
-                                                        this_typ = String::from("string");
-                                                        this_name.push_str("[]");
-                                                    },
-                                                    Types::Int => {
-                                                        this_typ = String::from("int");
-                                                        this_name.push_str("[]");
-                                                    },
-                                                    _ => (),
-                                                }
-                                            },
-                                            Types::None => (),
+                                            _ => (),
                                         }
-                                    },
+                                    }
                                     _ => (),
                                 }
 
@@ -463,7 +494,7 @@ impl Gen {
                         },
                     }
 
-                    let func = format!("{f_ty} {f_name}({f_params}) {{");
+                    let func = format!("{f_ty} {f_name}({f_params}){{");
                     self.code.push_str(&func);
                 },
                 Expr::Return(value) => {
@@ -481,6 +512,15 @@ impl Gen {
                         _ => (),
                     }
                     self.code.push_str(&ret);
+                },
+                Expr::If(condition) => {
+                    self.make_ifor(String::from("if("), *condition);
+                },
+                Expr::OrIf(condition) => {
+                    self.make_ifor(String::from("else if("), *condition);
+                },
+                Expr::Else => {
+                    self.code.push_str("else {");
                 },
                 _ => (),
             }

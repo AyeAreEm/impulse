@@ -1,0 +1,1 @@
+int fib(int nth){if(nth==0||nth==1){return nth;}else {return fib(nth-1) + fib(nth-2);}}int main(){fib(45);}
