@@ -6,3 +6,5 @@
 ## <a href="./Variables.md">Variables</a>
 
 ## <a href="./Functions.md">Functions / Procedures</a>
+
+## <a href="./Math.md">Math</a>

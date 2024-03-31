@@ -220,6 +220,131 @@ impl ExprWeights {
         expr
     }
 
+    fn check_intlit(&mut self, intlit: String) -> Expr {
+        // check for func names, arrays, variables, etc.
+        // let mut sanitised = String::new();
+        // let mut start_pipe = false;
+
+        let symb_to_token: HashMap<char, Token> = HashMap::from([
+            ('(', Token::Lbrack),
+            (')', Token::Rbrack),
+            ('[', Token::Lsquare),
+            (']', Token::Rsquare),
+            ('+', Token::Plus),
+            ('-', Token::Minus),
+            ('*', Token::Multiple),
+            ('/', Token::Divide),
+            ('|', Token::Pipe),
+        ]);
+        let mut tokens: Vec<Token> = Vec::new();
+        let mut buf = String::new();
+        let mut clean = String::new();
+
+        for c in intlit.chars() {
+            if c == ' ' || c == '\n' || c == '\r' {
+                if buf.len() > 0 {
+                    tokens.push(Token::Ident(buf.clone()));
+                    buf.clear();
+                }
+
+                continue;
+            }
+
+            let integer_res = c.to_digit(10);
+            match integer_res {
+                Some(_) => {
+                    tokens.push(Token::Digit(c));
+                    continue;
+                },
+                None => (),
+            }
+
+            let token_res = symb_to_token.get(&c);
+            match token_res {
+                Some(token) => {
+                    if buf.len() > 0 {
+                        tokens.push(Token::Ident(buf.clone()));
+                        buf.clear();
+                    }
+                    tokens.push(token.clone());
+                },
+                None => {
+                    buf.push(c);
+                }
+            }
+        }
+
+        for token in tokens {
+            match token {
+                Token::Plus => clean.push('+'),
+                Token::Minus => clean.push('-'),
+                Token::Multiple => clean.push('*'),
+                Token::Divide => clean.push('/'),
+                Token::Digit(num) => clean.push(num),
+                Token::Lbrack => {
+                    self.has_lbrack = true; 
+                    self.start_param_ix = self.current_token;
+                    clean.push('(');
+                },
+                Token::Rbrack => {
+                    self.has_rbrack = true;
+                    self.end_param_ix = self.current_token;
+                    let expr = self.try_func_call();
+                    if let Expr::None = expr {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: incorrect usage of function call, maybe undefined function name");
+                        exit(1);
+                    }
+
+                    clean.push(')');
+                },
+                Token::Lsquare => clean.push('('),
+                Token::Rsquare => clean.push(')'),
+                Token::Pipe => {
+                    if self.has_pipe {
+                        self.end_pipe_ix = self.current_token;
+                        self.has_pipe = false;
+
+                        let name_expr = &self.has_ref_name[self.has_ref_name.len()-1];
+                        let name = match name_expr {
+                            Expr::Var(ref var_info) => {
+                                match &var_info.0 {
+                                    Expr::VarName((_, n)) => {
+                                        n.to_owned()
+                                    },
+                                    _ => String::new(),
+                                }
+                            }
+                            _ => String::new(),
+                        };
+
+                        if name.is_empty() {
+                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                            println!("\x1b[91merror\x1b[0m: unknown identifier {:?}", name_expr);
+                            exit(1);
+                        }
+                    } else {
+                        self.start_pipe_ix = self.current_token;
+                        self.has_pipe = true;
+                    }
+                    clean.push('|');
+                },
+                Token::Ident(ident) => {
+                    if !self.check_exist_ident(ident.clone()) {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: unknown identifer, {}", ident);
+                        exit(1);
+                    }
+
+                    clean.push_str(&ident);
+                },
+                _ => (),
+            }
+        }
+
+        Expr::IntLit(clean)
+    }
+
     fn check_exist_ident(&mut self, ident: String) -> bool {
         let mut found = false;
         for func in &self.functions {
@@ -789,7 +914,7 @@ impl ExprWeights {
                     // don't need to check if the variable exists. self.has_ref_name checks.
                     // GOD PLEASE FORGIVE ME
                     let varname = Expr::VarName((Types::Int, self.has_name.clone()));
-                    if !self.has_ref_name.is_empty() {
+                    if !self.has_ref_name.is_empty() && self.has_pipe {
                         let arr_index = self.make_arr_index(self.has_ref_name[0].clone(), v);
                         let new_var = Expr::VarName((self.has_type.clone(), self.has_name.clone()));
 
@@ -965,6 +1090,10 @@ impl ExprWeights {
             return expr;
         }
 
+        if !self.has_pipe {
+            return expr;
+        }
+
         if self.has_colon &&
             !self.has_name.is_empty() &&
             !self.has_lbrack &&
@@ -1130,6 +1259,8 @@ impl ExprWeights {
     }
 
     fn try_func_call(&mut self) -> Expr {
+        // FIND A WAY TO ERROR IF THE FUNC NAME DOESN'T EXIST
+
         let mut expr = Expr::None;
         let mut name = String::new();
         let mut met_criteria = false;
@@ -1305,7 +1436,7 @@ impl ExprWeights {
                         }
 
                         if let Expr::None = expr {
-                            expr = self.try_reassign_variable(num.1);
+                            expr = self.try_return(num.1);
                         }
                 } else {
                     expr = self.handle_var_use(word.clone());
@@ -1331,7 +1462,8 @@ impl ExprWeights {
             },
             Token::Int(integer) => {
                 self.has_intlit = true;
-                let intlit = Expr::IntLit(integer.to_string());
+                let intlit = self.check_intlit(integer.to_string());
+
                 expr = self.try_variable(&intlit);
 
                 if let Expr::None = expr {
@@ -1348,9 +1480,7 @@ impl ExprWeights {
             Token::Pipe => {
                 if self.has_pipe {
                     self.end_pipe_ix = self.current_token;
-                    self.has_pipe = false;
                     expr = self.try_arr();
-
                 } else {
                     self.start_pipe_ix = self.current_token;
                     self.has_pipe = true;
@@ -1361,6 +1491,11 @@ impl ExprWeights {
             Token::Lsquare => (),
             Token::Rsquare => (),
             Token::Quote => (),
+            Token::Divide => (),
+            Token::Multiple => (),
+            Token::Plus => (),
+            Token::Minus => (),
+            Token::Digit(_) => (),
         }
 
         self.current_token += 1;

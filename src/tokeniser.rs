@@ -18,9 +18,15 @@ pub enum Token {
     Newline,
     Equal,
 
+    Plus,
+    Minus,
+    Multiple,
+    Divide,
+
     Ident(String),
     Str(String),
     Int(String),
+    Digit(char), // this is a single digit inside an Int
 }
 
 pub fn tokeniser(file: String) -> Vec<Token> {
@@ -43,6 +49,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
     let mut buf = String::new();
     let mut in_quotes = false;
     let mut in_squares = false;
+    let mut square_occurences = 0;
 
     for c in file.chars() {
         if c == '"' {
@@ -71,8 +78,14 @@ pub fn tokeniser(file: String) -> Vec<Token> {
         }
 
         if c == '[' {
-            tokens.push(Token::Lsquare);
-            in_squares = true;
+            square_occurences += 1;
+            if !in_squares {
+                in_squares = true;
+                tokens.push(Token::Lsquare);
+            } else {
+                buf.push(c);
+            }
+
             continue;
         }
 
@@ -81,16 +94,23 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             continue;
         }
 
-        if c == '=' {
-            tokens.push(Token::Equal);
+        if c == ']' {
+            square_occurences -= 1;
+            if in_squares && square_occurences == 0 {
+                in_squares = false;
+                tokens.push(Token::Int(buf.clone()));
+                tokens.push(Token::Rsquare);
+                buf.clear();
+            } else if in_squares {
+                buf.push(c);
+            }
+
             continue;
         }
 
-        if c == ']' {
-            in_squares = false;
-            tokens.push(Token::Int(buf.clone()));
-            tokens.push(Token::Rsquare);
-            buf.clear();
+        // this might not be needed
+        if c == '=' {
+            tokens.push(Token::Equal);
             continue;
         }
 

@@ -30,3 +30,5 @@ Oh and since everyone loves `idiomatic` ways to do things in languages, this is 
 _() main: {}
 ```
 It's good to keep in mind that the compiler is written with the `idiomatic` way in mind so there's no guarantee the way you write it, even if all of the neccessary syntax is there, that it'll work.
+
+<a href="./Math.md">Next -> Math</a>

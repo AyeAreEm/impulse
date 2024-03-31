@@ -24,6 +24,27 @@ fn rand_varname() -> String {
     varname
 }
 
+fn sanitise_intlit(intlit: String) -> String {
+    let mut sanitised = String::new();
+    let mut start_index = false;
+
+    for c in intlit.chars() {
+        if c == '|' {
+            if !start_index {
+                sanitised.push('[');
+            } else {
+                sanitised.push(']');
+            }
+
+            start_index = !start_index;
+        } else {
+            sanitised.push(c);
+        }
+    } 
+
+    sanitised
+}
+
 impl Gen {
     pub fn new(out_file: String, lang: Lang) -> Gen {
         return Gen {
@@ -41,6 +62,7 @@ impl Gen {
             self.comp_imports.push_str("./libc/dynamic.c ");
         }
     }
+
 
     fn make_arr_var(&mut self, typ: Types, name: String, elems: Expr) -> String {
         let mut arr_var = String::new();
@@ -67,11 +89,12 @@ impl Gen {
                         }
                     },
                     Expr::IntLit(integer) => {
+                        let lit = sanitise_intlit(integer.clone());
                         if first_elem {
-                            arr_var.push_str(&format!("{integer}"));
+                            arr_var.push_str(&format!("{lit}"));
                             first_elem = !first_elem;
                         } else {
-                            arr_var.push_str(&format!(",{integer}"));
+                            arr_var.push_str(&format!(",{lit}"));
                         }
                     },
                     Expr::VarName((_, name)) => {
@@ -106,7 +129,8 @@ impl Gen {
                     },
                     Expr::IntLit(integer) => {
                         let varname = rand_varname();
-                        dynam_var.push_str(&format!("int {varname}={integer};"));
+                        let lit = sanitise_intlit(integer.clone());
+                        dynam_var.push_str(&format!("int {varname}={lit};"));
                         dynam_var.push_str(&format!("dynam_push(&{name},&{varname});"));
                     },
                     Expr::VarName((_, varname)) => {
@@ -127,7 +151,10 @@ impl Gen {
                     match con {
                         Expr::VarName((_, name)) => stmnt.push_str(&format!("{name}")),
                         Expr::Equal => stmnt.push_str("=="),
-                        Expr::IntLit(integer) => stmnt.push_str(&format!("{integer}")),
+                        Expr::IntLit(integer) => {
+                            let lit = sanitise_intlit(integer.clone());
+                            stmnt.push_str(&format!("{lit}"))
+                        },
                         Expr::StrLit(string) => stmnt.push_str(&format!("{string}")),
                         Expr::Or => stmnt.push_str("||"),
                         Expr::And => stmnt.push_str("&&"),
@@ -199,7 +226,10 @@ impl Gen {
                     re_arr.push_str(&format!("{pos}]"));
 
                     match value.2 {
-                        Expr::IntLit(integer) => re_arr.push_str(&format!("={integer};")),
+                        Expr::IntLit(integer) => {
+                            let lit = sanitise_intlit(integer.clone());
+                            re_arr.push_str(&format!("={lit};"));
+                        },
                         Expr::StrLit(string) => re_arr.push_str(&format!("=string_from(\"{string}\");")),
                         Expr::VarName(_) => (),
                         _ => (),
@@ -248,7 +278,10 @@ impl Gen {
                     } else {
                         match value.1 {
                             Expr::StrLit(value) => variable.push_str(&format!("string_from(\"{value}\");")),
-                            Expr::IntLit(value) => variable.push_str(&format!("{value};")),
+                            Expr::IntLit(value) => {
+                                let lit = sanitise_intlit(value.clone());
+                                variable.push_str(&format!("{lit};"));
+                            },
                             Expr::VarName((_, value)) => variable.push_str(&format!("{value};")),
                             Expr::ArrIndex(value) => {
                                 // value.0 = Varname -> (typ, name)
@@ -261,7 +294,10 @@ impl Gen {
                                 }
 
                                 match value.1 {
-                                    Expr::IntLit(num) => variable.push_str(&format!("{arr_name}[{num}];")),
+                                    Expr::IntLit(num) => {
+                                        let lit = sanitise_intlit(num.clone());
+                                        variable.push_str(&format!("{arr_name}[{lit}];"));
+                                    },
                                     _ => (),
                                 }
                             }
@@ -287,7 +323,8 @@ impl Gen {
                             re_var.push_str(&format!("{var_name} = string_from(\"{string}\");"));
                         },
                         Expr::IntLit(integer) => {
-                            re_var.push_str(&format!("{var_name} = {integer};"));
+                            let lit = sanitise_intlit(integer.clone());
+                            re_var.push_str(&format!("{var_name} = {lit};"));
                         },
                         Expr::VarName((_, name)) => {
                             re_var.push_str(&format!("{var_name} = {name};"));
@@ -317,17 +354,18 @@ impl Gen {
                                 param_buf.push_str(&format!("{string}"));
                             },
                             Expr::IntLit(integer) => {
+                                let lit = sanitise_intlit(integer.clone());
                                 if is_arr {
                                     if is_string {
-                                        var_buf.push_str(&format!(", {arr_name}[{integer}].data"));
+                                        var_buf.push_str(&format!(", {arr_name}[{lit}].data"));
                                         is_arr = false;
                                     } else {
-                                        var_buf.push_str(&format!(", {arr_name}[{integer}]"));
+                                        var_buf.push_str(&format!(", {arr_name}[{lit}]"));
                                         is_arr = false;
                                     }
                                 } else {
                                     param_buf.push_str(&format!("%d"));
-                                    var_buf.push_str(&format!(", {integer}"));
+                                    var_buf.push_str(&format!(", {lit}"));
                                 }
                             },
                             Expr::Var(var_info) => {
@@ -504,7 +542,8 @@ impl Gen {
                             ret.push_str(&format!("return {string};"));
                         },
                         Expr::IntLit(integer) => {
-                            ret.push_str(&format!("return {integer};"));
+                            let lit = sanitise_intlit(integer.clone());
+                            ret.push_str(&format!("return {lit};"));
                         },
                         Expr::VarName((_, name)) => {
                             ret.push_str(&format!("return {name};"));
