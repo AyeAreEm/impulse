@@ -151,6 +151,9 @@ impl Gen {
                     match con {
                         Expr::VarName((_, name)) => stmnt.push_str(&format!("{name}")),
                         Expr::Equal => stmnt.push_str("=="),
+                        Expr::SmallerThan => stmnt.push_str("<"),
+                        Expr::BiggerThan => stmnt.push_str(">"),
+                        Expr::Exclaim => stmnt.push_str("!"),
                         Expr::IntLit(integer) => {
                             let lit = sanitise_intlit(integer.clone());
                             stmnt.push_str(&format!("{lit}"))
@@ -551,6 +554,56 @@ impl Gen {
                         _ => (),
                     }
                     self.code.push_str(&ret);
+                },
+                Expr::Loop(loop_tup) => {
+                    let mut conditions = String::new();
+                    let mut is_inited = false;
+
+                    match loop_tup.0 {
+                        Expr::Condition(expr_arr) => {
+                            for expr in *expr_arr {
+                                match expr {
+                                    Expr::Var(var_info) => {
+                                        match var_info.0 {
+                                            Expr::VarName((_, name)) => {
+                                                conditions.push_str(&format!("int {name}=0;{name}"));
+                                                is_inited = true;
+                                            },
+                                            _ => (),
+                                        }
+                                    },
+                                    Expr::VarName((_, name)) => {
+                                        if is_inited {
+                                            conditions.push_str(&format!("{name}"))
+                                        } else {
+                                            conditions.push_str(&format!(";{name}"))
+                                        }
+                                    },
+                                    Expr::Equal => conditions.push_str("=="),
+                                    Expr::SmallerThan => conditions.push_str("<"),
+                                    Expr::BiggerThan => conditions.push_str(">"),
+                                    Expr::Exclaim => conditions.push_str("!"),
+                                    Expr::IntLit(integer) => {
+                                        let lit = sanitise_intlit(integer.clone());
+                                        conditions.push_str(&format!("{lit};"))
+                                    },
+                                    Expr::StrLit(string) => conditions.push_str(&format!("{string}")),
+                                    Expr::Or => conditions.push_str("||"),
+                                    Expr::And => conditions.push_str("&&"),
+                                    _ => (),
+                                }
+                            }
+                        },
+                        _ => (),
+                    }
+
+                    match loop_tup.1 {
+                        Expr::LoopMod(modif) => conditions.push_str(&format!("{modif}")),
+                        _ => (),
+                    }
+
+                    let loop_code = format!("for({conditions}){{");
+                    self.code.push_str(&loop_code);
                 },
                 Expr::If(condition) => {
                     self.make_ifor(String::from("if("), *condition);

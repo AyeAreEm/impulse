@@ -67,6 +67,8 @@ Open a terminal:<br>
 ```
 bool -> boolean
 f64 -> 64 bit float
+@iter i: 5 {} -> simple loop, not really an iterator type
+loop (i < 5) [+] {} -> actual loop
 
 @import "base/io.imp" -> library of imp files
 @import "libc/stdio.h" -> library of c files

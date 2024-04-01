@@ -16,7 +16,11 @@ pub enum Token {
     Colon,
     Pipe,
     Newline,
+
     Equal,
+    SmallerThan,
+    BiggerThan,
+    Exclaim,
 
     Plus,
     Minus,
@@ -43,6 +47,9 @@ pub fn tokeniser(file: String) -> Vec<Token> {
         ('@', Token::Macro),
         ('|', Token::Pipe),
         ('=', Token::Equal),
+        ('<', Token::SmallerThan),
+        ('>', Token::BiggerThan),
+        ('!', Token::Exclaim),
     ]);
 
     let mut tokens: Vec<Token> = Vec::new();
@@ -105,12 +112,6 @@ pub fn tokeniser(file: String) -> Vec<Token> {
                 buf.push(c);
             }
 
-            continue;
-        }
-
-        // this might not be needed
-        if c == '=' {
-            tokens.push(Token::Equal);
             continue;
         }
 

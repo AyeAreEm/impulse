@@ -27,6 +27,8 @@ pub enum Keyword {
     OrIf,
     Else,
 
+    Loop,
+
     Or,
     And,
 

@@ -28,6 +28,9 @@ pub enum Expr {
     Or,
     And,
 
+    Loop(Box<(Expr, Expr)>), // Expr1 = Condition, Expr2 = Loopmod
+    LoopMod(String),
+
     Array(Box<Vec<Expr>>),
     Dynamic(Box<Vec<Expr>>),
 
@@ -35,6 +38,10 @@ pub enum Expr {
     Return(Box<Expr>), // Expr = StrLit | IntLit | VarName
 
     Equal,
+    SmallerThan,
+    BiggerThan,
+    Exclaim,
+
     EndBlock,
     None,
 }
@@ -51,6 +58,7 @@ pub struct ExprWeights {
     has_predef_func: Keyword,
     has_strlit: bool,
     has_intlit: bool,
+    intlit_content: String,
     has_macro: bool,
     has_macro_name: String,
     has_pipe: bool,
@@ -59,13 +67,10 @@ pub struct ExprWeights {
     has_if: bool,
     has_orif: bool,
     has_else: bool,
-    has_equal: bool,
+    has_loop: bool,
 
     start_param_ix: usize,
     end_param_ix: usize,
-
-    start_intlit_ix: usize,
-    end_intlit_ix: usize,
 
     start_pipe_ix: usize,
     end_pipe_ix: usize,
@@ -93,6 +98,7 @@ impl ExprWeights {
             ("else".to_string(), Keyword::Else),
             ("or".to_string(), Keyword::Or),
             ("and".to_string(), Keyword::And),
+            ("loop".to_string(), Keyword::Loop),
             ("_".to_string(), Keyword::Underscore), 
         ]);
 
@@ -114,6 +120,7 @@ impl ExprWeights {
             has_predef_func: Keyword::None,
             has_strlit: false,
             has_intlit: false,
+            intlit_content: String::new(),
             has_macro: false,
             has_macro_name: String::new(),
             has_pipe: false,
@@ -122,13 +129,10 @@ impl ExprWeights {
             has_if: false,
             has_orif: false,
             has_else: false,
-            has_equal: false,
+            has_loop: false,
 
             start_param_ix: 0,
             end_param_ix: 0,
-
-            start_intlit_ix: 0,
-            end_intlit_ix: 0,
 
             start_pipe_ix: 0,
             end_pipe_ix: 0,
@@ -157,6 +161,7 @@ impl ExprWeights {
             self.has_predef_func = Keyword::None;
             self.has_strlit = false;
             self.has_intlit = false;
+            self.intlit_content = String::new();
             self.has_macro = false;
             self.has_macro_name = String::new();
             self.has_pipe = false;
@@ -164,13 +169,10 @@ impl ExprWeights {
             self.has_if = false;
             self.has_orif = false;
             self.has_else = false;
-            self.has_equal = false;
+            self.has_loop = false;
 
             self.start_param_ix = 0;
             self.end_param_ix = 0;
-
-            self.start_intlit_ix = 0;
-            self.end_intlit_ix = 0;
 
             self.start_pipe_ix = 0;
             self.end_pipe_ix = 0;
@@ -418,6 +420,9 @@ impl ExprWeights {
             Keyword::Return => {
                 self.has_return = true;
             },
+            Keyword::Loop => {
+                self.has_loop = true;
+            },
             Keyword::If => {
                 self.has_if = true;
             },
@@ -653,6 +658,136 @@ impl ExprWeights {
         expr
     }
 
+    fn check_conditional(&mut self, is_loop: bool) -> Vec<Expr> {
+        let cur_func = self.extract_func_name();
+        let params = &self.tokens[self.start_param_ix..self.end_param_ix];
+        let mut arr_expr = Vec::new();
+
+        if params.is_empty() {
+            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+            println!("\x1b[91merror\x1b[0m: empty conditional");
+            exit(1);
+        }
+
+        for param in params {
+            match param {
+                Token::Ident(ident) => {
+                    let int_word = ident.parse::<i32>();
+                    let num = match int_word {
+                        Ok(_) => (true, Expr::IntLit(ident.to_string())),
+                        Err(_) => (false, Expr::None),
+                    };
+
+                    if num.0 {
+                        arr_expr.push(num.1);
+                        continue;
+                    }
+
+                    let keyword_res = self.keyword_map.get(ident);
+                    let keyword: (bool, Keyword) = match keyword_res {
+                        Some(k) => (true, k.clone()),
+                        None => (false, Keyword::None),
+                    };
+
+                    if keyword.0 {
+                        match keyword.1 {
+                            Keyword::Or => {
+                                arr_expr.push(Expr::Or);
+                                continue;
+                            },
+                            Keyword::And => {
+                                arr_expr.push(Expr::And);
+                                continue;
+                            },
+                            _ => {
+                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                println!("\x1b[91merror\x1b[0m: forbidden keyword in statement block {:?}", keyword.1);
+                                exit(1);
+                            },
+                        }
+                    }
+
+                    let variables_res = self.func_to_vars.get(&cur_func);
+                    let variables = match variables_res {
+                        Some(var) => var,
+                        None => {
+                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                            println!("\x1b[91merror\x1b[0m: unknown identifier {:?}", ident);
+                            exit(1);
+                        }
+                    };
+
+                    let mut found = false;
+                    for var in variables {
+                        match var {
+                            Expr::Var(var_info) => {
+                                match &var_info.0 {
+                                    Expr::VarName((_, varname)) => {
+                                        if ident == varname {
+                                            arr_expr.push(var_info.0.clone());
+                                            found = true;
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            },
+                            _ => (),
+                        }
+                    }
+
+                    if !found && is_loop {
+                        let expr = Expr::Var(Box::new((Expr::VarName((Types::Int, String::from(ident))), Expr::IntLit(String::from("0")))));
+                        arr_expr.push(expr.clone());
+                        if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+                            vars.push(expr);
+                        }
+                    }
+                },
+                Token::Equal => arr_expr.push(Expr::Equal),
+                Token::SmallerThan => arr_expr.push(Expr::SmallerThan),
+                Token::BiggerThan => arr_expr.push(Expr::BiggerThan),
+                Token::Exclaim => arr_expr.push(Expr::Exclaim),
+                _ => (),
+            }
+        }
+
+        match arr_expr[arr_expr.len()-1] {
+            Expr::Equal => {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                exit(1);
+            },
+            Expr::SmallerThan => {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                exit(1);
+            },
+            Expr::BiggerThan => {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                exit(1);
+            },
+            Expr::Exclaim => {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                exit(1);
+            },
+            Expr::Or => {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                exit(1);
+            },
+            Expr::And => {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                exit(1);
+            },
+            _ => (),
+        }
+
+        arr_expr
+    }
+
     fn check_if(&mut self) -> Expr {
         let mut expr = Expr::None;
         let stmnt = if self.has_if {
@@ -672,97 +807,7 @@ impl ExprWeights {
                 expr = Expr::Else;
                 return expr
             }
-
-            let cur_func = self.extract_func_name();
-            let params = &self.tokens[self.start_param_ix..self.end_param_ix];
-            let mut arr_expr = Vec::new();
-
-            if params.is_empty() {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: empty condition in if statement");
-                exit(1);
-            }
-
-            for param in params {
-                match param {
-                    Token::Ident(ident) => {
-                        let int_word = ident.parse::<i32>();
-                        let num = match int_word {
-                            Ok(_) => (true, Expr::IntLit(ident.to_string())),
-                            Err(_) => (false, Expr::None),
-                        };
-
-                        if num.0 {
-                            arr_expr.push(num.1);
-                            continue;
-                        }
-
-                        let keyword_res = self.keyword_map.get(ident);
-                        let keyword: (bool, Keyword) = match keyword_res {
-                            Some(k) => (true, k.clone()),
-                            None => (false, Keyword::None),
-                        };
-
-                        if keyword.0 {
-                            match keyword.1 {
-                                Keyword::Or => {
-                                    arr_expr.push(Expr::Or);
-                                    continue;
-                                },
-                                Keyword::And => {
-                                    arr_expr.push(Expr::And);
-                                    continue;
-                                },
-                                _ => {
-                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                    println!("\x1b[91merror\x1b[0m: forbidden keyword in statement block {:?}", keyword.1);
-                                    exit(1);
-                                },
-                            }
-                        }
-
-                        let variables_res = self.func_to_vars.get(&cur_func);
-                        let variables = match variables_res {
-                            Some(var) => var,
-                            None => {
-                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                println!("\x1b[91merror\x1b[0m: unknown identifier {:?}", ident);
-                                exit(1);
-                            }
-                        };
-
-                        for var in variables {
-                            match var {
-                                Expr::Var(var_info) => {
-                                    match &var_info.0 {
-                                        Expr::VarName((_, varname)) => {
-                                            if ident == varname {
-                                                arr_expr.push(var_info.0.clone());
-                                            }
-                                        },
-                                        _ => (),
-                                    }
-                                },
-                                _ => (),
-                            }
-                        }
-                    },
-                    Token::Equal => arr_expr.push(Expr::Equal),
-                    _ => (),
-                }
-            }
-
-            if let Expr::Equal = arr_expr[arr_expr.len()-1] {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incomplete condition");
-                exit(1);
-            }
-
-            if let Expr::Or = arr_expr[arr_expr.len()-1] {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incomplete condition");
-                exit(1);
-            }
+            let arr_expr = self.check_conditional(false);
 
             match stmnt {
                 Keyword::If => expr = Expr::If(Box::new(Expr::Condition(Box::new(arr_expr)))),
@@ -773,6 +818,68 @@ impl ExprWeights {
         }
 
         expr
+    }
+
+    fn check_loop(&mut self) -> Expr {
+        let mut expr = Expr::None;
+        if !self.has_macro_name.is_empty() {
+            return expr
+        }
+
+        if let Types::None = self.has_type {
+            let arr_expr =  self.check_conditional(true);
+            let mut loop_mod = Expr::None;
+
+            if self.intlit_content.is_empty() || self.intlit_content.len() > 1 {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incorrect use of increment / decrement statement. only one character inside []");
+                exit(1);
+            }
+
+            let mut varname = String::new();
+            match &arr_expr[0] {
+                Expr::Var(var_info) => {
+                    match &var_info.0 {
+                        Expr::VarName((_, vn)) => {
+                            varname = vn.to_owned();
+                        },
+                        _ => (),
+                    }
+                },
+                Expr::VarName((typ, vn)) => {
+                    if let Types::Int = typ {
+                        varname = vn.to_owned();
+                    } else {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: {:?} {} is not a number", typ, varname);
+                        exit(1);
+                    }
+                },
+                _ => {
+                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                    println!("\x1b[91merror\x1b[0m: first token in loop must be a variable, {:?} is not a variable", arr_expr[0]);
+                    exit(1);
+                },
+            }
+            
+            match self.intlit_content.chars().nth(0) {
+                Some(token) => {
+                    match token {
+                        '+' => loop_mod = Expr::LoopMod(format!("{varname}++")),
+                        '-' => loop_mod = Expr::LoopMod(format!("{varname}--")),
+                        _ => {
+                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                            println!("\x1b[91merror\x1b[0m: modifier restricted to + or -");
+                            exit(1);
+                        },
+                    }
+                },
+                None => (),
+            }
+
+            expr = Expr::Loop(Box::new((Expr::Condition(Box::new(arr_expr)), loop_mod)));
+        }
+        expr 
     }
 
     fn try_reassign_variable(&mut self, ident: Expr) -> Expr {
@@ -1317,6 +1424,8 @@ impl ExprWeights {
 
         if self.has_if || self.has_orif || self.has_else {
             expr = self.check_if();
+        } else if self.has_loop {
+            expr = self.check_loop();
         } else {
             expr = self.check_func();
         }
@@ -1462,6 +1571,8 @@ impl ExprWeights {
             },
             Token::Int(integer) => {
                 self.has_intlit = true;
+                self.intlit_content.push_str(integer);
+                
                 let intlit = self.check_intlit(integer.to_string());
 
                 expr = self.try_variable(&intlit);
@@ -1486,7 +1597,10 @@ impl ExprWeights {
                     self.has_pipe = true;
                 }
             },
-            Token::Equal => self.has_equal = true,
+            Token::Equal => (),
+            Token::SmallerThan => (),
+            Token::BiggerThan => (),
+            Token::Exclaim => (),
             Token::Newline => self.line_num += 1,
             Token::Lsquare => (),
             Token::Rsquare => (),

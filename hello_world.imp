@@ -1,4 +1,10 @@
 _() main: {
-    int x: [[3 + 2] * 2]
-    print(x)
+    loop (i < 5) [+]{
+        print(i)
+    }
+
+    int j: 0
+    loop (j < 5) [+]{
+        print(j)
+    }
 }
