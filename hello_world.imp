@@ -1,10 +1,7 @@
 _() main: {
-    loop (i < 5) [+]{
-        print(i)
-    }
-
-    int j: 0
-    loop (j < 5) [+]{
-        print(j)
+    @array string words: |"hello" "world" "lol"|
+    loop (i < 3) [+] {
+        string word: words|i|
+        print(word " " i)
     }
 }
