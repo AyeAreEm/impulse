@@ -1059,7 +1059,6 @@ impl ExprWeights {
         if self.has_name.is_empty() {
             return expr
         }
-        println!("value: {:?}", value);
 
         if self.has_colon && !self.has_lcurl && self.has_macro_name.is_empty() {
             match value {
@@ -1145,7 +1144,6 @@ impl ExprWeights {
                     }
                 },
                 Expr::VarName((typ, v)) => {
-                    println!("v: {}", v);
                     match typ {
                         Types::Int => {
                             let varname = Expr::VarName((Types::Int, self.has_name.clone()));
