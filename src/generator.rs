@@ -345,39 +345,25 @@ impl Gen {
                     let mut print_code = String::from(format!("printf(\""));
                     let mut param_buf = String::new();
                     let mut var_buf = String::new();
-                    let mut arr_name = String::new();
-                    let mut is_arr = false;
-                    let mut is_string = false; // FIX THIS LATER. WE NEEDA DO ACTUAL CALLING ARRAYS
-                                               // AND A WAY TO PASS THE CONTENT OF A STRING INSTEAD
-                                               // OF THE WHOLE STRUCT BRUHHH
+                   // FIND A WAY TO PASS THE CONTENT OF A STRING INSTEAD OF THE WHOLE STRUCT
 
                     for v in *value {
                         match v {
-                            Expr::StrLit(string) => {
-                                param_buf.push_str(&format!("{string}"));
-                            },
+                            Expr::StrLit(string) => param_buf.push_str(&format!("{string}")),
                             Expr::IntLit(integer) => {
                                 let lit = sanitise_intlit(integer.clone());
-                                if is_arr {
-                                    if is_string {
-                                        var_buf.push_str(&format!(", {arr_name}[{lit}].data"));
-                                        is_arr = false;
-                                    } else {
-                                        var_buf.push_str(&format!(", {arr_name}[{lit}]"));
-                                        is_arr = false;
-                                    }
-                                } else {
-                                    param_buf.push_str(&format!("%d"));
-                                    var_buf.push_str(&format!(", {lit}"));
-                                }
+                                param_buf.push_str(&format!("%d"));
+                                var_buf.push_str(&format!(", {lit}"));
                             },
-                            Expr::Var(var_info) => {
-                                match var_info.0 {
+                            Expr::ArrIndex(arr_index) => {
+                                let mut is_string = false;
+                                let mut arr_name = String::new();
+
+                                match arr_index.0 {
                                     Expr::VarName((typ, name)) => {
+                                        arr_name = name;
                                         match typ {
                                             Types::Arr(arr_typ) => {
-                                                arr_name = name;
-                                                is_arr = true;
                                                 match *arr_typ {
                                                     Types::Int => {
                                                         param_buf.push_str(&format!("%d"));
@@ -385,10 +371,31 @@ impl Gen {
                                                     Types::Str => {
                                                         is_string = true;
                                                         param_buf.push_str(&format!("%s"));
-                                                    },
+                                                    }
                                                     _ => (),
                                                 }
                                             },
+                                            _ => (),
+                                        }
+                                    },
+                                    _ => (),
+                                }
+
+                                match arr_index.1 {
+                                    Expr::IntLit(index) => {
+                                        if is_string {
+                                            var_buf.push_str(&format!(", {arr_name}[{index}].data"));
+                                        } else {
+                                            var_buf.push_str(&format!(", {arr_name}[{index}]"));
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            },
+                            Expr::Var(var_info) => {
+                                match var_info.0 {
+                                    Expr::VarName((typ, name)) => {
+                                        match typ {
                                             Types::Int => {
                                                 param_buf.push_str(&format!("%d"));
                                                 var_buf.push_str(&format!(", {name}"));

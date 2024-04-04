@@ -178,7 +178,7 @@ impl ExprWeights {
             self.end_pipe_ix = 0;
     }
 
-    fn extract_func_name(&mut self) -> String {
+    fn extract_func_name(&self) -> String {
         let cur_func = match &self.current_func {
             Expr::FuncName(n) => n,
             Expr::None => "",
@@ -192,7 +192,7 @@ impl ExprWeights {
         cur_func.to_string()
     }
 
-    fn make_arr_index(&mut self, arr_name: Expr, index: &String) -> Expr {
+    fn make_arr_index(&self, arr_name: Expr, index: &String) -> Expr {
         let mut expr = Expr::None;
         let index_num_res = index.parse::<usize>();
         let index_num = match index_num_res {
@@ -285,8 +285,6 @@ impl ExprWeights {
 
     fn check_intlit(&mut self, intlit: String) -> Expr {
         // check for func names, arrays, variables, etc.
-        // let mut sanitised = String::new();
-        // let mut start_pipe = false;
 
         let symb_to_token: HashMap<char, Token> = HashMap::from([
             ('(', Token::Lbrack),
@@ -603,18 +601,40 @@ impl ExprWeights {
             },
             _ => (),
         }
+
         if !met_criteria {
             return expr
         }
+
         let cur_func = self.extract_func_name();
         let params_slice = &self.tokens[self.start_param_ix..self.end_param_ix];
         let mut params: Vec<Expr> = Vec::new();
+        if params_slice.is_empty() {
+            return Expr::Print(Box::new(params));
+        }
+
+        let mut buf = Expr::None;
         for token in params_slice {
             match token {
                 Token::Ident(word) => {
                     let int_word = word.parse::<i32>();
                     match int_word {
-                        Ok(n) => params.push(Expr::IntLit(n.to_string())),
+                        Ok(n) => {
+                            match buf {
+                                Expr::None => params.push(Expr::IntLit(n.to_string())),
+                                _ => {
+                                    if self.has_pipe {
+                                        let temp = self.make_arr_index(buf.clone(), word);
+                                        params.push(temp);
+                                    } else {
+                                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                        println!("\x1b[91merror\x1b[0m: can't print all values in arr:, {}", word);
+                                        println!("\x1b[93merror\x1b[0m: did you mean {:?}|{}|", buf, word);
+                                        exit(1);
+                                    }
+                                }
+                            }
+                        },
                         Err(_) => {
                             let variables_res = self.func_to_vars.get(&cur_func);
                             let variables = match variables_res {
@@ -631,10 +651,32 @@ impl ExprWeights {
                                 match var {
                                     Expr::Var(var_info) => {
                                         match &var_info.0 {
-                                            Expr::VarName((_, name)) => {
+                                            Expr::VarName((typ, name)) => {
                                                 if name == word {
-                                                    params.push(var.clone());
                                                     found_var = true;
+                                                    if let Types::Arr(_arr_typ) = typ {
+                                                        buf = Expr::Var(var_info.clone());
+                                                    } else if let Types::Int = typ {
+                                                        match buf {
+                                                            Expr::None => {
+                                                                params.push(var.clone());
+                                                            },
+                                                            _ => {
+                                                                if self.has_pipe {
+                                                                    let temp = self.make_arr_index(buf.clone(), name);
+                                                                    params.push(temp);
+                                                                    found_var = true;
+                                                                } else {
+                                                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                                                    println!("\x1b[91merror\x1b[0m: can't print all values in array. maybe use a loop? array: {}", word);
+                                                                    exit(1);
+                                                                }
+                                                                buf = Expr::None;
+                                                            },
+                                                        }
+                                                    } else {
+                                                        params.push(var.clone());
+                                                    }
                                                 }
                                             },
                                             _ => (),
