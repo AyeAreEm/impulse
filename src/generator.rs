@@ -147,13 +147,30 @@ impl Gen {
     fn make_ifor(&mut self, mut stmnt: String, condition: Expr) {
         match condition {
             Expr::Condition(cond) => {
+                let mut had_angled = false;
                 for con in *cond {
                     match con {
                         Expr::VarName((_, name)) => stmnt.push_str(&format!("{name}")),
-                        Expr::Equal => stmnt.push_str("=="),
-                        Expr::SmallerThan => stmnt.push_str("<"),
-                        Expr::BiggerThan => stmnt.push_str(">"),
-                        Expr::Exclaim => stmnt.push_str("!"),
+                        Expr::Equal => {
+                            if had_angled {
+                                stmnt.push_str("=");
+                                had_angled = false;
+                            } else {
+                                stmnt.push_str("==");
+                            }
+                        },
+                        Expr::SmallerThan => {
+                            stmnt.push_str("<");
+                            had_angled = true;
+                        },
+                        Expr::BiggerThan => {
+                            stmnt.push_str(">");
+                            had_angled = true;
+                        },
+                        Expr::Exclaim => {
+                          stmnt.push_str("!");
+                          had_angled = true;
+                        },
                         Expr::IntLit(integer) => {
                             let lit = sanitise_intlit(integer.clone());
                             stmnt.push_str(&format!("{lit}"))
