@@ -6,8 +6,10 @@ bodge (v.) - make or repair (something) badly or clumsly.
 ### Impulse is made using rust as the translator while using gcc or node as the compiler / runtime.
 
 ## Why Impulse
-I like rust but man is it verbose. I have been writing a lot of Odin recently and it's amazing but I feel like it's not my perfect language.
-But when I say perfect, I mean the language I can use for decent sized projects as well as the times when I need to whip up something quick and get it working.
+My requirements in a language are fast, simple, fun to write (syntax). Rust is almost perfect but man is it verbose. Odin is pretty much perfect regarding my requirements but
+C just feels right, more right than Odin at times. I've been looking into some functional languages because most of them have very interesting syntax but I just find it quite hard to
+write `real world code`. That's when I thought, "pffff I could make my own language". I want to make a language that's perfect for me and what I mean by that is I can use it for decent sized projects
+as well as the times when I need to whip up something quick and get it working.
 Rust is not a whip up something quick language. Python is but that's far too slow, Odin is almost there for me but since it's not as popular as other languages, getting stuck on a problem is torture.
 This way with my own language with detailed docs and one day examples, I think I could use impulse to do most things for daily use.
 
@@ -68,7 +70,6 @@ Open a terminal:<br>
 bool -> boolean
 f64 -> 64 bit float
 @iter i: 5 {} -> simple loop, not really an iterator type
-loop (i < 5) [+] {} -> actual loop
 
 @import "base/io.imp" -> library of imp files
 @import "libc/stdio.h" -> library of c files
