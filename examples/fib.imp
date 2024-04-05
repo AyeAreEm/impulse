@@ -6,7 +6,5 @@ int(int nth) fib: {
 }
 
 _() main: {
-    loop (i < 11) [+] {
-        print([fib(i)])
-    }
+    print([fib(10)])
 }

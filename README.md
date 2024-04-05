@@ -73,4 +73,5 @@ loop (i < 5) [+] {} -> actual loop
 @import "base/io.imp" -> library of imp files
 @import "libc/stdio.h" -> library of c files
 ```
-for more info, look at the <a href="./DOCS/DOCS.md">Docs</a>
+for more info, look at the <a href="./DOCS/DOCS.md">Docs</a><br>
+for examples, check out the <a href="./examples">examples folder</a>

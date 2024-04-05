@@ -353,7 +353,7 @@ impl Gen {
                             Expr::IntLit(integer) => {
                                 let lit = sanitise_intlit(integer.clone());
                                 param_buf.push_str(&format!("%d"));
-                                var_buf.push_str(&format!(", {lit}"));
+                                var_buf.push_str(&format!(",{lit}"));
                             },
                             Expr::ArrIndex(arr_index) => {
                                 let mut is_string = false;
@@ -384,9 +384,9 @@ impl Gen {
                                 match arr_index.1 {
                                     Expr::IntLit(index) => {
                                         if is_string {
-                                            var_buf.push_str(&format!(", {arr_name}[{index}].data"));
+                                            var_buf.push_str(&format!(",{arr_name}[{index}].data"));
                                         } else {
-                                            var_buf.push_str(&format!(", {arr_name}[{index}]"));
+                                            var_buf.push_str(&format!(",{arr_name}[{index}]"));
                                         }
                                     },
                                     _ => (),
@@ -398,11 +398,11 @@ impl Gen {
                                         match typ {
                                             Types::Int => {
                                                 param_buf.push_str(&format!("%d"));
-                                                var_buf.push_str(&format!(", {name}"));
+                                                var_buf.push_str(&format!(",{name}"));
                                             },
                                             Types::Str => {
                                                 param_buf.push_str(&format!("%s"));
-                                                var_buf.push_str(&format!(", {name}.data"));
+                                                var_buf.push_str(&format!(",{name}.data"));
                                             },
                                             _ => (),
                                         }
@@ -619,7 +619,7 @@ impl Gen {
                     self.make_ifor(String::from("else if("), *condition);
                 },
                 Expr::Else => {
-                    self.code.push_str("else {");
+                    self.code.push_str("else{");
                 },
                 _ => (),
             }

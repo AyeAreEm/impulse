@@ -1,0 +1,9 @@
+_() main: {
+    print("hello world")
+
+    string greet: "hello world again"
+    print(greet)
+
+    string another_time: "another time"
+    print("hello world " another_time)
+}

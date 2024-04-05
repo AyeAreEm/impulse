@@ -1,6 +1,5 @@
 use std::{collections::HashMap, process::exit};
-use crate::tokeniser::Token;
-use crate::declare_types::*;
+use crate::tokeniser::Token; use crate::declare_types::*;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -80,9 +79,14 @@ pub struct ExprWeights {
     current_token: usize,
     keyword_map: HashMap<String, Keyword>,
     macros_map: HashMap<String, Macros>,
+
     functions: Vec<Expr>,
-    func_to_vars: HashMap<String, Vec<Expr>>,
+    func_to_vars: HashMap<String, Vec<Vec<Expr>>>,
+
     current_func: Expr,
+    current_scope: usize,
+    in_scope: bool,
+
     line_num: u32,
 }
 
@@ -107,7 +111,7 @@ impl ExprWeights {
             ("dynam".to_string(), Macros::Dynam),
         ]);
 
-        let func_to_vars: HashMap<String, Vec<Expr>> = HashMap::new();
+        let func_to_vars: HashMap<String, Vec<Vec<Expr>>> = HashMap::new();
 
         ExprWeights {
             has_type: Types::None,
@@ -142,9 +146,13 @@ impl ExprWeights {
             current_token: 0,
             keyword_map: token_to_keyword,
             macros_map: ident_to_macro,
+
             functions: Vec::new(),
             func_to_vars,
             current_func: Expr::None,
+            current_scope: 0,
+            in_scope: false,
+
             line_num: 1,
             // variables: Vec::new(),
         }
@@ -176,6 +184,38 @@ impl ExprWeights {
 
             self.start_pipe_ix = 0;
             self.end_pipe_ix = 0;
+    }
+
+    fn new_scope(&mut self, new_var: Expr) {
+        self.in_scope = true;
+
+        let cur_func = self.extract_func_name();
+        if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+            let mut old_scope = vars[self.current_scope].clone();
+            self.current_scope += 1;
+            vars.push(vec![]);
+            vars[self.current_scope].append(&mut old_scope);
+
+            match new_var {
+                Expr::None => (),
+                _ => vars[self.current_scope].push(new_var),
+            }
+        }
+    }
+
+    fn prev_scope(&mut self) {
+        let cur_func = self.extract_func_name();
+        if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+            if self.in_scope && self.current_scope == 0 {
+                self.in_scope = false;
+            } else if self.in_scope && self.current_scope > 0 {
+                self.in_scope = false;
+                vars[self.current_scope].pop();
+                self.current_scope -= 1;
+            } else {
+                vars[self.current_scope].pop();
+            }
+        }
     }
 
     fn extract_func_name(&self) -> String {
@@ -211,7 +251,7 @@ impl ExprWeights {
 
                 let mut found = false;
                 let mut value = 0;
-                for var in variables {
+                for var in &variables[self.current_scope] {
                     match var {
                         Expr::Var(var_info) => {
                             match &var_info.0 {
@@ -393,7 +433,7 @@ impl ExprWeights {
                 Token::Ident(ident) => {
                     if !self.check_exist_ident(ident.clone()) {
                         println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: unknown identifer, {}", ident);
+                        println!("\x1b[91merror\x1b[0m: unknown identifier, {}", ident);
                         exit(1);
                     }
 
@@ -439,13 +479,13 @@ impl ExprWeights {
             },
         };
 
-        for var in variables {
+        for var in &variables[self.current_scope] {
             match var {
                 Expr::Var(var_info) => {
                     match &var_info.0 {
                         Expr::VarName((_, name)) => {
                             if name == &ident {
-                                self.has_ref_name.push(var.clone());
+                                self.has_ref_name.push(Expr::Var(var_info.clone()));
                                 found = true;
                             }
                         },
@@ -589,7 +629,6 @@ impl ExprWeights {
     }
 
     fn check_print(&mut self) -> Expr {
-        // ADD SUPPORT FOR ARRAY INDEX
         let expr = Expr::None;
         let mut met_criteria = false;
 
@@ -628,7 +667,7 @@ impl ExprWeights {
                                         params.push(temp);
                                     } else {
                                         println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                        println!("\x1b[91merror\x1b[0m: can't print all values in arr:, {}", word);
+                                        println!("\x1b[91merror\x1b[0m: can't print all values in arr: {}", word);
                                         println!("\x1b[93merror\x1b[0m: did you mean {:?}|{}|", buf, word);
                                         exit(1);
                                     }
@@ -647,7 +686,7 @@ impl ExprWeights {
                             };
 
                             let mut found_var = false;
-                            for var in variables {
+                            for var in &variables[self.current_scope] {
                                 match var {
                                     Expr::Var(var_info) => {
                                         match &var_info.0 {
@@ -659,7 +698,7 @@ impl ExprWeights {
                                                     } else if let Types::Int = typ {
                                                         match buf {
                                                             Expr::None => {
-                                                                params.push(var.clone());
+                                                                params.push(Expr::Var(var_info.clone()));
                                                             },
                                                             _ => {
                                                                 if self.has_pipe {
@@ -675,7 +714,7 @@ impl ExprWeights {
                                                             },
                                                         }
                                                     } else {
-                                                        params.push(var.clone());
+                                                        params.push(Expr::Var(var_info.clone()));
                                                     }
                                                 }
                                             },
@@ -718,6 +757,7 @@ impl ExprWeights {
                 exit(1);
             }
 
+            self.in_scope = true;
             let mut temp_vars = Vec::new();
             let params_res = self.get_params();
             let params = match params_res {
@@ -738,7 +778,7 @@ impl ExprWeights {
                 expr = Expr::Func(Box::new((self.has_type.clone(), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
                 self.functions.push(expr.clone());
                 self.current_func = Expr::FuncName(self.has_name.clone());
-                self.func_to_vars.entry(self.has_name.clone()).or_insert(temp_vars);
+                self.func_to_vars.entry(self.has_name.clone()).or_insert(vec![temp_vars]);
             } else {
                 let macro_res = self.macros_map.get(&self.has_macro_name);
                 let mac: (bool, Macros) = match macro_res {
@@ -750,7 +790,7 @@ impl ExprWeights {
                     expr = Expr::Func(Box::new((Types::Arr(Box::new(self.has_type.clone())), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
                     self.functions.push(expr.clone());
                     self.current_func = Expr::FuncName(self.has_name.clone());
-                    self.func_to_vars.entry(self.has_name.clone()).or_insert(temp_vars);
+                    self.func_to_vars.entry(self.has_name.clone()).or_insert(vec![temp_vars]);
                 } else {
                     println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
                     println!("\x1b[91merror\x1b[0m: unknown identifier {}", self.has_macro_name);
@@ -773,7 +813,7 @@ impl ExprWeights {
             exit(1);
         }
 
-        for param in params {
+        for param in params.to_owned() {
             match param {
                 Token::Ident(ident) => {
                     let int_word = ident.parse::<i32>();
@@ -787,7 +827,7 @@ impl ExprWeights {
                         continue;
                     }
 
-                    let keyword_res = self.keyword_map.get(ident);
+                    let keyword_res = self.keyword_map.get(&ident);
                     let keyword: (bool, Keyword) = match keyword_res {
                         Some(k) => (true, k.clone()),
                         None => (false, Keyword::None),
@@ -822,12 +862,12 @@ impl ExprWeights {
                     };
 
                     let mut found = false;
-                    for var in variables {
+                    for var in &variables[self.current_scope] {
                         match var {
                             Expr::Var(var_info) => {
                                 match &var_info.0 {
                                     Expr::VarName((_, varname)) => {
-                                        if ident == varname {
+                                        if &ident == varname {
                                             arr_expr.push(var_info.0.clone());
                                             found = true;
                                         }
@@ -840,11 +880,9 @@ impl ExprWeights {
                     }
 
                     if !found && is_loop {
-                        let expr = Expr::Var(Box::new((Expr::VarName((Types::Int, String::from(ident))), Expr::IntLit(String::from("0")))));
+                        let expr = Expr::Var(Box::new((Expr::VarName((Types::Int, ident.to_owned())), Expr::IntLit(String::from("0")))));
                         arr_expr.push(expr.clone());
-                        if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                            vars.push(expr);
-                        }
+                        self.new_scope(expr);
                     }
                 },
                 Token::Equal => arr_expr.push(Expr::Equal),
@@ -887,6 +925,10 @@ impl ExprWeights {
                 exit(1);
             },
             _ => (),
+        }
+
+        if !is_loop {
+            self.new_scope(Expr::None);
         }
 
         arr_expr
@@ -1008,7 +1050,7 @@ impl ExprWeights {
                 }
             };
 
-            for var in variables {
+            for var in &variables[self.current_scope] {
                 match var {
                     Expr::Var(var_info) => {
                         match &var_info.0 {
@@ -1111,7 +1153,7 @@ impl ExprWeights {
 
                         let cur_func = self.extract_func_name();
                         if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                            vars.push(expr.clone());
+                            vars[self.current_scope].push(expr.clone());
                         }
                     } else {
                         println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
@@ -1139,7 +1181,7 @@ impl ExprWeights {
                                                 
                                                 let cur_func = self.extract_func_name();
                                                 if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                                    vars.push(expr.clone());
+                                                    vars[self.current_scope].push(expr.clone());
                                                 }
                                             } else {
                                                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
@@ -1154,7 +1196,7 @@ impl ExprWeights {
                                                 
                                                 let cur_func = self.extract_func_name();
                                                 if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                                    vars.push(expr.clone());
+                                                    vars[self.current_scope].push(expr.clone());
                                                 }
                                             } else {
                                                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
@@ -1176,7 +1218,7 @@ impl ExprWeights {
 
                         let cur_func = self.extract_func_name();
                         if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                            vars.push(expr.clone());
+                            vars[self.current_scope].push(expr.clone());
                         }
                     } else {
                         println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
@@ -1203,7 +1245,7 @@ impl ExprWeights {
                                                         
                                                         let cur_func = self.extract_func_name();
                                                         if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                                            vars.push(expr.clone());
+                                                            vars[self.current_scope].push(expr.clone());
                                                         }
                                                     } else {
                                                         println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
@@ -1218,7 +1260,7 @@ impl ExprWeights {
                                                         
                                                         let cur_func = self.extract_func_name();
                                                         if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                                            vars.push(expr.clone());
+                                                            vars[self.current_scope].push(expr.clone());
                                                         }
                                                     } else {
                                                         println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
@@ -1240,7 +1282,7 @@ impl ExprWeights {
 
                                 let cur_func = self.extract_func_name();
                                 if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                    vars.push(expr.clone());
+                                    vars[self.current_scope].push(expr.clone());
                                 }
                             } else {
                                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
@@ -1256,7 +1298,7 @@ impl ExprWeights {
 
                                 let cur_func = self.extract_func_name();
                                 if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                                    vars.push(expr.clone());
+                                    vars[self.current_scope].push(expr.clone());
                                 }
 
                             } else {
@@ -1409,7 +1451,7 @@ impl ExprWeights {
                     expr = Expr::Var(Box::new((expr_name, Expr::Dynamic(Box::new(expr_value)))));
                     let cur_func = self.extract_func_name();
                     if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                        vars.push(expr.clone());
+                        vars[self.current_scope].push(expr.clone());
                     }
                 },
                 Macros::Arr => {
@@ -1417,7 +1459,7 @@ impl ExprWeights {
                     expr = Expr::Var(Box::new((expr_name, Expr::Array(Box::new(expr_value)))));
                     let cur_func = self.extract_func_name();
                     if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                        vars.push(expr.clone());
+                        vars[self.current_scope].push(expr.clone());
                     }
                 },
                 _ => {
@@ -1512,6 +1554,7 @@ impl ExprWeights {
             }
         }
 
+        self.has_return = false;
         expr
     }
 
@@ -1593,7 +1636,29 @@ impl ExprWeights {
         let mut expr = Expr::None;
 
         if self.check_exist_ident(ident.clone()) {
-            if !self.has_ref_name.is_empty() {
+            if self.has_return {
+                let cur_func = &self.extract_func_name();
+                let variables = self.func_to_vars.get(cur_func);
+                let vars = match variables {
+                    Some(v) => v,
+                    None => {
+                        exit(1);
+                    },
+                };
+
+                for v in vars[self.current_scope].clone() {
+                    match v {
+                        Expr::Var(var_info) => {
+                            if let Expr::VarName(value) = &var_info.0 {
+                                if value.1 == ident {
+                                    expr = self.try_return(Expr::VarName(value.clone()));
+                                }
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            } else if !self.has_ref_name.is_empty() {
                 match &self.has_ref_name[self.has_ref_name.len()-1] {
                     Expr::Var(var_info) => {
                         if let Expr::VarName(value) = &var_info.0 {
@@ -1605,28 +1670,6 @@ impl ExprWeights {
                         }
                     },
                     _ => (),
-                }
-            } else if self.has_return {
-                let cur_func = &self.extract_func_name();
-                let variables = self.func_to_vars.get(cur_func);
-                let vars = match variables {
-                    Some(v) => v,
-                    None => {
-                        exit(1);
-                    },
-                };
-
-                for v in vars.clone() {
-                    match v {
-                        Expr::Var(var_info) => {
-                            if let Expr::VarName(value) = var_info.0 {
-                                if value.1 == ident {
-                                    expr = self.try_return(Expr::VarName(value));
-                                }
-                            }
-                        }
-                        _ => (),
-                    }
                 }
             }
         }
@@ -1705,7 +1748,10 @@ impl ExprWeights {
                 self.has_lcurl = true;
                 expr = self.check_block();
             },
-            Token::Rcurl => expr = Expr::EndBlock,
+            Token::Rcurl => {
+                self.prev_scope();
+                expr = Expr::EndBlock;
+            },
             Token::Str(word) => {
                 self.has_strlit = true;
                 let strlit = Expr::StrLit(word.to_string());
