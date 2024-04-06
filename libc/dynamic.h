@@ -1,5 +1,5 @@
-#ifndef _DYNAMIC_ARRAY_
-#define _DYNAMIC_ARRAY_
+#ifndef _DYNAMIC_ARRAY_IMP
+#define _DYNAMIC_ARRAY_IMP
 
 #include <stdlib.h>
 typedef struct dynam {
@@ -24,7 +24,6 @@ typedef struct string {
 
 string string_new();
 string string_from(char *str);
-void print_s(string str);
 int string_cmp(string x, string y);
 void string_push(string *str, char c);
 void string_pushstr(string *value, string *source);

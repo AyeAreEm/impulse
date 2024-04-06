@@ -82,13 +82,6 @@ string string_from(char *str) {
     return new;
 }
 
-void print_s(string str) {
-    for (size_t i = 0; i < str.len; i++) {
-        printf("%c", str.data[i]);
-    }
-    printf("\n");
-}
-
 int string_cmp(string x, string y) {
     if (x.len != y.len) {
         return 0;

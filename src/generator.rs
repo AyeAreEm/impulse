@@ -189,6 +189,93 @@ impl Gen {
         self.code.push_str(&stmnt);
     }
 
+    fn handle_print(&mut self, value: Vec<Expr>, is_line: bool) {
+        if !self.imports.contains("#include <stdio.h>\n") {
+            self.imports.push_str("#include <stdio.h>\n");
+        }
+
+        let mut print_code = String::from(format!("printf(\""));
+        let mut param_buf = String::new();
+        let mut var_buf = String::new();
+       // FIND A WAY TO PASS THE CONTENT OF A STRING INSTEAD OF THE WHOLE STRUCT
+
+        for v in value {
+            match v {
+                Expr::StrLit(string) => param_buf.push_str(&format!("{string}")),
+                Expr::IntLit(integer) => {
+                    let lit = sanitise_intlit(integer.clone());
+                    param_buf.push_str(&format!("%d"));
+                    var_buf.push_str(&format!(",{lit}"));
+                },
+                Expr::ArrIndex(arr_index) => {
+                    let mut is_string = false;
+                    let mut arr_name = String::new();
+
+                    match arr_index.0 {
+                        Expr::VarName((typ, name)) => {
+                            arr_name = name;
+                            match typ {
+                                Types::Arr(arr_typ) => {
+                                    match *arr_typ {
+                                        Types::Int => {
+                                            param_buf.push_str(&format!("%d"));
+                                        },
+                                        Types::Str => {
+                                            is_string = true;
+                                            param_buf.push_str(&format!("%s"));
+                                        }
+                                        _ => (),
+                                    }
+                                },
+                                _ => (),
+                            }
+                        },
+                        _ => (),
+                    }
+
+                    match arr_index.1 {
+                        Expr::IntLit(index) => {
+                            if is_string {
+                                var_buf.push_str(&format!(",{arr_name}[{index}].data"));
+                            } else {
+                                var_buf.push_str(&format!(",{arr_name}[{index}]"));
+                            }
+                        },
+                        _ => (),
+                    }
+                },
+                Expr::Var(var_info) => {
+                    match var_info.0 {
+                        Expr::VarName((typ, name)) => {
+                            match typ {
+                                Types::Int => {
+                                    param_buf.push_str(&format!("%d"));
+                                    var_buf.push_str(&format!(",{name}"));
+                                },
+                                Types::Str => {
+                                    param_buf.push_str(&format!("%s"));
+                                    var_buf.push_str(&format!(",{name}.data"));
+                                },
+                                _ => (),
+                            }
+                        },
+                        _ => (),
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        print_code.push_str(&param_buf);
+        if is_line {
+            print_code.push_str("\\n");
+        }
+        print_code.push('"');
+        print_code.push_str(&var_buf);
+        print_code.push_str(");");
+        self.code.push_str(&print_code);
+    }
+
     pub fn generate(&mut self, expressions: Vec<Expr>) {
         for (index, expr) in expressions.into_iter().enumerate() {
             match expr {
@@ -303,6 +390,42 @@ impl Gen {
                                 variable.push_str(&format!("{lit};"));
                             },
                             Expr::VarName((_, value)) => variable.push_str(&format!("{value};")),
+                            Expr::FuncCall(func_call) => {
+                                match func_call.0 {
+                                    Expr::FuncName(func_name) => variable.push_str(&format!("{func_name}(")),
+                                    _ => (),
+                                }
+
+                                let mut first_param = true;
+                                for param in func_call.1 {
+                                    match param {
+                                        Expr::Var(var_info) => {
+                                            match var_info.0 {
+                                                Expr::VarName((_, name)) => {
+                                                    if first_param {
+                                                        variable.push_str(&format!("{name}"));
+                                                        first_param = false;
+                                                    } else {
+                                                        variable.push_str(&format!(",{name}"));
+                                                    }
+                                                }
+                                                _ => (),
+                                            }
+                                        },
+                                        Expr::StrLit(string) => {
+                                            if first_param {
+                                                variable.push_str(&format!("string_from(\"{string}\")"));
+                                                first_param = false;
+                                            } else {
+                                                variable.push_str(&format!(",string_from(\"{string}\")"));
+                                            }
+                                        },
+                                        _ => (),
+                                    }
+                                }
+
+                                variable.push_str(");");
+                            },
                             Expr::ArrIndex(value) => {
                                 // value.0 = Varname -> (typ, name)
                                 // value.1 = IntLit -> index
@@ -354,88 +477,11 @@ impl Gen {
 
                     self.code.push_str(&re_var);
                 },
+                Expr::Println(value) => {
+                    self.handle_print(*value, true);
+                }
                 Expr::Print(value) => {
-                    if !self.imports.contains("#include <stdio.h>\n") {
-                        self.imports.push_str("#include <stdio.h>\n");
-                    }
-
-                    let mut print_code = String::from(format!("printf(\""));
-                    let mut param_buf = String::new();
-                    let mut var_buf = String::new();
-                   // FIND A WAY TO PASS THE CONTENT OF A STRING INSTEAD OF THE WHOLE STRUCT
-
-                    for v in *value {
-                        match v {
-                            Expr::StrLit(string) => param_buf.push_str(&format!("{string}")),
-                            Expr::IntLit(integer) => {
-                                let lit = sanitise_intlit(integer.clone());
-                                param_buf.push_str(&format!("%d"));
-                                var_buf.push_str(&format!(",{lit}"));
-                            },
-                            Expr::ArrIndex(arr_index) => {
-                                let mut is_string = false;
-                                let mut arr_name = String::new();
-
-                                match arr_index.0 {
-                                    Expr::VarName((typ, name)) => {
-                                        arr_name = name;
-                                        match typ {
-                                            Types::Arr(arr_typ) => {
-                                                match *arr_typ {
-                                                    Types::Int => {
-                                                        param_buf.push_str(&format!("%d"));
-                                                    },
-                                                    Types::Str => {
-                                                        is_string = true;
-                                                        param_buf.push_str(&format!("%s"));
-                                                    }
-                                                    _ => (),
-                                                }
-                                            },
-                                            _ => (),
-                                        }
-                                    },
-                                    _ => (),
-                                }
-
-                                match arr_index.1 {
-                                    Expr::IntLit(index) => {
-                                        if is_string {
-                                            var_buf.push_str(&format!(",{arr_name}[{index}].data"));
-                                        } else {
-                                            var_buf.push_str(&format!(",{arr_name}[{index}]"));
-                                        }
-                                    },
-                                    _ => (),
-                                }
-                            },
-                            Expr::Var(var_info) => {
-                                match var_info.0 {
-                                    Expr::VarName((typ, name)) => {
-                                        match typ {
-                                            Types::Int => {
-                                                param_buf.push_str(&format!("%d"));
-                                                var_buf.push_str(&format!(",{name}"));
-                                            },
-                                            Types::Str => {
-                                                param_buf.push_str(&format!("%s"));
-                                                var_buf.push_str(&format!(",{name}.data"));
-                                            },
-                                            _ => (),
-                                        }
-                                    },
-                                    _ => (),
-                                }
-                            }
-                            _ => (),
-                        }
-                    }
-
-                    print_code.push_str(&param_buf);
-                    print_code.push_str("\\n\"");
-                    print_code.push_str(&var_buf);
-                    print_code.push_str(");");
-                    self.code.push_str(&print_code);
+                    self.handle_print(*value, false);
                 }
                 Expr::EndBlock => {
                     self.code.push_str("}");

@@ -18,6 +18,7 @@ pub enum Keyword {
     Int,
     Str,
 
+    Println,
     Print,
 
     Underscore,

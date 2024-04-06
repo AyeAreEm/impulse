@@ -1,10 +1,8 @@
+string(string word) say: {
+    return word
+}
+
 _() main: {
-    int test_score: 100
-    if (test_score = 100) {
-        print("full marks")
-    } orif (test_score >= 50) {
-        print("you passed")
-    } else {
-        print("you failed")
-    }
+    string word: say("hello world")
+    println(word)
 }

@@ -14,6 +14,7 @@ pub enum Expr {
     ReVar(Box<(Expr, Expr)>), // Expr1 = VarName, Expr2 = StrLit | IntLit | VarName
     ReArr(Box<(Expr, String, Expr)>), // Expr1 = VarName, Index, Expr2 = StrLit | IntLit | VarName
 
+    Println(Box<Vec<Expr>>),
     Print(Box<Vec<Expr>>), // Expr = StrLit | IntLit | VarName
 
     StrLit(String),
@@ -93,6 +94,7 @@ pub struct ExprWeights {
 impl ExprWeights {
     pub fn new(tokens: Vec<Token>) -> ExprWeights {
         let token_to_keyword: HashMap<String, Keyword> = HashMap::from([
+            ("println".to_string(), Keyword::Println),
             ("print".to_string(), Keyword::Print),
             ("int".to_string(), Keyword::Int),
             ("string".to_string(), Keyword::Str),
@@ -174,6 +176,7 @@ impl ExprWeights {
             self.has_macro_name = String::new();
             self.has_pipe = false;
             self.has_ref_name = Vec::new();
+            self.has_return = false;
             self.has_if = false;
             self.has_orif = false;
             self.has_else = false;
@@ -505,6 +508,7 @@ impl ExprWeights {
 
     fn handle_keywords(&mut self, keyword: Keyword) {
         match keyword {
+            Keyword::Println => self.has_predef_func = keyword,
             Keyword::Print => self.has_predef_func = keyword,
             Keyword::Int => {
                 if let Types::None = self.has_type {
@@ -628,7 +632,7 @@ impl ExprWeights {
         }
     }
 
-    fn check_print(&mut self) -> Expr {
+    fn check_print(&mut self, is_line: bool) -> Expr {
         let expr = Expr::None;
         let mut met_criteria = false;
 
@@ -739,6 +743,9 @@ impl ExprWeights {
             }
         }
 
+        if is_line {
+            return Expr::Println(Box::new(params))
+        }
         Expr::Print(Box::new(params))
     }
 
@@ -1144,7 +1151,7 @@ impl ExprWeights {
             return expr
         }
 
-        if self.has_colon && !self.has_lcurl && self.has_macro_name.is_empty() {
+        if self.has_colon && !self.has_lcurl && !self.has_lbrack && self.has_macro_name.is_empty() {
             match value {
                 Expr::StrLit(v) => {
                     let varname = Expr::VarName((Types::Str, self.has_name.clone()));
@@ -1554,7 +1561,51 @@ impl ExprWeights {
             }
         }
 
-        self.has_return = false;
+        expr
+    }
+
+    fn try_return_value(&mut self, name: String, typ: Types, params: Vec<Expr>) -> Expr {
+        let expr: Expr;
+
+        match self.has_type {
+            Types::Int => {
+                match typ {
+                    Types::Int => (),
+                    _ => {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: mismatch types");
+                        exit(1);
+                    },
+                }
+            },
+            Types::Str => {
+                match typ {
+                    Types::Str => (),
+                    _ => {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: mismatch types");
+                        exit(1);
+                    },
+                }
+            },
+            _ => {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: unsupported type rn lol soz");
+                exit(1);
+            },
+        }
+        expr = Expr::Var(Box::new(
+            (
+                Expr::VarName((typ, self.has_name.clone())),
+                Expr::FuncCall(Box::new((Expr::FuncName(name), params)))
+            )
+        ));
+
+        let cur_func = self.extract_func_name();
+        if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+            vars[self.current_scope].push(expr.clone());
+        }
+
         expr
     }
 
@@ -1562,8 +1613,8 @@ impl ExprWeights {
         // FIND A WAY TO ERROR IF THE FUNC NAME DOESN'T EXIST
 
         let mut expr = Expr::None;
+        let mut typ = Types::None;
         let mut name = String::new();
-        let mut met_criteria = false;
 
         if self.has_func_name.is_empty() {
             return expr
@@ -1576,7 +1627,11 @@ impl ExprWeights {
                         Expr::FuncName(func_name) => {
                             if func_name == &self.has_func_name && self.has_lbrack && self.has_rbrack && !self.has_lcurl {
                                 name = self.has_func_name.clone();
-                                met_criteria = true;
+                                if self.has_colon {
+                                    typ = func_info.0.clone();
+                                    break;
+                                }
+                                break;
                             }
                         },
                         _=> (),
@@ -1586,34 +1641,43 @@ impl ExprWeights {
             }
         }
 
-        if met_criteria {
-            match self.get_params() {
-                Some(param) => expr = Expr::FuncCall(Box::new((Expr::FuncName(name), param.to_vec()))),
-                None => {
-                    let params = &self.tokens[self.start_param_ix..self.end_param_ix];
-                    let mut expr_params = Vec::new();
+        match self.get_params() {
+            Some(param) => {
+                if let Types::None = typ {
+                    expr = Expr::FuncCall(Box::new((Expr::FuncName(name), param)));
+                } else {
+                    expr = self.try_return_value(name, typ, param)
+                }
+            },
+            None => {
+                let params = &self.tokens[self.start_param_ix..self.end_param_ix];
+                let mut expr_params = Vec::new();
 
-                    for param in params {
-                        match param {
-                            Token::Str(string) => {
-                                expr_params.push(Expr::StrLit(string.clone()))
-                            },
-                            Token::Int(integer) => {
-                                expr_params.push(Expr::IntLit(integer.clone()))
-                            },
-                            _ => (),
-                        }
+                for param in params {
+                    match param {
+                        Token::Str(string) => {
+                            expr_params.push(Expr::StrLit(string.clone()))
+                        },
+                        Token::Int(integer) => {
+                            expr_params.push(Expr::IntLit(integer.clone()))
+                        },
+                        _ => (),
                     }
+                }
+
+                if let Types::None = typ {
                     expr = Expr::FuncCall(Box::new((Expr::FuncName(name), expr_params)))
-                },
-            }
+                } else {
+                    expr = self.try_return_value(name, typ, expr_params)
+                }
+            },
         }
 
         expr
     }
 
     fn check_block(&mut self) -> Expr {
-        let mut expr = Expr::None;
+        let expr: Expr;
 
         if self.has_if || self.has_orif || self.has_else {
             expr = self.check_if();
@@ -1692,13 +1756,10 @@ impl ExprWeights {
                 self.end_param_ix = self.current_token;
 
                 match self.has_predef_func {
-                    Keyword::Print => {
-                        expr = self.check_print();
-                    },
+                    Keyword::Println => expr = self.check_print(true),
+                    Keyword::Print => expr = self.check_print(false),
+                    Keyword::None => expr = self.try_func_call(),
                     _ => (),
-                }
-                if let Expr::None = expr {
-                    expr = self.try_func_call();
                 }
             },
             Token::Colon => {
@@ -1731,15 +1792,14 @@ impl ExprWeights {
                     self.handle_keywords(keyword.1);
                 } else if num. 0{
                         // if we have a number, try see if we can make a variable
-                        expr = self.try_variable(&num.1);
-
+                        expr = self.try_return(num.1.clone());
+                        if let Expr::None = expr {
+                            expr = self.try_variable(&num.1);
+                        }
                         if let Expr::None = expr {
                             expr = self.try_reassign_variable(num.1.clone());
                         }
 
-                        if let Expr::None = expr {
-                            expr = self.try_return(num.1);
-                        }
                 } else {
                     expr = self.handle_var_use(word.clone());
                 }
@@ -1793,11 +1853,11 @@ impl ExprWeights {
                     self.has_pipe = true;
                 }
             },
+            Token::Newline => self.line_num += 1,
             Token::Equal => (),
             Token::SmallerThan => (),
             Token::BiggerThan => (),
             Token::Exclaim => (),
-            Token::Newline => self.line_num += 1,
             Token::Lsquare => (),
             Token::Rsquare => (),
             Token::Quote => (),
@@ -1817,9 +1877,11 @@ impl ExprWeights {
 
         while self.current_token < self.tokens.len() {
             let expr = self.parse_to_expr();
+            // println!("has colon: {}", self.has_colon);
             match expr {
                 Expr::None => (),
                 _ => {
+                    println!("{:?}", expr);
                     program.push(expr);
                     self.clear();
                 },
