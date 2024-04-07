@@ -1,5 +1,4 @@
-@import "base/test.imp"
-
 _() main: {
-    say("hello world")
+    # hello world program
+    println("hello world") # this prints hello world
 }

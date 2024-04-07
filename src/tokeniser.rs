@@ -57,8 +57,15 @@ pub fn tokeniser(file: String) -> Vec<Token> {
     let mut in_quotes = false;
     let mut in_squares = false;
     let mut square_occurences = 0;
+    let mut comment_line = false;
 
     for c in file.chars() {
+        if comment_line && c == '\n' {
+            comment_line = false;
+            tokens.push(Token::Newline);
+            continue;
+        }
+
         if c == '"' {
             in_quotes = !in_quotes;
 
@@ -81,6 +88,11 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             } else {
                 tokens.push(Token::Underscore);
             }
+            continue;
+        }
+
+        if c == '#' {
+            comment_line = true;
             continue;
         }
 
@@ -123,7 +135,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
 
             if c == '\n' {
                 tokens.push(Token::Newline);
-            }
+            } 
             continue;
         }
 
