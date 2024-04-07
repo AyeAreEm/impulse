@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{process::exit, collections::HashMap};
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -52,17 +52,18 @@ pub fn tokeniser(file: String) -> Vec<Token> {
         ('!', Token::Exclaim),
     ]);
 
+    let mut line_num: i64 = -1;
+
     let mut tokens: Vec<Token> = Vec::new();
     let mut buf = String::new();
+
     let mut in_quotes = false;
     let mut in_squares = false;
     let mut square_occurences = 0;
     let mut comment_line = false;
 
     for c in file.chars() {
-        if comment_line && c == '\n' {
-            comment_line = false;
-            tokens.push(Token::Newline);
+        if comment_line {
             continue;
         }
 
@@ -134,8 +135,12 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             }
 
             if c == '\n' {
+                if comment_line {
+                    comment_line = false;
+                }
                 tokens.push(Token::Newline);
-            } 
+                line_num += 1;
+            }
             continue;
         }
 

@@ -1,4 +1,11 @@
+@import "libc/io.h"
+
 _() main: {
-    # hello world program
-    println("hello world") # this prints hello world
+    string name: ""
+    print("enter name")
+
+    @c [
+        name = readin();
+    ]
+    print(name)
 }

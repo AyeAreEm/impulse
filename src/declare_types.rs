@@ -39,6 +39,7 @@ pub enum Keyword {
 
 #[derive(Debug, Clone)]
 pub enum Macros {
+    C,
     Import,
     Arr,
     Dynam,

@@ -14,6 +14,9 @@ pub enum Expr {
     ReVar(Box<(Expr, Expr)>), // Expr1 = VarName, Expr2 = StrLit | IntLit | VarName
     ReArr(Box<(Expr, String, Expr)>), // Expr1 = VarName, Index, Expr2 = StrLit | IntLit | VarName
 
+    CImport(String),
+    CEmbed(String),
+
     Println(Box<Vec<Expr>>),
     Print(Box<Vec<Expr>>), // Expr = StrLit | IntLit | VarName
     ReadIn,
@@ -69,6 +72,7 @@ pub struct ExprWeights {
     has_orif: bool,
     has_else: bool,
     has_loop: bool,
+    has_cembed_macro: bool,
 
     start_param_ix: usize,
     end_param_ix: usize,
@@ -114,6 +118,7 @@ impl ExprWeights {
         ]);
 
         let ident_to_macro: HashMap<String, Macros> = HashMap::from([
+            ("c".to_string(), Macros::C),
             ("import".to_string(), Macros::Import),
             ("array".to_string(), Macros::Arr),
             ("dynam".to_string(), Macros::Dynam),
@@ -142,6 +147,7 @@ impl ExprWeights {
             has_orif: false,
             has_else: false,
             has_loop: false,
+            has_cembed_macro: false,
 
             start_param_ix: 0,
             end_param_ix: 0,
@@ -189,6 +195,7 @@ impl ExprWeights {
             self.has_orif = false;
             self.has_else = false;
             self.has_loop = false;
+            self.has_cembed_macro = false;
 
             self.start_param_ix = 0;
             self.end_param_ix = 0;
@@ -243,37 +250,43 @@ impl ExprWeights {
         cur_func.to_string()
     }
 
-    fn handle_import(&mut self, location: &Expr) {
+    fn handle_import(&mut self, location: &Expr) -> Option<Expr> {
         match location {
             Expr::StrLit(loc) => {
-                let file_res = fs::read_to_string(loc);
-                let content = match file_res {
-                    Ok(content) => content,
-                    Err(_) => {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: unable to read file");
-                        exit(1);
-                    },
-                };
-
-                if self.program.is_empty() {
-                    let tokens = tokeniser(content);
-                    let mut parse = ExprWeights::new(tokens);
-                    let mut expressions = parse.parser();
-
-                    self.functions.append(&mut parse.functions);
-                    self.program.append(&mut expressions);
+                if loc.chars().nth(loc.len()-1).unwrap() == 'h' {
+                    let no_extension = loc.split_at(loc.len()-2);
+                    self.has_macro_name.clear();
+                    return Some(Expr::CImport(no_extension.0.to_string()))
                 } else {
-                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                    println!("\x1b[91merror\x1b[0m: imports need to be before writing your program");
-                    exit(1);
-                }
+                    let file_res = fs::read_to_string(loc);
+                    let content = match file_res {
+                        Ok(content) => content,
+                        Err(_) => {
+                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                            println!("\x1b[91merror\x1b[0m: unable to read file");
+                            exit(1);
+                        },
+                    };
 
+                    if self.program.is_empty() {
+                        let tokens = tokeniser(content);
+                        let mut parse = ExprWeights::new(tokens);
+                        let mut expressions = parse.parser();
+
+                        self.functions.append(&mut parse.functions);
+                        self.program.append(&mut expressions);
+                    } else {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: imports need to be before writing your program");
+                        exit(1);
+                    }
+                }
             },
             _ => (),
         }
 
         self.has_macro_name.clear();
+        None
     }
 
     fn make_arr_index(&self, arr_name: Expr, index: &String) -> Expr {
@@ -1845,6 +1858,17 @@ impl ExprWeights {
                     self.has_macro_name = word.to_string();
                     self.current_token += 1;
                     self.has_macro = false;
+
+                    let macro_res = self.macros_map.get(&self.has_macro_name);
+                    match macro_res {
+                        Some(mac) => {
+                            match mac {
+                                Macros::C => self.has_cembed_macro = true,
+                                _ => (),
+                            }
+                        },
+                        None => (),
+                    }
                     return expr
                 }
 
@@ -1890,10 +1914,16 @@ impl ExprWeights {
                 self.has_strlit = true;
                 let strlit = Expr::StrLit(word.to_string());
                 if !self.has_macro_name.is_empty() {
-                    self.handle_import(&strlit);
+                    match self.handle_import(&strlit) {
+                        Some(value) => expr = value,
+                        None => (),
+                    }
                 }
 
-                expr = self.try_variable(&strlit);
+                if let Expr::None = expr {
+                    expr = self.try_variable(&strlit);
+                }
+
                 if let Expr::None = expr {
                     expr = self.try_reassign_variable(strlit.clone());
                 }
@@ -1905,18 +1935,23 @@ impl ExprWeights {
             Token::Int(integer) => {
                 self.has_intlit = true;
                 self.intlit_content.push_str(integer);
+
+                if self.has_cembed_macro {
+                    expr = Expr::CEmbed(integer.trim().to_string());
+                } else {
+                    let intlit = self.check_intlit(integer.to_string());
+
+                    expr = self.try_variable(&intlit);
+
+                    if let Expr::None = expr {
+                        expr = self.try_reassign_variable(intlit.clone());
+                    }
+
+                    if let Expr::None = expr {
+                        expr = self.try_return(intlit);
+                    }
+                }
                 
-                let intlit = self.check_intlit(integer.to_string());
-
-                expr = self.try_variable(&intlit);
-
-                if let Expr::None = expr {
-                    expr = self.try_reassign_variable(intlit.clone());
-                }
-
-                if let Expr::None = expr {
-                    expr = self.try_return(intlit);
-                }
             },
             Token::Macro => {
                 self.has_macro = true;
@@ -1955,7 +1990,6 @@ impl ExprWeights {
             match expr {
                 Expr::None => (),
                 _ => {
-                    println!("{:?}", expr);
                     self.program.push(expr);
                     self.clear();
                 },

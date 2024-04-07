@@ -1,4 +1,4 @@
-use std::{fs, process::{exit, Command}};
+use std::{collections::HashMap, fs, process::{exit, Command}};
 use rand::Rng;
 use crate::parser::Expr;
 use crate::declare_types::*;
@@ -8,6 +8,7 @@ pub struct Gen {
     comp_imports:  String,
     code: String,
     out_file: String,
+    libc_map: HashMap<String, bool>,
     lang: Lang,
 }
 
@@ -47,11 +48,16 @@ fn sanitise_intlit(intlit: String) -> String {
 
 impl Gen {
     pub fn new(out_file: String, lang: Lang) -> Gen {
+        let libc_map = HashMap::from([
+            ("stdio".to_string(), true),
+        ]);
+
         return Gen {
             imports: String::new(),
             comp_imports: String::new(),
             code: String::new(),
             out_file,
+            libc_map,
             lang,
         }
     }
@@ -285,6 +291,20 @@ impl Gen {
     pub fn generate(&mut self, expressions: Vec<Expr>) {
         for (index, expr) in expressions.into_iter().enumerate() {
             match expr {
+                Expr::CImport(loc) => {
+                    if !self.imports.contains(&format!("#include <{loc}.h>\n")) {
+                        let libc_res = self.libc_map.get(&loc);
+                        match libc_res {
+                            Some(_) => {
+                                self.imports.push_str(&format!("#include <{loc}.h>\n"));
+                            },
+                            None => {
+                                self.imports.push_str(&format!("#include \"{loc}.h\"\n"));
+                                self.comp_imports.push_str(&format!("{loc}.c "))
+                            },
+                        }
+                    }
+                },
                 Expr::FuncCall(f) => {
                     let mut func_call = String::new();
                     let mut first_param = true;
@@ -693,6 +713,9 @@ impl Gen {
                 },
                 Expr::Else => {
                     self.code.push_str("else{");
+                },
+                Expr::CEmbed(embed) => {
+                    self.code.push_str(&format!("{embed}"));
                 },
                 _ => (),
             }
