@@ -1,11 +1,13 @@
-@import "libc/io.h"
+@import "stdio.h"
 
 _() main: {
-    string name: ""
-    print("enter name")
+    int x: 10
+    string name: "adrian"
 
     @c [
-        name = readin();
+        printf("%d", x);
+        printf("%s", name.data);
     ]
+
     print(name)
 }

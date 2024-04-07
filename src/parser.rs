@@ -1937,7 +1937,8 @@ impl ExprWeights {
                 self.intlit_content.push_str(integer);
 
                 if self.has_cembed_macro {
-                    expr = Expr::CEmbed(integer.trim().to_string());
+                    let trimmed = integer.trim().replace("\r\n", "").replace("    ", "");
+                    expr = Expr::CEmbed(trimmed);
                 } else {
                     let intlit = self.check_intlit(integer.to_string());
 
@@ -1990,6 +1991,7 @@ impl ExprWeights {
             match expr {
                 Expr::None => (),
                 _ => {
+                    println!("{:?}", expr);
                     self.program.push(expr);
                     self.clear();
                 },

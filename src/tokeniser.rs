@@ -1,4 +1,4 @@
-use std::{process::exit, collections::HashMap};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub enum Token {
@@ -52,8 +52,6 @@ pub fn tokeniser(file: String) -> Vec<Token> {
         ('!', Token::Exclaim),
     ]);
 
-    let mut line_num: i64 = -1;
-
     let mut tokens: Vec<Token> = Vec::new();
     let mut buf = String::new();
 
@@ -63,37 +61,18 @@ pub fn tokeniser(file: String) -> Vec<Token> {
     let mut comment_line = false;
 
     for c in file.chars() {
-        if comment_line {
-            continue;
-        }
-
-        if c == '"' {
-            in_quotes = !in_quotes;
-
-            if !in_quotes {
-                tokens.push(Token::Str(buf.clone()));
-                buf.clear();
-            }
-            tokens.push(Token::Quote);
-            continue;
-        }
-
-        if in_quotes {
-            buf.push(c);
-            continue;
-        }
-
-        if c == '_' {
-            if !buf.is_empty() {
-                buf.push(c);
-            } else {
-                tokens.push(Token::Underscore);
-            }
-            continue;
-        }
-
         if c == '#' {
             comment_line = true;
+            continue;
+        }
+
+        if comment_line && c == '\n' {
+            tokens.push(Token::Newline);
+            comment_line = false;
+            continue;
+        }
+
+        if comment_line {
             continue;
         }
 
@@ -128,6 +107,32 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             continue;
         }
 
+        if c == '"' {
+            in_quotes = !in_quotes;
+
+            if !in_quotes {
+                tokens.push(Token::Str(buf.clone()));
+                buf.clear();
+            }
+            tokens.push(Token::Quote);
+            continue;
+        }
+
+        if in_quotes {
+            buf.push(c);
+            continue;
+        }
+
+        if c == '_' {
+            if !buf.is_empty() {
+                buf.push(c);
+            } else {
+                tokens.push(Token::Underscore);
+            }
+            continue;
+        }
+
+
         if c == ' ' || c == '\n' || c == '\r' {
             if buf.len() > 0 {
                 tokens.push(Token::Ident(buf.clone()));
@@ -135,11 +140,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             }
 
             if c == '\n' {
-                if comment_line {
-                    comment_line = false;
-                }
                 tokens.push(Token::Newline);
-                line_num += 1;
             }
             continue;
         }

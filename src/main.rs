@@ -21,9 +21,9 @@ fn build(filename: &String, out_filename: &String, keep_c: bool) {
     };
 
     let tokens = tokeniser(content);
-    // for token in &tokens {
-    //     println!("{:?}", token);
-    // }
+    for token in &tokens {
+        println!("{:?}", token);
+    }
 
     let mut parse = ExprWeights::new(tokens);
     let expressions = parse.parser();
