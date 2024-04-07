@@ -70,9 +70,6 @@ Open a terminal:<br>
 bool -> boolean
 f64 -> 64 bit float
 @iter i: 5 {} -> simple loop, not really an iterator type
-
-@import "base/io.imp" -> library of imp files
-@import "libc/stdio.h" -> library of c files
 ```
 for more info, look at the <a href="./DOCS/DOCS.md">Docs</a><br>
 for examples, check out the <a href="./examples">examples folder</a>

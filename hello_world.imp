@@ -5,8 +5,8 @@ _() main: {
     string name: "adrian"
 
     @c [
-        printf("%d", x);
-        printf("%s", name.data);
+        printf("%d\n", x);
+        printf("%s\n", name.data);
     ]
 
     print(name)

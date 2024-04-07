@@ -15,3 +15,5 @@ int x: [[1 + 3] * [3 * 3]]
 int y: 10
 int x: [x + 5]
 ```
+
+<a href="./CInterop.md">Next -> C Interop / Embedding</a>

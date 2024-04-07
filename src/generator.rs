@@ -50,6 +50,8 @@ impl Gen {
     pub fn new(out_file: String, lang: Lang) -> Gen {
         let libc_map = HashMap::from([
             ("stdio".to_string(), true),
+            ("stdlib".to_string(), true),
+            ("string".to_string(), true),
         ]);
 
         return Gen {

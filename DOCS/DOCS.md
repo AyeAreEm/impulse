@@ -8,3 +8,5 @@
 ## <a href="./Functions.md">Functions / Procedures</a>
 
 ## <a href="./Math.md">Math</a>
+
+## <a href="./CInterop.md">C Interop / Embedding</a>
