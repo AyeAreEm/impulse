@@ -27,4 +27,5 @@ string string_from(char *str);
 int string_cmp(string x, string y);
 void string_push(string *str, char c);
 void string_pushstr(string *value, string *source);
+int parse_int(string str);
 #endif

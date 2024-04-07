@@ -20,6 +20,7 @@ pub enum Keyword {
 
     Println,
     Print,
+    ReadIn,
 
     Underscore,
     Return,

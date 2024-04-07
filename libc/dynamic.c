@@ -117,3 +117,13 @@ void string_pushstr(string *value, string *source) {
         value->data[value->len] = '\0';
     }
 }
+
+int parse_int(string str) {
+    long num = strtol(str.data, NULL, 10);
+
+    if (num >= INT_MIN && num <= INT_MAX) {
+        return (int)num;
+    } else {
+        exit(1);
+    }
+}

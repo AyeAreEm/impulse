@@ -1,8 +1,5 @@
-string(string word) say: {
-    return word
-}
+@import "base/test.imp"
 
 _() main: {
-    string word: say("hello world")
-    println(word)
+    say("hello world")
 }

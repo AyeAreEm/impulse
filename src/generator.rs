@@ -63,6 +63,12 @@ impl Gen {
         }
     }
 
+    fn import_io(&mut self) {
+        if !self.imports.contains("#include \"libc/io.h\"\n") {
+            self.imports.push_str("#include \"libc/io.h\"\n");
+            self.comp_imports.push_str("./libc/io.c ");
+        }
+    }
 
     fn make_arr_var(&mut self, typ: Types, name: String, elems: Expr) -> String {
         let mut arr_var = String::new();
@@ -389,6 +395,10 @@ impl Gen {
                                 let lit = sanitise_intlit(value.clone());
                                 variable.push_str(&format!("{lit};"));
                             },
+                            Expr::ReadIn => {
+                                self.import_io();
+                                variable.push_str(&format!("readin();"));
+                            },
                             Expr::VarName((_, value)) => variable.push_str(&format!("{value};")),
                             Expr::FuncCall(func_call) => {
                                 match func_call.0 {
@@ -479,10 +489,10 @@ impl Gen {
                 },
                 Expr::Println(value) => {
                     self.handle_print(*value, true);
-                }
+                },
                 Expr::Print(value) => {
                     self.handle_print(*value, false);
-                }
+                },
                 Expr::EndBlock => {
                     self.code.push_str("}");
                 },

@@ -1,5 +1,5 @@
-use std::{collections::HashMap, process::exit};
-use crate::tokeniser::Token; use crate::declare_types::*;
+use std::{fs, collections::HashMap, process::exit};
+use crate::tokeniser::{tokeniser, Token}; use crate::declare_types::*;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -16,6 +16,7 @@ pub enum Expr {
 
     Println(Box<Vec<Expr>>),
     Print(Box<Vec<Expr>>), // Expr = StrLit | IntLit | VarName
+    ReadIn,
 
     StrLit(String),
     IntLit(String),
@@ -81,7 +82,7 @@ pub struct ExprWeights {
     keyword_map: HashMap<String, Keyword>,
     macros_map: HashMap<String, Macros>,
 
-    functions: Vec<Expr>,
+    pub functions: Vec<Expr>,
     func_to_vars: HashMap<String, Vec<Vec<Expr>>>,
 
     current_func: Expr,
@@ -89,6 +90,8 @@ pub struct ExprWeights {
     in_scope: bool,
 
     line_num: u32,
+    
+    program: Vec<Expr>,
 }
 
 impl ExprWeights {
@@ -96,6 +99,8 @@ impl ExprWeights {
         let token_to_keyword: HashMap<String, Keyword> = HashMap::from([
             ("println".to_string(), Keyword::Println),
             ("print".to_string(), Keyword::Print),
+            ("readin".to_string(), Keyword::ReadIn),
+
             ("int".to_string(), Keyword::Int),
             ("string".to_string(), Keyword::Str),
             ("return".to_string(), Keyword::Return),
@@ -109,6 +114,7 @@ impl ExprWeights {
         ]);
 
         let ident_to_macro: HashMap<String, Macros> = HashMap::from([
+            ("import".to_string(), Macros::Import),
             ("array".to_string(), Macros::Arr),
             ("dynam".to_string(), Macros::Dynam),
         ]);
@@ -156,6 +162,8 @@ impl ExprWeights {
             in_scope: false,
 
             line_num: 1,
+
+            program: Vec::new(),
             // variables: Vec::new(),
         }
     }
@@ -228,11 +236,44 @@ impl ExprWeights {
             _ => {
                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
                 println!("\x1b[91merror\x1b[0m: undefined function name");
-                exit(1)
+                exit(1);
             },
         };
 
         cur_func.to_string()
+    }
+
+    fn handle_import(&mut self, location: &Expr) {
+        match location {
+            Expr::StrLit(loc) => {
+                let file_res = fs::read_to_string(loc);
+                let content = match file_res {
+                    Ok(content) => content,
+                    Err(_) => {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: unable to read file");
+                        exit(1);
+                    },
+                };
+
+                if self.program.is_empty() {
+                    let tokens = tokeniser(content);
+                    let mut parse = ExprWeights::new(tokens);
+                    let mut expressions = parse.parser();
+
+                    self.functions.append(&mut parse.functions);
+                    self.program.append(&mut expressions);
+                } else {
+                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                    println!("\x1b[91merror\x1b[0m: imports need to be before writing your program");
+                    exit(1);
+                }
+
+            },
+            _ => (),
+        }
+
+        self.has_macro_name.clear();
     }
 
     fn make_arr_index(&self, arr_name: Expr, index: &String) -> Expr {
@@ -510,6 +551,7 @@ impl ExprWeights {
         match keyword {
             Keyword::Println => self.has_predef_func = keyword,
             Keyword::Print => self.has_predef_func = keyword,
+            Keyword::ReadIn => self.has_predef_func = keyword,
             Keyword::Int => {
                 if let Types::None = self.has_type {
                     self.has_type = Types::Int;
@@ -630,6 +672,30 @@ impl ExprWeights {
         } else {
             Some(params)
         }
+    }
+
+    fn check_readin(&mut self) -> Expr {
+        let mut expr = Expr::None;
+
+        match self.has_type {
+            Types::Str => {
+                if self.has_colon && !self.has_lcurl && self.has_lbrack {
+                    expr = Expr::Var(Box::new((Expr::VarName((self.has_type.clone(), self.has_name.clone())), Expr::ReadIn)));
+                    let cur_func = self.extract_func_name();
+                    if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+                        vars[self.current_scope].push(expr.clone());
+                    }
+                }
+            },
+            _ => {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: function readin returns string but {} is type {:?}", self.has_name, self.has_type);
+                println!("\x1b[91merror\x1b[0m: mismatch types");
+                exit(1);
+            },
+        }
+
+        expr
     }
 
     fn check_print(&mut self, is_line: bool) -> Expr {
@@ -757,7 +823,6 @@ impl ExprWeights {
         }
 
         if self.has_lbrack && self.has_rbrack && self.has_colon && !self.has_name.is_empty() && self.has_lcurl {
-            println!("\x1b[96m{}\x1b[0m", self.has_macro_name); // don't remember why this is here
             if let Types::None = self.has_type {
                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
                 println!("\x1b[91merror\x1b[0m: unknown type for function {}", self.has_name);
@@ -794,7 +859,15 @@ impl ExprWeights {
                 };
 
                 if mac.0 {
-                    expr = Expr::Func(Box::new((Types::Arr(Box::new(self.has_type.clone())), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
+                    match mac.1 {
+                        Macros::Arr => {
+                            expr = Expr::Func(Box::new((Types::Arr(Box::new(self.has_type.clone())), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
+                        },
+                        Macros::Dynam => {
+                            expr = Expr::Func(Box::new((Types::Dynam(Box::new(self.has_type.clone())), Expr::FuncParams(Box::new(params)), Expr::FuncName(self.has_name.clone()))));
+                        }
+                        _ => (),
+                    }
                     self.functions.push(expr.clone());
                     self.current_func = Expr::FuncName(self.has_name.clone());
                     self.func_to_vars.entry(self.has_name.clone()).or_insert(vec![temp_vars]);
@@ -1758,6 +1831,7 @@ impl ExprWeights {
                 match self.has_predef_func {
                     Keyword::Println => expr = self.check_print(true),
                     Keyword::Print => expr = self.check_print(false),
+                    Keyword::ReadIn => expr = self.check_readin(),
                     Keyword::None => expr = self.try_func_call(),
                     _ => (),
                 }
@@ -1815,8 +1889,11 @@ impl ExprWeights {
             Token::Str(word) => {
                 self.has_strlit = true;
                 let strlit = Expr::StrLit(word.to_string());
-                expr = self.try_variable(&strlit);
+                if !self.has_macro_name.is_empty() {
+                    self.handle_import(&strlit);
+                }
 
+                expr = self.try_variable(&strlit);
                 if let Expr::None = expr {
                     expr = self.try_reassign_variable(strlit.clone());
                 }
@@ -1873,21 +1950,18 @@ impl ExprWeights {
     }
 
     pub fn parser(&mut self) -> Vec<Expr> {
-        let mut program: Vec<Expr> = Vec::new();
-
         while self.current_token < self.tokens.len() {
             let expr = self.parse_to_expr();
-            // println!("has colon: {}", self.has_colon);
             match expr {
                 Expr::None => (),
                 _ => {
                     println!("{:?}", expr);
-                    program.push(expr);
+                    self.program.push(expr);
                     self.clear();
                 },
             }
         }
 
-        program
+        self.program.clone()
     }
 }
