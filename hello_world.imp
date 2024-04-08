@@ -1,11 +1,21 @@
-struct person: {
+@import "stdio.h"
+
+struct greet_someone: {
+    string greet
     string name
-    int age
 }
 
 _() main: {
-    person new_guy: {
-        name: "adrian"
-        age: 17
+    greet_someone dude: {
+        greet: ""
+        name: ""
     }
+
+    dude.greet: "hello there, "
+    dude.name: "john doe"
+
+    @c [
+        printf("%s", dude.greet.data);
+        printf("%s", dude.name.data);
+    ]
 }

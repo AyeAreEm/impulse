@@ -49,7 +49,6 @@ pub enum Expr {
     EndStruct,
 
     // DEFINE A VAR STRUCT
-    StructVarDef((String, String)),
     StructVarField(Box<Expr>), // Expr = VarName,
     EndStructVar,
 
@@ -86,6 +85,7 @@ pub struct ExprWeights {
     has_loop: bool,
     has_cembed_macro: bool,
     has_def_struct: bool,
+    has_dot: bool,
 
     start_param_ix: usize,
     end_param_ix: usize,
@@ -176,6 +176,7 @@ impl ExprWeights {
             has_loop: false,
             has_cembed_macro: false,
             has_def_struct: false,
+            has_dot: false,
 
             start_param_ix: 0,
             end_param_ix: 0,
@@ -232,6 +233,7 @@ impl ExprWeights {
             self.has_else = false;
             self.has_loop = false;
             self.has_cembed_macro = false;
+            self.has_dot = false;
             // self.has_def_struct = false;
 
             self.start_param_ix = 0;
@@ -1188,14 +1190,14 @@ impl ExprWeights {
 
     fn try_reassign_variable(&mut self, ident: Expr) -> Expr {
         let mut expr = Expr::None;
-        let mut found_match = false;
-        let mut typ = Types::None;
-        let mut name = String::new();
 
         if !self.has_macro_name.is_empty() || self.has_ref_name.is_empty() {
             return expr
         }
 
+        let mut found_match = false;
+        let mut typ = Types::None;
+        let mut name = String::new();
         if let Types::None = self.has_type {
             let cur_func = self.extract_func_name();
             let variables_res = self.func_to_vars.get(&cur_func);
@@ -1208,36 +1210,91 @@ impl ExprWeights {
                 }
             };
 
-            for var in &variables[self.current_scope] {
-                match var {
-                    Expr::Var(var_info) => {
-                        match &var_info.0 {
-                            Expr::VarName((_, list_name)) => {
-                                match &self.has_ref_name[0] {
-                                    Expr::Var(var_info) => {
-                                        match &var_info.0 {
-                                            Expr::VarName((var_typ, var_name)) => {
-                                                if var_name == list_name {
-                                                    typ = var_typ.clone();
-                                                    name = var_name.clone();
-                                                    found_match = true;
-                                                }
-                                            },
-                                            _ => (),
-                                        }
-                                    },
-                                    _ => (),
+            if self.has_dot {
+                match &self.has_ref_name[self.has_ref_name.len()-1] {
+                    Expr::Var(ref_info) => {
+                        match &ref_info.1 {
+                            Expr::Condition(getter) => {
+                                for get in *getter.clone() {
+                                    match get {
+                                        Expr::StructField(struct_field) => {
+                                            match *struct_field {
+                                                Expr::VarName((field_typ, field_name)) => {
+                                                    if field_name == self.has_name {
+                                                        typ = field_typ.clone();
+                                                        name = field_name.clone();
+                                                        found_match = true;
+                                                        break;
+                                                    }
+                                                },
+                                                _ => (),
+                                            }
+                                        },
+                                        _ => (),
+                                    } 
                                 }
-                            }
+                            },
                             _ => (),
                         }
                     },
                     _ => (),
                 }
+            } else {
+                for var in &variables[self.current_scope] {
+                    match var {
+                        Expr::Var(var_info) => {
+                            match &var_info.0 {
+                                Expr::VarName((_, list_name)) => {
+                                    match &self.has_ref_name[0] {
+                                        Expr::Var(var_info) => {
+                                            match &var_info.0 {
+                                                Expr::VarName((var_typ, var_name)) => {
+                                                    if var_name == list_name {
+                                                        typ = var_typ.clone();
+                                                        name = var_name.clone();
+                                                        found_match = true;
+                                                    }
+                                                },
+                                                _ => (),
+                                            }
+                                        },
+                                        _ => (),
+                                    }
+                                }
+                                _ => (),
+                            }
+                        },
+                        _ => (),
+                    }
+                }
             }
         }
 
         if found_match && self.has_colon && !self.has_lbrack && !self.has_rbrack && !self.has_lcurl {
+            if self.has_dot {
+                let mut fullname = String::new();
+                for prop_name in &self.has_ref_name {
+                    if let Expr::Var(ref_info) = prop_name {
+                        if let Expr::VarName((_, partial_name)) = &ref_info.0 {
+                            fullname.push_str(&format!("{partial_name}."));
+                        }
+                    }
+                }
+                fullname.push_str(&format!("{}", name));
+                // println!("{fullname}");
+
+                match ident {
+                    Expr::StrLit(ref _string) => {
+                        match typ {
+                            Types::Str => expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), fullname)), ident.clone()))),
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+                return expr
+            }
+
             match ident {
                 Expr::StrLit(ref string) => {
                     match typ {
@@ -1954,14 +2011,40 @@ impl ExprWeights {
     }
 
     fn check_block(&mut self) -> Expr {
-        let expr: Expr;
+        let mut expr = Expr::None;
 
         if let Types::UserDef(struct_name) = &self.has_type {
             // check if they making a variable with struct
             if self.has_colon && !self.has_lbrack && !self.has_rbrack {
                 self.in_struct_var = true;
-                expr = Expr::StructVarDef((struct_name.to_string(), self.has_name.clone()));
-                self.new_scope(expr.clone());
+
+                let mut found = false;
+                let mut struct_fields = Vec::new();
+                for struc in &self.structures {
+                    match struc {
+                        Expr::Struct(struct_info) => {
+                            match &struct_info.0 {
+                                Expr::StructDef(struct_def) => {
+                                    if struct_def == struct_name {
+                                        struct_fields = struct_info.1.clone();
+                                        found = true;
+                                        break;
+                                    }
+                                },
+                                _ => (),
+                            }
+                        },
+                        _ => (),
+                    }
+                }
+
+                if found {
+                    expr = Expr::Var(Box::new((Expr::VarName((self.has_type.clone(), self.has_name.clone())), Expr::Condition(Box::new(struct_fields)))));
+                    let cur_func = self.extract_func_name();
+                    if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+                        vars[self.current_scope].push(expr.clone());
+                    }
+                }
             } else {
                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
                 println!("\x1b[91merror\x1b[0m: incorrect variable struct definition, {}", self.has_name);
@@ -1989,6 +2072,155 @@ impl ExprWeights {
 
     fn handle_var_use(&mut self, ident: String) -> Expr {
         let mut expr = Expr::None;
+
+        if self.has_dot {
+            let cur_func = self.extract_func_name();
+            let variables = self.func_to_vars.get(&cur_func);
+            let vars = match variables {
+                Some(v) => v,
+                None => {
+                    exit(1);
+                },
+            };
+
+            // let mut found_property = false;
+            // MY GOD PLEASE FORGIVE THIS MONSTROSITY
+            // for var in &vars[self.current_scope] {
+            //     let mut found = false;
+            //     match var {
+            //         Expr::Var(var_info) => {
+            //             match &var_info.0 {
+            //                 Expr::VarName((typ, name)) => {
+            //                     match &self.has_ref_name[self.has_ref_name.len()-1] {
+            //                         Expr::Var(ref_info) => {
+            //                             match &ref_info.0 {
+            //                                 Expr::VarName((ref_typ, ref_name)) => {
+            //                                     if name == ref_name {
+            //                                         found = true;
+            //                                     }
+            //                                 },
+            //                                 _ => (),
+            //                             }
+            //                             if found {
+            //
+            //                             match &ref_info.1 {
+            //                                 Expr::Condition(getter) => {
+            //                                     for get in *getter.clone() {
+            //                                         match get {
+            //                                             Expr::StructField(struct_field) => {
+            //                                                 match *struct_field {
+            //                                                     Expr::VarName((field_typ, field_name)) => {
+            //                                                         if field_name == self.has_name {
+            //                                                             self.has_name = ident.clone();
+            //                                                             found_property = true;
+            //                                                             break;
+            //                                                         }
+            //                                                     },
+            //                                                     _ => (),
+            //                                                 }
+            //                                             },
+            //                                             _ => (),
+            //                                         } 
+            //                                     }
+            //                                 },
+            //                                 _ => (),
+            //                             }
+            //                             }
+            //                         },
+            //                         _ => (),
+            //                     }
+            //                 },
+            //                 _ => (),
+            //             }
+            //         },
+            //         _ => (),
+            //     }
+            // }
+
+            // MY GOD PLEASE FORGIVE THIS MONSTROSITY
+            let mut var_struct_typ_name = String::new();
+            for var in &vars[self.current_scope] {
+                match var {
+                    Expr::Var(var_info) => {
+                        match &var_info.0 {
+                            Expr::VarName((typ, name)) => {
+                                match &self.has_ref_name[self.has_ref_name.len()-1] {
+                                    Expr::Var(ref_info) => {
+                                        match &ref_info.0 {
+                                            Expr::VarName((_, ref_name)) => {
+                                                if name == ref_name {
+                                                    match typ {
+                                                        Types::UserDef(typedef) => {
+                                                            var_struct_typ_name = typedef.clone();
+                                                        },
+                                                        _ => (),
+                                                    }
+                                                    break;
+                                                }
+                                            },
+                                            _ => (),
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            },
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+            }
+            if var_struct_typ_name.is_empty() {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: undefined variable {}", ident);
+                exit(1);
+            }
+
+            for struc in &self.structures {
+                let mut fields = Vec::new();
+                match struc {
+                    Expr::Struct(struct_info) => {
+                        match &struct_info.0 {
+                            Expr::StructDef(struct_name) => {
+                                if struct_name == &var_struct_typ_name {
+                                    fields = struct_info.1.clone();
+                                }
+                            },
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+
+                let mut found_property = false;
+                if !fields.is_empty() {
+                    for field in fields {
+                        match field {
+                            Expr::StructField(struct_field) => {
+                                match *struct_field {
+                                    Expr::VarName((_, name)) => {
+                                        if name == ident {
+                                            self.has_name = ident.clone();
+                                            found_property = true;
+                                            break;
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            },
+                            _ => (),
+                        }
+                    }
+                }
+
+                if !found_property {
+                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                    println!("\x1b[91merror\x1b[0m: struct \x1b[93m{}\x1b[0m doesn't have field \x1b[93m{}\x1b[0m", self.has_name, ident);
+                    exit(1);
+                }
+            }
+            return expr;
+        }
 
         if self.has_def_struct {
             self.has_name = ident;
@@ -2174,6 +2406,14 @@ impl ExprWeights {
                 } else if self.in_struct_var {
                     self.prev_scope();
                     self.in_struct_var = false;
+
+                    
+
+                    let cur_func = self.extract_func_name();
+                    if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+                        vars[self.current_scope].push(expr.clone());
+                    }
+
                     expr = Expr::EndStructVar;
                 } else {
                     self.prev_scope();
@@ -2210,7 +2450,7 @@ impl ExprWeights {
                 self.intlit_content.push_str(integer);
 
                 if self.has_cembed_macro {
-                    let trimmed = integer.trim().replace("\r\n", "").replace("    ", "");
+                    let trimmed = integer.trim().replace("\r", "").replace("    ", "");
                     expr = Expr::CEmbed(trimmed);
                 } else {
                     let intlit = self.check_intlit(integer.to_string());
@@ -2244,6 +2484,9 @@ impl ExprWeights {
                 }
             },
             Token::Newline => self.line_num += 1,
+            Token::Dot => {
+                self.has_dot = true;
+            },
             Token::Equal => (),
             Token::SmallerThan => (),
             Token::BiggerThan => (),

@@ -27,6 +27,8 @@ pub enum Token {
     Multiple,
     Divide,
 
+    Dot,
+
     Ident(String),
     Str(String),
     Int(String),
@@ -50,6 +52,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
         ('<', Token::SmallerThan),
         ('>', Token::BiggerThan),
         ('!', Token::Exclaim),
+        ('.', Token::Dot),
     ]);
 
     let mut tokens: Vec<Token> = Vec::new();

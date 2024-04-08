@@ -392,8 +392,11 @@ impl Gen {
                 Expr::Var(value) => {
                     self.add_spaces(self.indent);
                     let mut variable = String::new();
+
                     let mut is_arr = false;
                     let mut is_dynam = false;
+                    let mut is_struct = false;
+
                     let mut coll_typ = Types::None;
                     let mut coll_name = String::new();
 
@@ -414,6 +417,11 @@ impl Gen {
                                     is_dynam = true;
                                     coll_name = name;
                                 },
+                                Types::UserDef(typedef) => {
+                                    is_struct = true;
+                                    variable.push_str(&format!("{typedef} {name};\n"));
+                                    varname_buf = name.clone();
+                                },
                                 _ => (),
                             }
                         },
@@ -428,6 +436,8 @@ impl Gen {
                         let dynam_var = self.make_dynam_var(coll_name, value.1);
                         self.code.push_str(&dynam_var);
                         continue;
+                    } else if is_struct {
+
                     } else {
                         match value.1 {
                             Expr::StrLit(value) => variable.push_str(&format!("string_from(\"{value}\");\n")),
@@ -501,6 +511,8 @@ impl Gen {
                     self.code.push_str(&variable);
                 },
                 Expr::ReVar(value) => {
+                    self.add_spaces(self.indent);
+
                     let mut re_var = String::new();
                     let mut var_name = String::new();
 
@@ -760,11 +772,6 @@ impl Gen {
                 Expr::EndStruct => {
                     self.indent -= 1;
                     self.code.push_str(&format!("}}{defined_struct_name};\n"));
-                },
-                Expr::StructVarDef((typedef, varname)) => {
-                    self.add_spaces(self.indent);
-                    varname_buf = varname.clone();
-                    self.code.push_str(&format!("{typedef} {varname};\n"));
                 },
                 Expr::StructVarField(field) => {
                     self.add_spaces(self.indent);
