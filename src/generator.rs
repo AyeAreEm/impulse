@@ -9,6 +9,7 @@ pub struct Gen {
     code: String,
     out_file: String,
     libc_map: HashMap<String, bool>,
+    indent: i32,
     lang: Lang,
 }
 
@@ -60,7 +61,17 @@ impl Gen {
             code: String::new(),
             out_file,
             libc_map,
+            indent: 0,
             lang,
+        }
+    }
+
+    fn add_spaces(&mut self, indent: i32) {
+        let spaces = indent * 4;
+        if spaces > 0 {
+            for _ in 0..spaces {
+                self.code.push(' ');
+            }
         }
     }
 
@@ -159,6 +170,8 @@ impl Gen {
     }
 
     fn make_ifor(&mut self, mut stmnt: String, condition: Expr) {
+        self.indent += 1;
+
         match condition {
             Expr::Condition(cond) => {
                 let mut had_angled = false;
@@ -199,11 +212,13 @@ impl Gen {
             _ => (),
         }
 
-        stmnt.push_str("){");
+        stmnt.push_str(") {\n");
         self.code.push_str(&stmnt);
     }
 
     fn handle_print(&mut self, value: Vec<Expr>, is_line: bool) {
+        self.add_spaces(self.indent);
+
         if !self.imports.contains("#include <stdio.h>\n") {
             self.imports.push_str("#include <stdio.h>\n");
         }
@@ -286,7 +301,7 @@ impl Gen {
         }
         print_code.push('"');
         print_code.push_str(&var_buf);
-        print_code.push_str(");");
+        print_code.push_str(");\n");
         self.code.push_str(&print_code);
     }
 
@@ -346,7 +361,7 @@ impl Gen {
                         }
                     }
 
-                    func_call.push_str(");");
+                    func_call.push_str(");\n");
                     self.code.push_str(&func_call);
                 },
                 Expr::ReArr(value) => {
@@ -360,15 +375,14 @@ impl Gen {
                         _ => (),
                     }
 
-
                     re_arr.push_str(&format!("{pos}]"));
 
                     match value.2 {
                         Expr::IntLit(integer) => {
                             let lit = sanitise_intlit(integer.clone());
-                            re_arr.push_str(&format!("={lit};"));
+                            re_arr.push_str(&format!("={lit};\n"));
                         },
-                        Expr::StrLit(string) => re_arr.push_str(&format!("=string_from(\"{string}\");")),
+                        Expr::StrLit(string) => re_arr.push_str(&format!("=string_from(\"{string}\");\n")),
                         Expr::VarName(_) => (),
                         _ => (),
                     }
@@ -376,6 +390,7 @@ impl Gen {
                     self.code.push_str(&re_arr);
                 },
                 Expr::Var(value) => {
+                    self.add_spaces(self.indent);
                     let mut variable = String::new();
                     let mut is_arr = false;
                     let mut is_dynam = false;
@@ -415,16 +430,16 @@ impl Gen {
                         continue;
                     } else {
                         match value.1 {
-                            Expr::StrLit(value) => variable.push_str(&format!("string_from(\"{value}\");")),
+                            Expr::StrLit(value) => variable.push_str(&format!("string_from(\"{value}\");\n")),
                             Expr::IntLit(value) => {
                                 let lit = sanitise_intlit(value.clone());
-                                variable.push_str(&format!("{lit};"));
+                                variable.push_str(&format!("{lit};\n"));
                             },
                             Expr::ReadIn => {
                                 self.import_io();
-                                variable.push_str(&format!("readin();"));
+                                variable.push_str(&format!("readin();\n"));
                             },
-                            Expr::VarName((_, value)) => variable.push_str(&format!("{value};")),
+                            Expr::VarName((_, value)) => variable.push_str(&format!("{value};\n")),
                             Expr::FuncCall(func_call) => {
                                 match func_call.0 {
                                     Expr::FuncName(func_name) => variable.push_str(&format!("{func_name}(")),
@@ -459,7 +474,7 @@ impl Gen {
                                     }
                                 }
 
-                                variable.push_str(");");
+                                variable.push_str(");\n");
                             },
                             Expr::ArrIndex(value) => {
                                 // value.0 = Varname -> (typ, name)
@@ -474,7 +489,7 @@ impl Gen {
                                 match value.1 {
                                     Expr::IntLit(num) => {
                                         let lit = sanitise_intlit(num.clone());
-                                        variable.push_str(&format!("{arr_name}[{lit}];"));
+                                        variable.push_str(&format!("{arr_name}[{lit}];\n"));
                                     },
                                     _ => (),
                                 }
@@ -498,14 +513,14 @@ impl Gen {
 
                     match value.1 {
                         Expr::StrLit(string) => {
-                            re_var.push_str(&format!("{var_name} = string_from(\"{string}\");"));
+                            re_var.push_str(&format!("{var_name} = string_from(\"{string}\");\n"));
                         },
                         Expr::IntLit(integer) => {
                             let lit = sanitise_intlit(integer.clone());
-                            re_var.push_str(&format!("{var_name} = {lit};"));
+                            re_var.push_str(&format!("{var_name} = {lit};\n"));
                         },
                         Expr::VarName((_, name)) => {
-                            re_var.push_str(&format!("{var_name} = {name};"));
+                            re_var.push_str(&format!("{var_name} = {name};\n"));
                         },
                         _ => (),
                     }
@@ -519,7 +534,9 @@ impl Gen {
                     self.handle_print(*value, false);
                 },
                 Expr::EndBlock => {
-                    self.code.push_str("}");
+                    self.indent -= 1;
+                    self.add_spaces(self.indent);
+                    self.code.push_str("}\n");
                 },
                 Expr::Func(f) => {
                     let ty = &f.0;
@@ -529,6 +546,8 @@ impl Gen {
                     let mut f_params = String::new();
                     let mut f_params_touched = false;
                     let mut f_name = String::new();
+
+                    self.indent += 1;
 
                     match params {
                         Expr::FuncParams(ps) => {
@@ -644,21 +663,21 @@ impl Gen {
                         },
                     }
 
-                    let func = format!("{f_ty} {f_name}({f_params}){{");
+                    let func = format!("{f_ty} {f_name}({f_params}) {{\n");
                     self.code.push_str(&func);
                 },
                 Expr::Return(value) => {
                     let mut ret = String::new();
                     match *value {
                         Expr::StrLit(string) => {
-                            ret.push_str(&format!("return {string};"));
+                            ret.push_str(&format!("return {string};\n"));
                         },
                         Expr::IntLit(integer) => {
                             let lit = sanitise_intlit(integer.clone());
-                            ret.push_str(&format!("return {lit};"));
+                            ret.push_str(&format!("return {lit};\n"));
                         },
                         Expr::VarName((_, name)) => {
-                            ret.push_str(&format!("return {name};"));
+                            ret.push_str(&format!("return {name};\n"));
                         },
                         _ => (),
                     }
@@ -668,6 +687,7 @@ impl Gen {
                     let mut conditions = String::new();
                     let mut is_inited = false;
 
+                    self.indent += 1;
                     match loop_tup.0 {
                         Expr::Condition(expr_arr) => {
                             for expr in *expr_arr {
@@ -711,23 +731,25 @@ impl Gen {
                         _ => (),
                     }
 
-                    let loop_code = format!("for({conditions}){{");
+                    let loop_code = format!("for ({conditions}) {{\n");
                     self.code.push_str(&loop_code);
                 },
                 Expr::StructDef(struct_name) => {
+                    self.indent += 1;
                     defined_struct_name = struct_name;
-                    self.code.push_str(&format!("typedef struct {defined_struct_name} {{"));
+                    self.code.push_str(&format!("typedef struct {defined_struct_name} {{\n"));
                 },
                 Expr::StructField(field_name) => {
+                    self.add_spaces(self.indent);
                     match *field_name {
                         Expr::VarName((typ, name)) => {
                             match typ {
                                 Types::Int => {
-                                    self.code.push_str(&format!("int {name};"));
+                                    self.code.push_str(&format!("int {name};\n"));
                                 },
                                 Types::Str => {
                                     self.import_dynam();
-                                    self.code.push_str(&format!("string {name};"));
+                                    self.code.push_str(&format!("string {name};\n"));
                                 },
                                 _ => (),
                             }
@@ -736,13 +758,16 @@ impl Gen {
                     }
                 },
                 Expr::EndStruct => {
-                    self.code.push_str(&format!("}}{defined_struct_name};"));
+                    self.indent -= 1;
+                    self.code.push_str(&format!("}}{defined_struct_name};\n"));
                 },
                 Expr::StructVarDef((typedef, varname)) => {
+                    self.add_spaces(self.indent);
                     varname_buf = varname.clone();
-                    self.code.push_str(&format!("{typedef} {varname};"));
+                    self.code.push_str(&format!("{typedef} {varname};\n"));
                 },
                 Expr::StructVarField(field) => {
+                    self.add_spaces(self.indent);
                     let mut var_field = String::new();
                     var_field.push_str(&varname_buf);
 
@@ -754,10 +779,10 @@ impl Gen {
                             }
 
                             match var_info.1 {
-                                Expr::IntLit(integer) => var_field.push_str(&format!("{integer};")),
+                                Expr::IntLit(integer) => var_field.push_str(&format!("{integer};\n")),
                                 Expr::StrLit(string) => {
                                     self.import_dynam();
-                                    var_field.push_str(&format!("string_from(\"{string}\");"));
+                                    var_field.push_str(&format!("string_from(\"{string}\");\n"));
                                 },
                                 _ => (),
                             }
@@ -770,16 +795,20 @@ impl Gen {
                     varname_buf.clear();
                 },
                 Expr::If(condition) => {
-                    self.make_ifor(String::from("if("), *condition);
+                    self.add_spaces(self.indent);
+                    self.make_ifor(String::from("if ("), *condition);
                 },
                 Expr::OrIf(condition) => {
-                    self.make_ifor(String::from("else if("), *condition);
+                    self.add_spaces(self.indent);
+                    self.make_ifor(String::from("else if ("), *condition);
                 },
                 Expr::Else => {
-                    self.code.push_str("else{");
+                    self.add_spaces(self.indent);
+                    self.code.push_str("else {");
                 },
                 Expr::CEmbed(embed) => {
-                    self.code.push_str(&format!("{embed}"));
+                    self.add_spaces(self.indent);
+                    self.code.push_str(&format!("{embed}\n"));
                 },
                 _ => (),
             }

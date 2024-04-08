@@ -1,11 +1,7 @@
-struct person: {
-    string name 
-    int age
-}
-
 _() main: {
-    person new_guy: {
-        name: "adrian"
-        age: 0
+    int x: 10
+
+    if (x = 10) {
+        print("yep")
     }
 }
