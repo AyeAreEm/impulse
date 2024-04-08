@@ -1,7 +1,11 @@
-_() main: {
-    int x: 10
+struct person: {
+    string name
+    int age
+}
 
-    if (x = 10) {
-        print("yep")
+_() main: {
+    person new_guy: {
+        name: "adrian"
+        age: 17
     }
 }
