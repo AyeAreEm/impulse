@@ -291,6 +291,9 @@ impl Gen {
     }
 
     pub fn generate(&mut self, expressions: Vec<Expr>) {
+        let mut defined_struct_name = String::new();
+        let mut varname_buf = String::new();
+
         for (index, expr) in expressions.into_iter().enumerate() {
             match expr {
                 Expr::CImport(loc) => {
@@ -573,6 +576,9 @@ impl Gen {
                                                             _ => (),
                                                         }
                                                     },
+                                                    Types::UserDef(userdef_typ) => {
+                                                        this_typ = userdef_typ;
+                                                    },
                                                     Types::None => (),
                                                 }
                                             },
@@ -631,6 +637,7 @@ impl Gen {
                                 _ => (),
                             }
                         },
+                        Types::UserDef(userdef_typ) => f_ty = userdef_typ.to_owned(),
                         Types::None => {
                             println!("\x1b[91merror\x1b[0m: line {}, unexpected type", index + 1);
                             exit(1)
@@ -706,6 +713,61 @@ impl Gen {
 
                     let loop_code = format!("for({conditions}){{");
                     self.code.push_str(&loop_code);
+                },
+                Expr::StructDef(struct_name) => {
+                    defined_struct_name = struct_name;
+                    self.code.push_str(&format!("typedef struct {defined_struct_name} {{"));
+                },
+                Expr::StructField(field_name) => {
+                    match *field_name {
+                        Expr::VarName((typ, name)) => {
+                            match typ {
+                                Types::Int => {
+                                    self.code.push_str(&format!("int {name};"));
+                                },
+                                Types::Str => {
+                                    self.import_dynam();
+                                    self.code.push_str(&format!("string {name};"));
+                                },
+                                _ => (),
+                            }
+                        },
+                        _ => (),
+                    }
+                },
+                Expr::EndStruct => {
+                    self.code.push_str(&format!("}}{defined_struct_name};"));
+                },
+                Expr::StructVarDef((typedef, varname)) => {
+                    varname_buf = varname.clone();
+                    self.code.push_str(&format!("{typedef} {varname};"));
+                },
+                Expr::StructVarField(field) => {
+                    let mut var_field = String::new();
+                    var_field.push_str(&varname_buf);
+
+                    match *field {
+                        Expr::Var(var_info) => {
+                            match var_info.0 {
+                                Expr::VarName((_, name)) => var_field.push_str(&format!(".{name}=")),
+                                _ => (),
+                            }
+
+                            match var_info.1 {
+                                Expr::IntLit(integer) => var_field.push_str(&format!("{integer};")),
+                                Expr::StrLit(string) => {
+                                    self.import_dynam();
+                                    var_field.push_str(&format!("string_from(\"{string}\");"));
+                                },
+                                _ => (),
+                            }
+                        },
+                        _ => (),
+                    }
+                    self.code.push_str(&var_field);
+                },
+                Expr::EndStructVar => {
+                    varname_buf.clear();
                 },
                 Expr::If(condition) => {
                     self.make_ifor(String::from("if("), *condition);

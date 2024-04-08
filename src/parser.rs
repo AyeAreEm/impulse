@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{fs, collections::HashMap, process::exit};
 use crate::tokeniser::{tokeniser, Token}; use crate::declare_types::*;
 
@@ -41,6 +42,17 @@ pub enum Expr {
     ArrIndex(Box<(Expr, Expr)>), // Exp1 = VarName, Expr2 = IntLit
     Return(Box<Expr>), // Expr = StrLit | IntLit | VarName
 
+    // DEFINE A STRUCT
+    StructDef(String),
+    StructField(Box<Expr>), // Expr = VarName
+    Struct(Box<(Expr, Vec<Expr>)>), // Expr1 = StructDef, Expr2 = StructField
+    EndStruct,
+
+    // DEFINE A VAR STRUCT
+    StructVarDef((String, String)),
+    StructVarField(Box<Expr>), // Expr = VarName,
+    EndStructVar,
+
     Equal,
     SmallerThan,
     BiggerThan,
@@ -73,13 +85,14 @@ pub struct ExprWeights {
     has_else: bool,
     has_loop: bool,
     has_cembed_macro: bool,
+    has_def_struct: bool,
 
     start_param_ix: usize,
     end_param_ix: usize,
 
     start_pipe_ix: usize,
     end_pipe_ix: usize,
-    // expr_buffer: Vec<Expr>,
+    expr_buffer: Vec<Expr>,
 
     tokens: Vec<Token>,
     current_token: usize,
@@ -91,7 +104,16 @@ pub struct ExprWeights {
 
     current_func: Expr,
     current_scope: usize,
+    current_var_struct: String,
+
+    struct_def: Expr,
+    structures: Vec<Expr>,
+
+    user_def_types: Vec<Types>,
+
     in_scope: bool,
+    in_func: bool,
+    in_struct_var: bool,
 
     line_num: u32,
     
@@ -107,14 +129,19 @@ impl ExprWeights {
 
             ("int".to_string(), Keyword::Int),
             ("string".to_string(), Keyword::Str),
-            ("return".to_string(), Keyword::Return),
+
             ("if".to_string(), Keyword::If),
             ("orif".to_string(), Keyword::OrIf),
             ("else".to_string(), Keyword::Else),
+
             ("or".to_string(), Keyword::Or),
             ("and".to_string(), Keyword::And),
+
             ("loop".to_string(), Keyword::Loop),
             ("_".to_string(), Keyword::Underscore), 
+
+            ("return".to_string(), Keyword::Return),
+            ("struct".to_string(), Keyword::Struct),
         ]);
 
         let ident_to_macro: HashMap<String, Macros> = HashMap::from([
@@ -148,13 +175,14 @@ impl ExprWeights {
             has_else: false,
             has_loop: false,
             has_cembed_macro: false,
+            has_def_struct: false,
 
             start_param_ix: 0,
             end_param_ix: 0,
 
             start_pipe_ix: 0,
             end_pipe_ix: 0,
-            // expr_buffer: Vec::new(),
+            expr_buffer: Vec::new(),
 
             tokens,
             current_token: 0,
@@ -165,7 +193,15 @@ impl ExprWeights {
             func_to_vars,
             current_func: Expr::None,
             current_scope: 0,
+            current_var_struct: String::new(),
+
+            struct_def: Expr::None,
+            structures: Vec::new(),
+
+            user_def_types: Vec::new(),
             in_scope: false,
+            in_func: false,
+            in_struct_var: false,
 
             line_num: 1,
 
@@ -196,6 +232,7 @@ impl ExprWeights {
             self.has_else = false;
             self.has_loop = false;
             self.has_cembed_macro = false;
+            // self.has_def_struct = false;
 
             self.start_param_ix = 0;
             self.end_param_ix = 0;
@@ -231,6 +268,7 @@ impl ExprWeights {
                 vars[self.current_scope].pop();
                 self.current_scope -= 1;
             } else {
+                self.in_func = false;
                 vars[self.current_scope].pop();
             }
         }
@@ -505,6 +543,25 @@ impl ExprWeights {
 
     fn check_exist_ident(&mut self, ident: String) -> bool {
         let mut found = false;
+
+        for typ in &self.user_def_types {
+            match typ {
+                Types::UserDef(typ_name) => {
+                    if typ_name == &ident {
+                        found = true;
+                        break;
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        if found {
+            self.has_type = Types::UserDef(ident.clone());
+            self.current_var_struct = ident.clone();
+            return found
+        }
+
         for func in &self.functions {
             match &func {
                 Expr::Func(func_info) => {
@@ -554,7 +611,7 @@ impl ExprWeights {
         }
 
         if !found {
-            self.has_name.push_str(&ident);
+            self.has_name = ident;
         }
 
         found
@@ -568,10 +625,14 @@ impl ExprWeights {
             Keyword::Int => {
                 if let Types::None = self.has_type {
                     self.has_type = Types::Int;
+                } else if self.has_def_struct {
+                    self.has_type = Types::Int;
                 }
             },
             Keyword::Str => {
                 if let Types::None = self.has_type {
+                    self.has_type = Types::Str;
+                } else if self.has_def_struct {
                     self.has_type = Types::Str;
                 }
             },
@@ -605,6 +666,9 @@ impl ExprWeights {
                         }
                     },
                 }
+            },
+            Keyword::Struct => {
+                self.has_def_struct = true;
             },
             Keyword::Or => (),
             Keyword::And => (),
@@ -892,6 +956,7 @@ impl ExprWeights {
             }
         }
 
+        self.in_func = true;
         expr
     }
 
@@ -1762,10 +1827,150 @@ impl ExprWeights {
         expr
     }
 
+    fn struct_field(&mut self) {
+        if let Types::None = self.has_type {
+            return;
+        }
+
+        if !self.has_name.is_empty() {
+            self.expr_buffer.push(Expr::StructField(Box::new(Expr::VarName((self.has_type.clone(), self.has_name.clone())))));
+        } else {
+            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+            println!("\x1b[91merror\x1b[0m: incorrect struct field, {}", self.has_name);
+            exit(1);
+        }
+    }
+
+    fn handle_var_struct_field(&mut self, value: &Expr) -> Expr {
+        let expr: Expr;
+
+        if self.has_colon {
+            let mut fields = Vec::new();
+
+            for struc in &self.structures {
+                match struc {
+                    Expr::Struct(struct_info) => {
+                        match &struct_info.0 {
+                            Expr::StructDef(struct_name) => {
+                                if struct_name == &self.current_var_struct {
+                                    fields = struct_info.1.clone();
+                                    break;
+                                }
+                            },
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+            }
+
+            let mut found = false;
+            let mut this_typ = Types::None;
+            for field in fields {
+                match field {
+                    Expr::StructField(struct_field) => {
+                        match *struct_field {
+                            Expr::VarName((typ, name)) => {
+                                if name == self.has_name {
+                                    found = true;
+                                    this_typ = typ.clone();
+                                    break;
+                                }
+                            },
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+            }
+
+            if !found {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: \x1b[91m{}\x1b[0m field does not exist in struct \x1b[93m{}\x1b[0m", self.has_name, self.current_var_struct);
+                exit(1);
+            }
+
+            match this_typ {
+                Types::Str => {
+                    if let Expr::StrLit(_) = value {
+                        expr = Expr::StructVarField(Box::new(Expr::Var(Box::new((Expr::VarName((this_typ, self.has_name.clone())), value.clone())))));
+                    } else {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: mismatch types for struct field \x1b[93m{}\x1b[0m, expected \x1b[93m{:?}\x1b[0m, got \x1b[93m{:?}\x1b[0m", self.has_name, this_typ, value);
+                        exit(1);
+                    }
+                },
+                Types::Int => {
+                    if let Expr::IntLit(_) = value {
+                        expr = Expr::StructVarField(Box::new(Expr::Var(Box::new((Expr::VarName((this_typ, self.has_name.clone())), value.clone())))));
+                    } else {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: mismatch types for struct field \x1b[93m{}\x1b[0m, expected \x1b[93m{:?}\x1b[0m, got \x1b[93m{:?}\x1b[0m", self.has_name, this_typ, value);
+                        exit(1);
+                    }
+                },
+                _ => {
+                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                    println!("unsupported rn lol soz");
+                    exit(1);
+                },
+            }
+        } else {
+            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+            println!("\x1b[91merror\x1b[0m: incorrect struct field in variable, {}", self.has_name);
+            exit(1);
+        }
+
+        expr
+    }
+
+    fn check_struct(&mut self) -> Expr {
+        if !self.has_colon || !self.has_func_name.is_empty() || self.has_loop || self.has_name.is_empty() ||
+            self.in_func || (self.has_if || self.has_orif || self.has_else) {
+            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+            println!("\x1b[91merror\x1b[0m: incorrect struct definition, {}", self.has_name);
+            exit(1);
+        }
+
+        if self.user_def_types.len() > 0 {
+            for typ in &self.user_def_types {
+                match typ {
+                    Types::UserDef(name) => {
+                        if name == &self.has_name {
+                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                            println!("\x1b[91merror\x1b[0m: struct {} already defined", self.has_name);
+                            exit(1);
+                        }
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        let expr = Expr::StructDef(self.has_name.clone());
+        self.struct_def = expr.clone();
+        self.user_def_types.push(Types::UserDef(self.has_name.clone()));
+        expr
+    }
+
     fn check_block(&mut self) -> Expr {
         let expr: Expr;
 
-        if self.has_if || self.has_orif || self.has_else {
+        if let Types::UserDef(struct_name) = &self.has_type {
+            // check if they making a variable with struct
+            if self.has_colon && !self.has_lbrack && !self.has_rbrack {
+                self.in_struct_var = true;
+                expr = Expr::StructVarDef((struct_name.to_string(), self.has_name.clone()));
+                self.new_scope(expr.clone());
+            } else {
+                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                println!("\x1b[91merror\x1b[0m: incorrect variable struct definition, {}", self.has_name);
+                exit(1);
+            }
+        } else if self.has_def_struct {
+            // check if they defining a new struct
+            expr = self.check_struct();
+        } else if self.has_if || self.has_orif || self.has_else {
             expr = self.check_if();
         } else if self.has_loop {
             expr = self.check_loop();
@@ -1785,8 +1990,23 @@ impl ExprWeights {
     fn handle_var_use(&mut self, ident: String) -> Expr {
         let mut expr = Expr::None;
 
+        if self.has_def_struct {
+            self.has_name = ident;
+            self.struct_field();
+            return expr;
+        }
+
         if self.check_exist_ident(ident.clone()) {
-            if self.has_return {
+            if self.in_struct_var {
+                match self.has_type {
+                    Types::None => (),
+                    _ => {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: types are not allowed when defining a variable struct, {:?}", self.has_type);
+                        exit(1);
+                    },
+                }
+            } else if self.has_return {
                 let cur_func = &self.extract_func_name();
                 let variables = self.func_to_vars.get(cur_func);
                 let vars = match variables {
@@ -1889,15 +2109,20 @@ impl ExprWeights {
                 if keyword.0 {
                     self.handle_keywords(keyword.1);
                 } else if num. 0{
-                        // if we have a number, try see if we can make a variable
+                    // if we have a number, try see if we can make a variable
+                        
+                    if self.in_struct_var {
+                        expr = self.handle_var_struct_field(&Expr::IntLit(word.to_owned()));
+                    } else {
                         expr = self.try_return(num.1.clone());
-                        if let Expr::None = expr {
-                            expr = self.try_variable(&num.1);
-                        }
-                        if let Expr::None = expr {
-                            expr = self.try_reassign_variable(num.1.clone());
-                        }
+                    }
 
+                    if let Expr::None = expr {
+                        expr = self.try_variable(&num.1);
+                    }
+                    if let Expr::None = expr {
+                        expr = self.try_reassign_variable(num.1.clone());
+                    }
                 } else {
                     expr = self.handle_var_use(word.clone());
                 }
@@ -1907,17 +2132,65 @@ impl ExprWeights {
                 expr = self.check_block();
             },
             Token::Rcurl => {
-                self.prev_scope();
-                expr = Expr::EndBlock;
+                if self.has_def_struct {
+                    let mut field_names = HashSet::new();
+                    let mut found = false;
+                    let mut line = 0;
+                    for (i, struct_values) in self.expr_buffer.iter().enumerate() {
+                        match struct_values {
+                            Expr::StructField(field) => {
+                                match *field.clone() {
+                                    Expr::VarName((_, name)) => {
+                                        if !field_names.insert(name) {
+                                            line = i;
+                                            found = true;
+                                            break;
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            },
+                            _ => (),
+                        }
+                    }
+
+                    if found {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: struct has repeated fields, struct field line: {}", line);
+                        exit(1);
+                    }
+
+                    for elem in &self.expr_buffer {
+                        println!("{:?}", elem);
+                    }
+                    self.structures.push(Expr::Struct(Box::new((self.struct_def.clone(), self.expr_buffer.clone()))));
+                    self.program.append(&mut self.expr_buffer);
+
+                    self.has_def_struct = false;
+                    self.struct_def = Expr::None;
+                    self.expr_buffer.clear();
+
+                    expr = Expr::EndStruct;
+                } else if self.in_struct_var {
+                    self.prev_scope();
+                    self.in_struct_var = false;
+                    expr = Expr::EndStructVar;
+                } else {
+                    self.prev_scope();
+                    expr = Expr::EndBlock;
+                }
             },
             Token::Str(word) => {
                 self.has_strlit = true;
                 let strlit = Expr::StrLit(word.to_string());
+
                 if !self.has_macro_name.is_empty() {
                     match self.handle_import(&strlit) {
                         Some(value) => expr = value,
                         None => (),
                     }
+                } else if self.in_struct_var {
+                    expr = self.handle_var_struct_field(&strlit);
                 }
 
                 if let Expr::None = expr {
@@ -1942,7 +2215,11 @@ impl ExprWeights {
                 } else {
                     let intlit = self.check_intlit(integer.to_string());
 
-                    expr = self.try_variable(&intlit);
+                    if self.in_struct_var {
+                        expr = self.handle_var_struct_field(&intlit);
+                    } else {
+                        expr = self.try_variable(&intlit);
+                    }
 
                     if let Expr::None = expr {
                         expr = self.try_reassign_variable(intlit.clone());

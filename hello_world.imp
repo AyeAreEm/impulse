@@ -1,13 +1,11 @@
-@import "stdio.h"
+struct person: {
+    string name 
+    int age
+}
 
 _() main: {
-    int x: 10
-    string name: "adrian"
-
-    @c [
-        printf("%d\n", x);
-        printf("%s\n", name.data);
-    ]
-
-    print(name)
+    person new_guy: {
+        name: "adrian"
+        age: 0
+    }
 }

@@ -10,6 +10,8 @@ pub enum Types {
     Arr(Box<Types>),
     Dynam(Box<Types>),
     Void,
+
+    UserDef(String),
     None,
 }
 
@@ -33,6 +35,8 @@ pub enum Keyword {
 
     Or,
     And,
+
+    Struct,
 
     None,
 }
