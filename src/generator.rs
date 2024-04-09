@@ -419,7 +419,7 @@ impl Gen {
                                 },
                                 Types::UserDef(typedef) => {
                                     is_struct = true;
-                                    variable.push_str(&format!("{typedef} {name};\n"));
+                                    variable.push_str(&format!("{typedef} {name}"));
                                     varname_buf = name.clone();
                                 },
                                 _ => (),
@@ -437,7 +437,11 @@ impl Gen {
                         self.code.push_str(&dynam_var);
                         continue;
                     } else if is_struct {
-
+                        match value.1 {
+                            Expr::Condition(_) => variable.push_str(&format!(";\n")),
+                            Expr::VarName((_, var)) => variable.push_str(&format!("={var};\n")),
+                            _ => (),
+                        }
                     } else {
                         match value.1 {
                             Expr::StrLit(value) => variable.push_str(&format!("string_from(\"{value}\");\n")),

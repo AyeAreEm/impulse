@@ -86,6 +86,7 @@ pub struct ExprWeights {
     has_cembed_macro: bool,
     has_def_struct: bool,
     has_dot: bool,
+    has_semicolon: bool,
 
     start_param_ix: usize,
     end_param_ix: usize,
@@ -177,6 +178,7 @@ impl ExprWeights {
             has_cembed_macro: false,
             has_def_struct: false,
             has_dot: false,
+            has_semicolon: false,
 
             start_param_ix: 0,
             end_param_ix: 0,
@@ -234,6 +236,7 @@ impl ExprWeights {
             self.has_loop = false;
             self.has_cembed_macro = false;
             self.has_dot = false;
+            self.has_semicolon = false;
             // self.has_def_struct = false;
 
             self.start_param_ix = 0;
@@ -842,7 +845,17 @@ impl ExprWeights {
                                             Expr::VarName((typ, name)) => {
                                                 if name == word {
                                                     found_var = true;
-                                                    if let Types::Arr(_arr_typ) = typ {
+
+                                                    if let Types::UserDef(_) = typ {
+                                                        match &var_info.1 {
+                                                            Expr::Condition(_fields) => {
+                                                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                                                println!("\x1b[91merror\x1b[0m: can't print structs yet. not implemented");
+                                                                exit(1);
+                                                            },
+                                                            _ => (),
+                                                        }
+                                                    } else if let Types::Arr(_arr_typ) = typ {
                                                         buf = Expr::Var(var_info.clone());
                                                     } else if let Types::Int = typ {
                                                         match buf {
@@ -1191,6 +1204,30 @@ impl ExprWeights {
     fn try_reassign_variable(&mut self, ident: Expr) -> Expr {
         let mut expr = Expr::None;
 
+        if !self.expr_buffer.is_empty() {
+            match &self.expr_buffer[0] {
+                Expr::VarName((typ, varname)) => {
+                    match typ {
+                        Types::Str => {
+                            match ident {
+                                Expr::StrLit(ref _string) => {
+                                    expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), varname.to_owned())), ident.clone())));
+                                },
+                                _ => {
+                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                    println!("\x1b[91merror\x1b[0m: expected {:?}, got string", typ);
+                                    exit(1);
+                                },
+                            }
+                        },
+                        _ => (),
+                    }
+                },
+                _ => (),
+            }
+            return expr
+        }
+
         if !self.has_macro_name.is_empty() || self.has_ref_name.is_empty() {
             return expr
         }
@@ -1350,6 +1387,53 @@ impl ExprWeights {
     fn try_variable(&mut self, value: &Expr) -> Expr {
         let mut expr = Expr::None;
 
+        if self.expr_buffer.len() == 2 {
+            for elem in &self.expr_buffer {
+                println!("{:?}", elem);
+            }
+
+            match &self.expr_buffer[0] {
+                Expr::VarName((_typ, _varname)) => {
+                    let mut found_semicolon = false;
+                    let mut fullname = String::new();
+                    
+                    match &self.expr_buffer[1] {
+                        Expr::VarName((_, exist_var)) => {
+                            fullname.push_str(&exist_var);
+                        },
+                        _ => (),
+                    }
+
+                    for (i, token) in self.tokens[self.current_token+1..self.tokens.len()-1].iter().enumerate() {
+                        if let Token::SemiColon = token {
+                            found_semicolon = true;
+                            self.current_token += i;
+                            break;
+                        } else if let Token::Dot = token {
+                            fullname.push('.');
+                        } else if let Token::Ident(field_name) = token {
+                            fullname.push_str(&format!("{field_name}"));
+                        }
+                    }
+
+                    if !found_semicolon {
+                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        println!("\x1b[91merror\x1b[0m: need ; at the end of getting struct field from variable"); 
+                        exit(1);
+                    }
+                    expr = Expr::ReVar(Box::new((self.expr_buffer[0].clone(), Expr::VarName((Types::None, fullname)))));
+
+                    let cur_func = self.extract_func_name();
+                    if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+                        vars[self.current_scope].push(expr.clone());
+                    }
+                },
+                _ => (),
+            }
+
+            return expr
+        }
+
         match self.has_type {
             Types::None => return expr,
             _ => (),
@@ -1508,6 +1592,7 @@ impl ExprWeights {
                         },
                         Types::Str => {
                             let varname = Expr::VarName((Types::Str, self.has_name.clone()));
+                            println!("has_type: {:?}", self.has_type);
                             if let Types::Str = self.has_type {
                                 expr = Expr::Var(Box::new((varname, Expr::VarName((Types::Str, v.clone())))));
 
@@ -1515,7 +1600,6 @@ impl ExprWeights {
                                 if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
                                     vars[self.current_scope].push(expr.clone());
                                 }
-
                             } else {
                                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
                                 println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
@@ -1523,6 +1607,51 @@ impl ExprWeights {
                                 exit(1);
                             }
                         },
+                        Types::UserDef(typedef) => {
+                            // FIX THIS, MAKE IT ACTUALLY CHECK INSIDE OF ASSUMING THE USER IS
+                            // RIGHT
+                            let varname = Expr::VarName((Types::UserDef(typedef.clone()), self.has_name.clone()));
+                            let mut found_semicolon = false;
+                            let mut fullname = String::new();
+                            fullname.push_str(v);
+                            for (i, token) in self.tokens[self.current_token+1..self.tokens.len()-1].iter().enumerate() {
+                                if let Token::SemiColon = token {
+                                    found_semicolon = true;
+                                    self.current_token += i;
+                                    break;
+                                } else if let Token::Dot = token {
+                                    fullname.push('.');
+                                } else if let Token::Ident(field_name) = token {
+                                    fullname.push_str(&format!("{field_name}"));
+                                }
+                            }
+
+                            if !found_semicolon {
+                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                println!("\x1b[91merror\x1b[0m: need ; at the end of getting struct field from variable"); 
+                                exit(1);
+                            }
+
+                            if found_semicolon {
+                                let new_var = Expr::VarName((self.has_type.clone(), self.has_name.clone()));
+                                expr = Expr::Var(Box::new((new_var, Expr::VarName((Types::None, fullname)))));
+                                let cur_func = self.extract_func_name();
+                                if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+                                    vars[self.current_scope].push(expr.clone());
+                                }
+                            } else if let Types::UserDef(_) = self.has_type {
+                                expr = Expr::Var(Box::new((varname, Expr::VarName((Types::UserDef(typedef.clone()), v.clone())))));
+                                let cur_func = self.extract_func_name();
+                                if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
+                                    vars[self.current_scope].push(expr.clone());
+                                }
+                            } else {
+                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
+                                println!("\x1b[91merror\x1b[0m: mismatch types"); 
+                                exit(1);
+                            }
+                        }
                         _ => (),
                     }
                 }
@@ -2083,79 +2212,64 @@ impl ExprWeights {
                 },
             };
 
-            // let mut found_property = false;
-            // MY GOD PLEASE FORGIVE THIS MONSTROSITY
-            // for var in &vars[self.current_scope] {
-            //     let mut found = false;
-            //     match var {
-            //         Expr::Var(var_info) => {
-            //             match &var_info.0 {
-            //                 Expr::VarName((typ, name)) => {
-            //                     match &self.has_ref_name[self.has_ref_name.len()-1] {
-            //                         Expr::Var(ref_info) => {
-            //                             match &ref_info.0 {
-            //                                 Expr::VarName((ref_typ, ref_name)) => {
-            //                                     if name == ref_name {
-            //                                         found = true;
-            //                                     }
-            //                                 },
-            //                                 _ => (),
-            //                             }
-            //                             if found {
-            //
-            //                             match &ref_info.1 {
-            //                                 Expr::Condition(getter) => {
-            //                                     for get in *getter.clone() {
-            //                                         match get {
-            //                                             Expr::StructField(struct_field) => {
-            //                                                 match *struct_field {
-            //                                                     Expr::VarName((field_typ, field_name)) => {
-            //                                                         if field_name == self.has_name {
-            //                                                             self.has_name = ident.clone();
-            //                                                             found_property = true;
-            //                                                             break;
-            //                                                         }
-            //                                                     },
-            //                                                     _ => (),
-            //                                                 }
-            //                                             },
-            //                                             _ => (),
-            //                                         } 
-            //                                     }
-            //                                 },
-            //                                 _ => (),
-            //                             }
-            //                             }
-            //                         },
-            //                         _ => (),
-            //                     }
-            //                 },
-            //                 _ => (),
-            //             }
-            //         },
-            //         _ => (),
-            //     }
-            // }
-
-            // MY GOD PLEASE FORGIVE THIS MONSTROSITY
-            let mut var_struct_typ_name = String::new();
             for var in &vars[self.current_scope] {
                 match var {
                     Expr::Var(var_info) => {
                         match &var_info.0 {
-                            Expr::VarName((typ, name)) => {
+                            Expr::VarName((_, name)) => {
+                                if self.expr_buffer.len() == 1 {
+                                    if name == &ident {
+                                        self.expr_buffer.push(var_info.0.clone());
+                                        expr = self.try_variable(&var_info.0.clone());
+                                        return expr
+                                    }
+                                }
+                            },
+                            _ => (),
+                        }
+                    },
+                    _ => (),
+                }
+            }
+
+            // MY GOD PLEASE FORGIVE THIS MONSTROSITY
+            let mut found_property = false;
+            for var in &vars[self.current_scope] {
+                match var {
+                    Expr::Var(var_info) => {
+                        match &var_info.0 {
+                            Expr::VarName((_, name)) => {
                                 match &self.has_ref_name[self.has_ref_name.len()-1] {
                                     Expr::Var(ref_info) => {
                                         match &ref_info.0 {
                                             Expr::VarName((_, ref_name)) => {
                                                 if name == ref_name {
-                                                    match typ {
-                                                        Types::UserDef(typedef) => {
-                                                            var_struct_typ_name = typedef.clone();
+                                                    match &ref_info.1 {
+                                                        Expr::Condition(getter) => {
+                                                            for get in *getter.clone() {
+                                                                match get {
+                                                                    Expr::StructField(struct_field) => {
+                                                                        match *struct_field {
+                                                                            Expr::VarName((field_typ, field_name)) => {
+                                                                                // println!("field_name: {field_name}, name: {name}, has_name: {}, ref_name: {ref_name}, ident: {ident}", self.has_name);
+                                                                                if field_name == ident {
+                                                                                    // self.has_name = ident.clone();
+                                                                                    let fullname = format!("{name}.{field_name}");
+                                                                                    self.expr_buffer.push(Expr::VarName((field_typ.clone(), fullname)));
+                                                                                    println!("expr_buffer: {:?}", self.expr_buffer);
+                                                                                    found_property = true;
+                                                                                    break;
+                                                                                }
+                                                                            },
+                                                                            _ => (),
+                                                                        }
+                                                                    },
+                                                                    _ => (),
+                                                                }
+                                                            }
                                                         },
                                                         _ => (),
                                                     }
-                                                    break;
                                                 }
                                             },
                                             _ => (),
@@ -2170,55 +2284,13 @@ impl ExprWeights {
                     _ => (),
                 }
             }
-            if var_struct_typ_name.is_empty() {
+
+            if !found_property {
                 println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: undefined variable {}", ident);
+                println!("\x1b[91merror\x1b[0m: struct \x1b[93m{}\x1b[0m doesn't have field \x1b[93m{}\x1b[0m", self.has_name, ident);
                 exit(1);
             }
 
-            for struc in &self.structures {
-                let mut fields = Vec::new();
-                match struc {
-                    Expr::Struct(struct_info) => {
-                        match &struct_info.0 {
-                            Expr::StructDef(struct_name) => {
-                                if struct_name == &var_struct_typ_name {
-                                    fields = struct_info.1.clone();
-                                }
-                            },
-                            _ => (),
-                        }
-                    },
-                    _ => (),
-                }
-
-                let mut found_property = false;
-                if !fields.is_empty() {
-                    for field in fields {
-                        match field {
-                            Expr::StructField(struct_field) => {
-                                match *struct_field {
-                                    Expr::VarName((_, name)) => {
-                                        if name == ident {
-                                            self.has_name = ident.clone();
-                                            found_property = true;
-                                            break;
-                                        }
-                                    },
-                                    _ => (),
-                                }
-                            },
-                            _ => (),
-                        }
-                    }
-                }
-
-                if !found_property {
-                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                    println!("\x1b[91merror\x1b[0m: struct \x1b[93m{}\x1b[0m doesn't have field \x1b[93m{}\x1b[0m", self.has_name, ident);
-                    exit(1);
-                }
-            }
             return expr;
         }
 
@@ -2267,6 +2339,7 @@ impl ExprWeights {
                             if let Types::None = self.has_type {
                                 expr = self.try_reassign_variable(Expr::VarName(value.clone()));
                             } else {
+                                // here
                                 expr = self.try_variable(&Expr::VarName(value.clone()));
                             }
                         }
@@ -2404,15 +2477,7 @@ impl ExprWeights {
 
                     expr = Expr::EndStruct;
                 } else if self.in_struct_var {
-                    self.prev_scope();
                     self.in_struct_var = false;
-
-                    
-
-                    let cur_func = self.extract_func_name();
-                    if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
-                        vars[self.current_scope].push(expr.clone());
-                    }
 
                     expr = Expr::EndStructVar;
                 } else {
@@ -2486,6 +2551,9 @@ impl ExprWeights {
             Token::Newline => self.line_num += 1,
             Token::Dot => {
                 self.has_dot = true;
+            },
+            Token::SemiColon => {
+                self.has_semicolon = true;
             },
             Token::Equal => (),
             Token::SmallerThan => (),

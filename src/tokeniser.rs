@@ -14,6 +14,7 @@ pub enum Token {
     Rcurl,
     Underscore,
     Colon,
+    SemiColon,
     Pipe,
     Newline,
 
@@ -135,8 +136,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             continue;
         }
 
-
-        if c == ' ' || c == '\n' || c == '\r' {
+        if c == ' ' || c == '\n' || c == '\r' || c == ';' {
             if buf.len() > 0 {
                 tokens.push(Token::Ident(buf.clone()));
                 buf.clear();
@@ -144,6 +144,8 @@ pub fn tokeniser(file: String) -> Vec<Token> {
 
             if c == '\n' {
                 tokens.push(Token::Newline);
+            } else if c == ';' {
+                tokens.push(Token::SemiColon);
             }
             continue;
         }
