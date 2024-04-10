@@ -11,14 +11,23 @@ _() main: {
         age: 0
     }
 
-    person me: {
-        name: "adrian mehta"
+    person john: {
+        name: "john"
         age: 17
     }
 
-    base.name: me.name;
+    base.name: john.name;
+    john.name: "john doe"
+    base.age: [john.age + 1]
+
+    # it should print
+    # john
+    # john doe
+    # 18
+
     @c [
         printf("%s\n", base.name.data);
-        printf("%s\n", me.name.data);
+        printf("%s\n", john.name.data);
+        printf("%d\n", base.age);
     ]
 }

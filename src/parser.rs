@@ -246,6 +246,11 @@ impl ExprWeights {
             self.end_pipe_ix = 0;
     }
 
+    fn comp_err(&self, error_msg: &str) {
+        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+        println!("\x1b[91merror\x1b[0m: {error_msg}");
+    }
+
     fn new_scope(&mut self, new_var: Expr) {
         self.in_scope = true;
 
@@ -284,8 +289,7 @@ impl ExprWeights {
             Expr::FuncName(n) => n,
             Expr::None => "",
             _ => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: undefined function name");
+                self.comp_err("undefined function name");
                 exit(1);
             },
         };
@@ -305,8 +309,7 @@ impl ExprWeights {
                     let content = match file_res {
                         Ok(content) => content,
                         Err(_) => {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                            println!("\x1b[91merror\x1b[0m: unable to read file");
+                            self.comp_err("unable to read file");
                             exit(1);
                         },
                     };
@@ -319,8 +322,7 @@ impl ExprWeights {
                         self.functions.append(&mut parse.functions);
                         self.program.append(&mut expressions);
                     } else {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: imports need to be before writing your program");
+                        self.comp_err("imports need to be before writing your program");
                         exit(1);
                     }
                 }
@@ -343,8 +345,7 @@ impl ExprWeights {
                 let variables = match variables_res {
                     Some(var) => var,
                     None => {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: undefined variable {}", index);
+                        self.comp_err(&format!("undefined variable {index}"));
                         exit(1);
                     },
                 };
@@ -371,16 +372,14 @@ impl ExprWeights {
                                         match num.parse::<usize>() {
                                             Ok(n) => value = n,
                                             Err(_) => {
-                                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                                println!("\x1b[91merror\x1b[0m: array index must be a number");
+                                                self.comp_err("array index must be a number");
                                                 exit(1);
                                             }
                                         }
                                     },
                                     Expr::VarName(_) => {
                                         // ADD SUPPORT FOR THIS
-                                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                        println!("\x1b[91merror\x1b[0m: currently unsupported. nested variable for index in array");
+                                        self.comp_err("currently unsupported. nested variable for index in array");
                                         exit(1);
                                     },
                                     _ => (),
@@ -400,8 +399,7 @@ impl ExprWeights {
         };
 
         if !index_num.0 {
-            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-            println!("\x1b[91merror\x1b[0m: undefined variable {}", index);
+            self.comp_err(&format!("undefined variable {index}"));
             exit(1);
         }
 
@@ -411,8 +409,7 @@ impl ExprWeights {
                     if arr.len() > index_num.1 {
                         expr = Expr::ArrIndex(Box::new((var.0, Expr::IntLit(index.clone()))));
                     } else {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: index out of array size.");
+                        self.comp_err("index out of array size.");
                         exit(1);
                     }
                 },
@@ -436,6 +433,7 @@ impl ExprWeights {
             ('*', Token::Multiple),
             ('/', Token::Divide),
             ('|', Token::Pipe),
+            ('.', Token::Dot),
         ]);
         let mut tokens: Vec<Token> = Vec::new();
         let mut buf = String::new();
@@ -475,6 +473,8 @@ impl ExprWeights {
             }
         }
 
+        let mut local_dot = false;
+        let mut local_name = String::new();
         for token in tokens {
             match token {
                 Token::Plus => clean.push('+'),
@@ -492,8 +492,7 @@ impl ExprWeights {
                     self.end_param_ix = self.current_token;
                     let expr = self.try_func_call();
                     if let Expr::None = expr {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: incorrect usage of function call, maybe undefined function name");
+                        self.comp_err("incorrect usage of function call, maybe undefined function name");
                         exit(1);
                     }
 
@@ -520,8 +519,7 @@ impl ExprWeights {
                         };
 
                         if name.is_empty() {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                            println!("\x1b[91merror\x1b[0m: unknown identifier {:?}", name_expr);
+                            self.comp_err(&format!("unknown identifier {:?}", name_expr));
                             exit(1);
                         }
                     } else {
@@ -531,13 +529,75 @@ impl ExprWeights {
                     clean.push('|');
                 },
                 Token::Ident(ident) => {
-                    if !self.check_exist_ident(ident.clone()) {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: unknown identifier, {}", ident);
+                    if local_dot {
+                        let cur_func = self.extract_func_name();
+                        let variables_res = self.func_to_vars.get(&cur_func);
+                        let variables = match variables_res {
+                            Some(vars) => vars.clone(),
+                            None => Vec::new(),
+                        };
+
+                        let mut fields = Vec::new();
+                        for vars in &variables[self.current_scope] {
+                            match vars {
+                                Expr::Var(var_info) => {
+                                    match &var_info.0 {
+                                        Expr::VarName((_, name)) => {
+                                            if name == &local_name {
+                                                match &var_info.1 {
+                                                    Expr::Condition(getter) => {
+                                                        for get in *getter.clone() {
+                                                            match get {
+                                                                Expr::StructField(struct_field) => {
+                                                                    fields.push(*struct_field);
+                                                                },
+                                                                _ => (),
+                                                            }
+                                                        }
+                                                    },
+                                                    _ => ()
+                                                }
+                                            }
+                                        }
+                                        _ => (),
+                                    }
+                                },
+                                _ => (),
+                            }
+                        }
+
+                        let mut found = false;
+                        for field in fields {
+                            match field {
+                                Expr::VarName((typ, name)) => {
+                                    if let Types::Int = typ {
+                                        if name == ident {
+                                            found = true;
+                                        }
+                                    }
+                                },
+                                _ => (),
+                            }
+                        }
+
+                        if !found {
+                            self.comp_err(&format!("this unknown identifier {:?}", ident));
+                            exit(1);
+                        }
+
+                        local_dot = false;
+                    } else if self.check_exist_ident(ident.clone()) {
+                        local_name = ident.clone();
+                    } else {
+                        self.comp_err(&format!("unknown identifier {:?}", ident));
                         exit(1);
                     }
 
                     clean.push_str(&ident);
+                },
+                Token::Dot => {
+                    local_dot = true;
+                    clean.push('.');
                 },
                 _ => (),
             }
@@ -709,8 +769,7 @@ impl ExprWeights {
                             get_macro_type = true;
                             macro_name = mac.1;
                         } else {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                            println!("\x1b[91merror\x1b[0m: unknown identifier, {}", word);
+                            self.comp_err(&format!("unknown identifier {:?}", word));
                             exit(1);
                         }
 
@@ -770,9 +829,7 @@ impl ExprWeights {
                 }
             },
             _ => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: function readin returns string but {} is type {:?}", self.has_name, self.has_type);
-                println!("\x1b[91merror\x1b[0m: mismatch types");
+                self.comp_err(&format!("function readin returns string but {} is type {:?}", self.has_name, self.has_type));
                 exit(1);
             },
         }
@@ -797,10 +854,11 @@ impl ExprWeights {
             return expr
         }
 
+
         let cur_func = self.extract_func_name();
         let params_slice = &self.tokens[self.start_param_ix..self.end_param_ix];
         let mut params: Vec<Expr> = Vec::new();
-        if params_slice.is_empty() {
+        if params_slice.is_empty() && self.expr_buffer.is_empty() {
             return Expr::Print(Box::new(params));
         }
 
@@ -818,8 +876,7 @@ impl ExprWeights {
                                         let temp = self.make_arr_index(buf.clone(), word);
                                         params.push(temp);
                                     } else {
-                                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                        println!("\x1b[91merror\x1b[0m: can't print all values in arr: {}", word);
+                                        self.comp_err(&format!("can't print all values in arr: {}", word));
                                         println!("\x1b[93merror\x1b[0m: did you mean {:?}|{}|", buf, word);
                                         exit(1);
                                     }
@@ -831,8 +888,7 @@ impl ExprWeights {
                             let variables = match variables_res {
                                 Some(var) => var,
                                 None => {
-                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                    println!("\x1b[91merror\x1b[0m: unknown identifier, {}", word);
+                                    self.comp_err(&format!("unknown identifier, {}", word));
                                     exit(1);
                                 }
                             };
@@ -849,8 +905,7 @@ impl ExprWeights {
                                                     if let Types::UserDef(_) = typ {
                                                         match &var_info.1 {
                                                             Expr::Condition(_fields) => {
-                                                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                                                println!("\x1b[91merror\x1b[0m: can't print structs yet. not implemented");
+                                                                self.comp_err("can't print structs yet. not implemented");
                                                                 exit(1);
                                                             },
                                                             _ => (),
@@ -868,8 +923,7 @@ impl ExprWeights {
                                                                     params.push(temp);
                                                                     found_var = true;
                                                                 } else {
-                                                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                                                    println!("\x1b[91merror\x1b[0m: can't print all values in array. maybe use a loop? array: {}", word);
+                                                                    self.comp_err(&format!("can't print all values in array. maybe use a loop? array: {}", word));
                                                                     exit(1);
                                                                 }
                                                                 buf = Expr::None;
@@ -888,8 +942,7 @@ impl ExprWeights {
                             }
 
                             if !found_var {
-                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                println!("\x1b[91merror\x1b[0m: unknown identifier, {}", word);
+                                self.comp_err(&format!("unknown identifier {word}"));
                                 exit(1);
                             }
                         },
@@ -916,8 +969,7 @@ impl ExprWeights {
 
         if self.has_lbrack && self.has_rbrack && self.has_colon && !self.has_name.is_empty() && self.has_lcurl {
             if let Types::None = self.has_type {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: unknown type for function {}", self.has_name);
+                self.comp_err(&format!("unknown type for function {}", self.has_name));
                 exit(1);
             }
 
@@ -964,8 +1016,7 @@ impl ExprWeights {
                     self.current_func = Expr::FuncName(self.has_name.clone());
                     self.func_to_vars.entry(self.has_name.clone()).or_insert(vec![temp_vars]);
                 } else {
-                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                    println!("\x1b[91merror\x1b[0m: unknown identifier {}", self.has_macro_name);
+                    self.comp_err(&format!("unknown identifier {}", self.has_macro_name));
                     exit(1);
                 }
             }
@@ -981,8 +1032,7 @@ impl ExprWeights {
         let mut arr_expr = Vec::new();
 
         if params.is_empty() {
-            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-            println!("\x1b[91merror\x1b[0m: empty conditional");
+            self.comp_err("empty conditional");
             exit(1);
         }
 
@@ -1017,8 +1067,7 @@ impl ExprWeights {
                                 continue;
                             },
                             _ => {
-                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                println!("\x1b[91merror\x1b[0m: forbidden keyword in statement block {:?}", keyword.1);
+                                self.comp_err(&format!("forbidden keyword in statement block {:?}", keyword.1));
                                 exit(1);
                             },
                         }
@@ -1028,8 +1077,7 @@ impl ExprWeights {
                     let variables = match variables_res {
                         Some(var) => var,
                         None => {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                            println!("\x1b[91merror\x1b[0m: unknown identifier {:?}", ident);
+                            self.comp_err(&format!("unknown identifier {ident}"));
                             exit(1);
                         }
                     };
@@ -1068,33 +1116,27 @@ impl ExprWeights {
 
         match arr_expr[arr_expr.len()-1] {
             Expr::Equal => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                self.comp_err("incomplete condition");
                 exit(1);
             },
             Expr::SmallerThan => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                self.comp_err("incomplete condition");
                 exit(1);
             },
             Expr::BiggerThan => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                self.comp_err("incomplete condition");
                 exit(1);
             },
             Expr::Exclaim => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                self.comp_err("incomplete condition");
                 exit(1);
             },
             Expr::Or => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                self.comp_err("incomplete condition");
                 exit(1);
             },
             Expr::And => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incomplete condition");
+                self.comp_err("incomplete condition");
                 exit(1);
             },
             _ => (),
@@ -1150,8 +1192,7 @@ impl ExprWeights {
             let mut loop_mod = Expr::None;
 
             if self.intlit_content.is_empty() || self.intlit_content.len() > 1 {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incorrect use of increment / decrement statement. only one character inside []");
+                self.comp_err("incorrect use of increment / decrement statement. only one character inside []");
                 exit(1);
             }
 
@@ -1169,14 +1210,12 @@ impl ExprWeights {
                     if let Types::Int = typ {
                         varname = vn.to_owned();
                     } else {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: {:?} {} is not a number", typ, varname);
+                        self.comp_err(&format!("{:?} {} is not a number", typ, varname));
                         exit(1);
                     }
                 },
                 _ => {
-                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                    println!("\x1b[91merror\x1b[0m: first token in loop must be a variable, {:?} is not a variable", arr_expr[0]);
+                    self.comp_err(&format!("first token in loop must be a variable, {:?} is not a variable", arr_expr[0]));
                     exit(1);
                 },
             }
@@ -1187,8 +1226,7 @@ impl ExprWeights {
                         '+' => loop_mod = Expr::LoopMod(format!("{varname}++")),
                         '-' => loop_mod = Expr::LoopMod(format!("{varname}--")),
                         _ => {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                            println!("\x1b[91merror\x1b[0m: modifier restricted to + or -");
+                            self.comp_err("modifier restricted to + or -");
                             exit(1);
                         },
                     }
@@ -1209,13 +1247,24 @@ impl ExprWeights {
                 Expr::VarName((typ, varname)) => {
                     match typ {
                         Types::Str => {
+                            println!("typ: {:?}, ident: {:?}", typ, ident);
                             match ident {
                                 Expr::StrLit(ref _string) => {
                                     expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), varname.to_owned())), ident.clone())));
                                 },
                                 _ => {
-                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                    println!("\x1b[91merror\x1b[0m: expected {:?}, got string", typ);
+                                    self.comp_err(&format!("expected string, got {:?}", typ));
+                                    exit(1);
+                                },
+                            }
+                        },
+                        Types::Int => {
+                            match ident {
+                                Expr::IntLit(ref _integer) => {
+                                    expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), varname.to_owned())), ident.clone())));
+                                },
+                                _ => {
+                                    self.comp_err(&format!("expected int, got {:?}", typ));
                                     exit(1);
                                 },
                             }
@@ -1225,6 +1274,7 @@ impl ExprWeights {
                 },
                 _ => (),
             }
+            self.expr_buffer.clear();
             return expr
         }
 
@@ -1241,8 +1291,7 @@ impl ExprWeights {
             let variables = match variables_res {
                 Some(var) => var,
                 None => {
-                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                    println!("\x1b[91merror\x1b[0m: reassigning unassigned identifier {:?}", ident);
+                    self.comp_err(&format!("reassigning unassigned identifier {:?}", ident));
                     exit(1);
                 }
             };
@@ -1318,7 +1367,6 @@ impl ExprWeights {
                     }
                 }
                 fullname.push_str(&format!("{}", name));
-                // println!("{fullname}");
 
                 match ident {
                     Expr::StrLit(ref _string) => {
@@ -1342,9 +1390,8 @@ impl ExprWeights {
                             }
                         },
                         _ => {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                            self.comp_err("mismatch types");
                             println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m\"{}\"\x1b[0m", typ, name, string);
-                            println!("\x1b[91merror\x1b[0m: mismatch types");
                             exit(1);
                         }
                     }
@@ -1358,9 +1405,8 @@ impl ExprWeights {
                             }
                         },
                         _ => {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                            self.comp_err("mismatch types");
                             println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", typ, name, integer);
-                            println!("\x1b[91merror\x1b[0m: mismatch types");
                             exit(1);
                         }
                     }
@@ -1370,9 +1416,8 @@ impl ExprWeights {
                         (Types::Int, Types::Int) => expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), name.clone())), ident))),
                         (Types::Str, Types::Str) => expr = Expr::ReVar(Box::new((Expr::VarName((typ.clone(), name.clone())), ident))),
                         _ => {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                            self.comp_err("mismatch types");
                             println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", typ, name, var_name);
-                            println!("\x1b[91merror\x1b[0m: mismatch types");
                             exit(1);
                         },
                     }
@@ -1388,22 +1433,55 @@ impl ExprWeights {
         let mut expr = Expr::None;
 
         if self.expr_buffer.len() == 2 {
-            for elem in &self.expr_buffer {
-                println!("{:?}", elem);
-            }
-
             match &self.expr_buffer[0] {
-                Expr::VarName((_typ, _varname)) => {
+                Expr::VarName((left_typ, varname)) => {
                     let mut found_semicolon = false;
                     let mut fullname = String::new();
-                    
+                    let mut fields: Vec<Expr> = Vec::new();
                     match &self.expr_buffer[1] {
                         Expr::VarName((_, exist_var)) => {
                             fullname.push_str(&exist_var);
+
+                            let cur_func = self.extract_func_name();
+                            let variables_res = self.func_to_vars.get(&cur_func);
+                            let variables = match variables_res {
+                                Some(vars) => vars.clone(),
+                                None => Vec::new(),
+                            };
+
+                            for vars in &variables[self.current_scope] {
+                                match vars {
+                                    Expr::Var(var_info) => {
+                                        match &var_info.0 {
+                                            Expr::VarName((_, list_var)) => {
+                                                let first_name: &str = varname.split('.').collect::<Vec<&str>>()[0];
+                                                if first_name == list_var {
+                                                    match &var_info.1 {
+                                                        Expr::Condition(getter) => {
+                                                            for get in *getter.clone() {
+                                                                match get {
+                                                                    Expr::StructField(struct_field) => {
+                                                                        fields.push(*struct_field.clone());
+                                                                    },
+                                                                    _ => (),
+                                                                }
+                                                            }
+                                                        },
+                                                        _ => (),
+                                                    }
+                                                }
+                                            },
+                                            _ => (),
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            }
                         },
                         _ => (),
                     }
 
+                    let mut right_typ = &Types::None;
                     for (i, token) in self.tokens[self.current_token+1..self.tokens.len()-1].iter().enumerate() {
                         if let Token::SemiColon = token {
                             found_semicolon = true;
@@ -1412,16 +1490,44 @@ impl ExprWeights {
                         } else if let Token::Dot = token {
                             fullname.push('.');
                         } else if let Token::Ident(field_name) = token {
-                            fullname.push_str(&format!("{field_name}"));
+                            let mut found = false;
+                            for field in &fields {
+                                match field {
+                                    Expr::VarName((this_typ, name)) => {
+                                        if field_name == name {
+                                            fullname.push_str(&format!("{field_name}"));
+                                            found = true;
+                                            right_typ = this_typ;
+                                            break;
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            }
+
+                            if !found {
+                                self.comp_err(&format!("{field_name} does not exist as a struct field"));
+                                exit(1);
+                            }
                         }
                     }
-
                     if !found_semicolon {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: need ; at the end of getting struct field from variable"); 
+                        self.comp_err("need ; at the end of getting struct field from variable");
                         exit(1);
                     }
-                    expr = Expr::ReVar(Box::new((self.expr_buffer[0].clone(), Expr::VarName((Types::None, fullname)))));
+
+                    match (left_typ, right_typ) {
+                        (Types::Str, Types::Str) => {
+                            expr = Expr::ReVar(Box::new((self.expr_buffer[0].clone(), Expr::VarName((Types::None, fullname)))));
+                        },
+                        (Types::Int, Types::Int) => {
+                            expr = Expr::ReVar(Box::new((self.expr_buffer[0].clone(), Expr::VarName((Types::None, fullname)))));
+                        },
+                        _ => {
+                            self.comp_err("mistmatch types");
+                            exit(1);
+                        },
+                    }
 
                     let cur_func = self.extract_func_name();
                     if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
@@ -1431,6 +1537,7 @@ impl ExprWeights {
                 _ => (),
             }
 
+            self.expr_buffer.clear();
             return expr
         }
 
@@ -1455,9 +1562,8 @@ impl ExprWeights {
                             vars[self.current_scope].push(expr.clone());
                         }
                     } else {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        self.comp_err("mistmatch types");
                         println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m\"{}\"\x1b[0m", self.has_type, self.has_name, v);
-                        println!("\x1b[91merror\x1b[0m: mismatch types");
                         exit(1);
                     }
                 },
@@ -1483,9 +1589,8 @@ impl ExprWeights {
                                                     vars[self.current_scope].push(expr.clone());
                                                 }
                                             } else {
-                                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                                self.comp_err("mistmatch types");
                                                 println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                                                println!("\x1b[91merror\x1b[0m: mismatch types"); 
                                                 exit(1);
                                             }
                                         },
@@ -1498,14 +1603,13 @@ impl ExprWeights {
                                                     vars[self.current_scope].push(expr.clone());
                                                 }
                                             } else {
-                                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                                self.comp_err("mistmatch types");
                                                 println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                                                println!("\x1b[91merror\x1b[0m: mismatch types"); 
                                                 exit(1);
                                             }
                                         },
                                         _ => {
-                                            println!("unsupported type rn lols mb");
+                                            self.comp_err("unsupported type rn lols mb");
                                             exit(1);
                                         },
                                     }
@@ -1520,9 +1624,8 @@ impl ExprWeights {
                             vars[self.current_scope].push(expr.clone());
                         }
                     } else {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                        self.comp_err("mismatch types");
                         println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                        println!("\x1b[91merror\x1b[0m: mismatch types");
                         exit(1);
                     }
                 },
@@ -1547,9 +1650,8 @@ impl ExprWeights {
                                                             vars[self.current_scope].push(expr.clone());
                                                         }
                                                     } else {
-                                                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                                        self.comp_err("mismatch types");
                                                         println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                                                        println!("\x1b[91merror\x1b[0m: mismatch types"); 
                                                         exit(1);
                                                     }
                                                 },
@@ -1562,14 +1664,13 @@ impl ExprWeights {
                                                             vars[self.current_scope].push(expr.clone());
                                                         }
                                                     } else {
-                                                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                                        self.comp_err("mismatch types");
                                                         println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                                                        println!("\x1b[91merror\x1b[0m: mismatch types"); 
                                                         exit(1);
                                                     }
                                                 },
                                                 _ => {
-                                                    println!("unsupported type rn lols mb");
+                                                    self.comp_err("unsupported type rn lols mb");
                                                     exit(1);
                                                 },
                                             }
@@ -1584,9 +1685,8 @@ impl ExprWeights {
                                     vars[self.current_scope].push(expr.clone());
                                 }
                             } else {
-                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                self.comp_err("unsupported type rn lols mb");
                                 println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                                println!("\x1b[91merror\x1b[0m: mismatch types"); 
                                 exit(1);
                             }
                         },
@@ -1601,9 +1701,8 @@ impl ExprWeights {
                                     vars[self.current_scope].push(expr.clone());
                                 }
                             } else {
-                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                self.comp_err("unsupported type rn lols mb");
                                 println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                                println!("\x1b[91merror\x1b[0m: mismatch types"); 
                                 exit(1);
                             }
                         },
@@ -1613,7 +1712,53 @@ impl ExprWeights {
                             let varname = Expr::VarName((Types::UserDef(typedef.clone()), self.has_name.clone()));
                             let mut found_semicolon = false;
                             let mut fullname = String::new();
+
+                            let cur_func = self.extract_func_name();
+                            let variables_res = self.func_to_vars.get(&cur_func);
+                            let variables = match variables_res {
+                                Some(vars) => vars.to_owned(),
+                                None => Vec::new(),
+                            };
+
+                            let mut fields = Vec::new();
+                            for vars in &variables[self.current_scope] {
+                                let mut this_one = false;
+                                match vars {
+                                    Expr::Var(var_info) => {
+                                        match &var_info.0 {
+                                            Expr::VarName((_exist_typ, exist_name)) => {
+                                                if v == exist_name {
+                                                    this_one = true;
+                                                }
+                                            },
+                                            _ => (),
+                                        }
+
+                                        if this_one {
+                                            match &var_info.1 {
+                                                Expr::Condition(getter) => {
+                                                    for get in *getter.clone() {
+                                                        match get {
+                                                            Expr::StructField(struct_field) => {
+                                                                fields.push(*struct_field.clone());
+                                                            },
+                                                            _ => (),
+                                                        }
+                                                    }
+                                                },
+                                                _ => (),
+                                            }
+                                            break;
+                                        }
+                                    },
+                                    _ => (),
+                                }
+
+                            }
+
                             fullname.push_str(v);
+
+                            let mut right_typ = Types::None;
                             for (i, token) in self.tokens[self.current_token+1..self.tokens.len()-1].iter().enumerate() {
                                 if let Token::SemiColon = token {
                                     found_semicolon = true;
@@ -1622,19 +1767,48 @@ impl ExprWeights {
                                 } else if let Token::Dot = token {
                                     fullname.push('.');
                                 } else if let Token::Ident(field_name) = token {
-                                    fullname.push_str(&format!("{field_name}"));
+                                    let mut found = false;
+                                    for field in &fields {
+                                        match field {
+                                            Expr::VarName((this_typ, name)) => {
+                                                if field_name == name {
+                                                    fullname.push_str(&format!("{field_name}"));
+                                                    found = true;
+                                                    right_typ = this_typ.clone();
+                                                    break;
+                                                }
+                                            },
+                                            _ => (),
+                                        }
+                                    }
+
+                                    if !found {
+                                        self.comp_err(&format!("{field_name} does not exist as a struct field"));
+                                        exit(1);
+                                    }
                                 }
                             }
 
                             if !found_semicolon {
-                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                println!("\x1b[91merror\x1b[0m: need ; at the end of getting struct field from variable"); 
+                                self.comp_err("need ; at the end of getting struct field from variable");
                                 exit(1);
                             }
 
                             if found_semicolon {
                                 let new_var = Expr::VarName((self.has_type.clone(), self.has_name.clone()));
-                                expr = Expr::Var(Box::new((new_var, Expr::VarName((Types::None, fullname)))));
+                                match (self.has_type.clone(), right_typ.clone()) {
+                                    (Types::Str, Types::Str) => {
+                                        expr = Expr::Var(Box::new((new_var, Expr::VarName((right_typ, fullname)))));
+                                    },
+                                    (Types::Int, Types::Int) => {
+                                        expr = Expr::Var(Box::new((new_var, Expr::VarName((right_typ, fullname)))));
+                                    },
+                                    _ => {
+                                        self.comp_err("mistmatch types");
+                                        exit(1);
+                                    },
+                                }
+
                                 let cur_func = self.extract_func_name();
                                 if let Some(vars) = self.func_to_vars.get_mut(&cur_func) {
                                     vars[self.current_scope].push(expr.clone());
@@ -1646,9 +1820,8 @@ impl ExprWeights {
                                     vars[self.current_scope].push(expr.clone());
                                 }
                             } else {
-                                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                self.comp_err("mismatch types");
                                 println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", self.has_type, self.has_name, v);
-                                println!("\x1b[91merror\x1b[0m: mismatch types"); 
                                 exit(1);
                             }
                         }
@@ -1706,9 +1879,8 @@ impl ExprWeights {
                             expr = Expr::ReArr(Box::new((Expr::VarName((Types::Arr(Box::new(typ)), name)), pos, v)));
                         },
                         _ => {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                            self.comp_err("mismatch types");
                             println!("\x1b[93m{:?}\x1b[0m \x1b[96m{}\x1b[0m: \x1b[96m{}\x1b[0m", typ, self.has_name, value);
-                            println!("\x1b[91merror\x1b[0m: mismatch types");
                             exit(1);
                         }
                     }
@@ -1752,8 +1924,7 @@ impl ExprWeights {
                         if let Types::Str = self.has_type {
                             expr_value.push(Expr::StrLit(string.clone()));
                         } else {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                            println!("\x1b[91merror\x1b[0m: string array with mismatch elements.");
+                            self.comp_err("string array with mismatch elements.");
                             exit(1);
                         }
                     },
@@ -1761,8 +1932,7 @@ impl ExprWeights {
                         if let Types::Int = self.has_type {
                             expr_value.push(Expr::IntLit(integer.clone()))
                         } else {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                            println!("\x1b[91merror\x1b[0m: integer array with mismatch elements.");
+                            self.comp_err("integer array with mismatch elements.");
                             exit(1);
                         }
                     },
@@ -1773,8 +1943,7 @@ impl ExprWeights {
                                 if let Types::Int = self.has_type {
                                     expr_value.push(Expr::IntLit(ident.clone()));
                                 } else {
-                                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                                    println!("\x1b[91merror\x1b[0m: integer array with mismatch elements.");
+                                    self.comp_err("integer array with mismatch elements.");
                                     exit(1);
                                 }
                             },
@@ -1823,8 +1992,7 @@ impl ExprWeights {
         }
 
         if self.has_colon {
-            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-            println!("\x1b[91merror\x1b[0m: unexpected assignment operator \x1b[96m:\x1b[0m");
+            self.comp_err("unexpected assignment operator \x1b[96m:\x1b[0m");
             exit(1)
         }
 
@@ -1853,16 +2021,14 @@ impl ExprWeights {
                                         if let Types::Str = typ {
                                             expr = Expr::Return(Box::new(Expr::VarName((typ.clone(), name.clone()))));
                                         } else {
-                                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                            self.comp_err("mismatch types");
                                             println!("\x1b[93mneed type: {:?}\x1b[0m \x1b[96mgot: {:?}\x1b[0m", func_info.0, value);
-                                            println!("\x1b[91merror\x1b[0m: mismatch types");
                                             exit(1);
                                         }
                                     },
                                     _ => {
-                                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                        self.comp_err("mismatch types");
                                         println!("\x1b[93mneed type: {:?}\x1b[0m \x1b[96mgot: {:?}\x1b[0m", func_info.0, value);
-                                        println!("\x1b[91merror\x1b[0m: mismatch types");
                                         exit(1);
                                     }
                                 }
@@ -1876,16 +2042,14 @@ impl ExprWeights {
                                         if let Types::Int = typ {
                                             expr = Expr::Return(Box::new(Expr::VarName((typ.clone(), name.clone()))));
                                         } else {
-                                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                            self.comp_err("mismatch types");
                                             println!("\x1b[93mneed type: {:?}\x1b[0m \x1b[96mgot: {:?}\x1b[0m", func_info.0, value);
-                                            println!("\x1b[91merror\x1b[0m: mismatch types");
                                             exit(1);
                                         }
                                     },
                                     _ => {
-                                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
+                                        self.comp_err("mismatch types");
                                         println!("\x1b[93mneed type: {:?}\x1b[0m \x1b[96mgot: {:?}\x1b[0m", func_info.0, value);
-                                        println!("\x1b[91merror\x1b[0m: mismatch types");
                                         exit(1);
                                     }
                                 }
@@ -1909,8 +2073,7 @@ impl ExprWeights {
                 match typ {
                     Types::Int => (),
                     _ => {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: mismatch types");
+                        self.comp_err("mismatch types");
                         exit(1);
                     },
                 }
@@ -1919,15 +2082,13 @@ impl ExprWeights {
                 match typ {
                     Types::Str => (),
                     _ => {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: mismatch types");
+                        self.comp_err("mismatch types");
                         exit(1);
                     },
                 }
             },
             _ => {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: unsupported type rn lol soz");
+                self.comp_err("unsupported type rn lol soz");
                 exit(1);
             },
         }
@@ -2021,8 +2182,7 @@ impl ExprWeights {
         if !self.has_name.is_empty() {
             self.expr_buffer.push(Expr::StructField(Box::new(Expr::VarName((self.has_type.clone(), self.has_name.clone())))));
         } else {
-            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-            println!("\x1b[91merror\x1b[0m: incorrect struct field, {}", self.has_name);
+            self.comp_err(&format!("incorrect struct field, {}", self.has_name));
             exit(1);
         }
     }
@@ -2071,8 +2231,7 @@ impl ExprWeights {
             }
 
             if !found {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: \x1b[91m{}\x1b[0m field does not exist in struct \x1b[93m{}\x1b[0m", self.has_name, self.current_var_struct);
+                self.comp_err(&format!("\x1b[91m{}\x1b[0m field does not exist in struct \x1b[93m{}\x1b[0m", self.has_name, self.current_var_struct));
                 exit(1);
             }
 
@@ -2081,8 +2240,7 @@ impl ExprWeights {
                     if let Expr::StrLit(_) = value {
                         expr = Expr::StructVarField(Box::new(Expr::Var(Box::new((Expr::VarName((this_typ, self.has_name.clone())), value.clone())))));
                     } else {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: mismatch types for struct field \x1b[93m{}\x1b[0m, expected \x1b[93m{:?}\x1b[0m, got \x1b[93m{:?}\x1b[0m", self.has_name, this_typ, value);
+                        self.comp_err(&format!("mismatch types for struct field \x1b[93m{}\x1b[0m, expected \x1b[93m{:?}\x1b[0m, got \x1b[93m{:?}\x1b[0m", self.has_name, this_typ, value));
                         exit(1);
                     }
                 },
@@ -2090,20 +2248,17 @@ impl ExprWeights {
                     if let Expr::IntLit(_) = value {
                         expr = Expr::StructVarField(Box::new(Expr::Var(Box::new((Expr::VarName((this_typ, self.has_name.clone())), value.clone())))));
                     } else {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: mismatch types for struct field \x1b[93m{}\x1b[0m, expected \x1b[93m{:?}\x1b[0m, got \x1b[93m{:?}\x1b[0m", self.has_name, this_typ, value);
+                        self.comp_err(&format!("mismatch types for struct field \x1b[93m{}\x1b[0m, expected \x1b[93m{:?}\x1b[0m, got \x1b[93m{:?}\x1b[0m", self.has_name, this_typ, value));
                         exit(1);
                     }
                 },
                 _ => {
-                    println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                    println!("unsupported rn lol soz");
+                    self.comp_err("unsupported rn lol soz");
                     exit(1);
                 },
             }
         } else {
-            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-            println!("\x1b[91merror\x1b[0m: incorrect struct field in variable, {}", self.has_name);
+            self.comp_err(&format!("incorrect struct field in variable, {}", self.has_name));
             exit(1);
         }
 
@@ -2113,8 +2268,7 @@ impl ExprWeights {
     fn check_struct(&mut self) -> Expr {
         if !self.has_colon || !self.has_func_name.is_empty() || self.has_loop || self.has_name.is_empty() ||
             self.in_func || (self.has_if || self.has_orif || self.has_else) {
-            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-            println!("\x1b[91merror\x1b[0m: incorrect struct definition, {}", self.has_name);
+            self.comp_err(&format!("incorrect struct definintion, {}", self.has_name));
             exit(1);
         }
 
@@ -2123,8 +2277,7 @@ impl ExprWeights {
                 match typ {
                     Types::UserDef(name) => {
                         if name == &self.has_name {
-                            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                            println!("\x1b[91merror\x1b[0m: struct {} already defined", self.has_name);
+                            self.comp_err(&format!("struct {} already defined", self.has_name));
                             exit(1);
                         }
                     }
@@ -2175,8 +2328,7 @@ impl ExprWeights {
                     }
                 }
             } else {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: incorrect variable struct definition, {}", self.has_name);
+                self.comp_err(&format!("incorrect variable struct definition, {}", self.has_name));
                 exit(1);
             }
         } else if self.has_def_struct {
@@ -2191,8 +2343,7 @@ impl ExprWeights {
         }
 
         if let Expr::None = expr {
-            println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-            println!("\x1b[91merror\x1b[0m: unknown code block declaration, {}", self.has_name);
+            self.comp_err(&format!("unknown code block declaration, {}", self.has_name));
             exit(1);
         }
 
@@ -2217,7 +2368,7 @@ impl ExprWeights {
                     Expr::Var(var_info) => {
                         match &var_info.0 {
                             Expr::VarName((_, name)) => {
-                                if self.expr_buffer.len() == 1 {
+                                if !self.expr_buffer.is_empty() {
                                     if name == &ident {
                                         self.expr_buffer.push(var_info.0.clone());
                                         expr = self.try_variable(&var_info.0.clone());
@@ -2251,12 +2402,9 @@ impl ExprWeights {
                                                                     Expr::StructField(struct_field) => {
                                                                         match *struct_field {
                                                                             Expr::VarName((field_typ, field_name)) => {
-                                                                                // println!("field_name: {field_name}, name: {name}, has_name: {}, ref_name: {ref_name}, ident: {ident}", self.has_name);
                                                                                 if field_name == ident {
-                                                                                    // self.has_name = ident.clone();
                                                                                     let fullname = format!("{name}.{field_name}");
                                                                                     self.expr_buffer.push(Expr::VarName((field_typ.clone(), fullname)));
-                                                                                    println!("expr_buffer: {:?}", self.expr_buffer);
                                                                                     found_property = true;
                                                                                     break;
                                                                                 }
@@ -2286,8 +2434,7 @@ impl ExprWeights {
             }
 
             if !found_property {
-                println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                println!("\x1b[91merror\x1b[0m: struct \x1b[93m{}\x1b[0m doesn't have field \x1b[93m{}\x1b[0m", self.has_name, ident);
+                self.comp_err(&format!("struct \x1b[93m{}\x1b[0m doesn't have field \x1b[93m{}\x1b[0m", self.has_name, ident));
                 exit(1);
             }
 
@@ -2305,8 +2452,7 @@ impl ExprWeights {
                 match self.has_type {
                     Types::None => (),
                     _ => {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: types are not allowed when defining a variable struct, {:?}", self.has_type);
+                        self.comp_err(&format!("types are not allowed when defining a variable struct, {:?}", self.has_type));
                         exit(1);
                     },
                 }
@@ -2460,8 +2606,7 @@ impl ExprWeights {
                     }
 
                     if found {
-                        println!("\x1b[91merror\x1b[0m: line {}", self.line_num);
-                        println!("\x1b[91merror\x1b[0m: struct has repeated fields, struct field line: {}", line);
+                        self.comp_err(&format!("struct has repeated fields, struct field line: {}", line));
                         exit(1);
                     }
 
