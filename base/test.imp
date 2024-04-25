@@ -1,3 +1,7 @@
-_(string word) say: {
-    println(word)
+@import "stdio.h";
+
+_() test: {
+    @c [
+        printf("this is a test");
+    ];
 }

@@ -21,15 +21,12 @@ fn build(filename: &String, out_filename: &String, keep_c: bool) {
     };
 
     let tokens = tokeniser(content);
-    for token in &tokens {
-        println!("{:?}", token);
-    }
 
-    let mut parse = ExprWeights::new(tokens);
+    let mut parse = ExprWeights::new(tokens, filename);
     let expressions = parse.parser();
-    // for expr in &expressions {
-    //     println!("{:?}", expr);
-    // }
+    for expr in &expressions {
+        println!("{:?}", expr);
+    }
 
     let mut gen = Gen::new(out_filename.clone(), Lang::C);
     gen.generate(expressions);

@@ -15,7 +15,9 @@ This way with my own language with detailed docs and one day examples, I think I
 
 ## Features
 - Non null terminated strings
-- Structs
+- Procedural 
+- Generics
+- Initalise to 0
 - Pointers (odin syntax)
 - Odin / Jai like syntax
 - Decorators (run - run a function immediately after creation)
@@ -29,24 +31,24 @@ The main jist of Impulsive is if you're declaring, it goes `<TYPE> <NAME>: <VALU
 For example,
 ```
 _(string word) talk: {
-    print(word)
+    print(word);
 }
 
 _() main: {
-    talk("hello world")
+    talk("hello world");
 }
 ```
 or
 ```
 _() main: {
-    @array int nums: |10 20 30|
-    int new_num: 10
+    @array int nums: |10 20 30|;
+    int new_num: 10;
 
-    nums|0|: nums|0| * new_num
-    nums|1|: nums|1| * new_num
-    nums|2|: nums|2| * new_num
+    nums|0|: nums|0| * new_num;
+    nums|1|: nums|1| * new_num;
+    nums|2|: nums|2| * new_num;
 
-    print(nums|1|)
+    print(nums|1|);
 }
 ```
 
@@ -68,8 +70,21 @@ Open a terminal:<br>
 ### Ideas
 ```
 bool -> boolean
-f64 -> 64 bit float
+
+u32 -> 32 bit usigned integer (with support for other lengths of bits)
+i32 -> 32 bit integer (with support for other lengths of bits)
+f64 -> 64 bit float (with support for 32 bit)
+
 @iter i: 5 {} -> simple loop, not really an iterator type
+break -> break out of loop
+continue -> continue next to elem in loop
+
+print -> print something with the type it is
+debug -> print something with a specific type
+
+@def -> define a static label for something (e.g. @def CAP: 100; or @def io: @import "stdio.h";)
+
+defer -> perform action right before the end of current scope
 ```
 for more info, look at the <a href="./DOCS/DOCS.md">Docs</a><br>
 for examples, check out the <a href="./examples">examples folder</a>

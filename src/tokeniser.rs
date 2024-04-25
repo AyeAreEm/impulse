@@ -28,7 +28,7 @@ pub enum Token {
     Multiple,
     Divide,
 
-    Dot,
+    // Dot,
 
     Ident(String),
     Str(String),
@@ -53,7 +53,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
         ('<', Token::SmallerThan),
         ('>', Token::BiggerThan),
         ('!', Token::Exclaim),
-        ('.', Token::Dot),
+        // ('.', Token::Dot),
     ]);
 
     let mut tokens: Vec<Token> = Vec::new();
@@ -83,6 +83,11 @@ pub fn tokeniser(file: String) -> Vec<Token> {
         if c == '[' {
             square_occurences += 1;
             if !in_squares {
+                if buf.len() > 0 {
+                    tokens.push(Token::Ident(buf.clone()));
+                    buf.clear();
+                }
+
                 in_squares = true;
                 tokens.push(Token::Lsquare);
             } else {

@@ -5,19 +5,27 @@ pub enum Lang {
 
 #[derive(Debug, Clone)]
 pub enum Types {
-    Int,
+    I32,
     Str,
-    Arr(Box<Types>),
+    Arr {
+        typ: Box<Types>,
+        length: String,
+    },
+    ArrIndex {
+        arr_typ: Box<Types>,
+        index_at: String,
+    },
+
     Dynam(Box<Types>),
     Void,
 
-    UserDef(String),
+    TypeDef(String),
     None,
 }
 
 #[derive(Debug, Clone)]
 pub enum Keyword {
-    Int,
+    I32,
     Str,
 
     Println,
@@ -37,7 +45,7 @@ pub enum Keyword {
     And,
 
     Struct,
-
+    TypeDef(String),
     None,
 }
 

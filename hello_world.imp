@@ -1,33 +1,33 @@
-@import "stdio.h"
+@import "stdio.h";
 
-struct person: {
-    string name
-    int age
+struct vector: {
+    int x;
+    int y;
+}
+
+vector(int x int y) vector_new: {
+    vector new;
+    new.x: x;
+    new.y: y;
+    return new;
 }
 
 _() main: {
-    person base: {
-        name: ""
-        age: 0
+    vector pos: vector_new(10 15);
+    @c [ 
+        printf("x coord: %d\n", pos.x);
+        printf("y coord: %d\n", pos.y);
+    ];
+
+    @array[10] int arr;
+    loop (i < 10) [+] {
+        arr[i]: i;
     }
 
-    person john: {
-        name: "john"
-        age: 17
+    loop (i < 10) [+] {
+        if (i = 5) {
+            @c [ printf("we at 5\n"); ];
+        }
+        @c [ printf("%d\n", arr[i]); ];
     }
-
-    base.name: john.name;
-    john.name: "john doe"
-    base.age: [john.age + 1]
-
-    # it should print
-    # john
-    # john doe
-    # 18
-
-    @c [
-        printf("%s\n", base.name.data);
-        printf("%s\n", john.name.data);
-        printf("%d\n", base.age);
-    ]
 }
