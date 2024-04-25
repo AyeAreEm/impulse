@@ -67,6 +67,12 @@ Open a terminal:<br>
 `$ git clone https://github.com/AyeAreEm/impulse.git`<br>
 `$ impulse`
 
+### Known Errors
+Error when doing math on two functions, only the `-` appears. not sure if the `return` is helping cause this error or it's just something with integer literals and function calls.
+```
+return [foo(num) - foo(num)];
+```
+
 ### Ideas
 ```
 bool -> boolean

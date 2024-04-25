@@ -935,6 +935,8 @@ impl ExprWeights {
         let mut nested_func = Expr::None;
         let mut nested_brack_rs = 0;
         let mut nested_params = Vec::new();
+        let mut square_rc = 0;
+        let mut intlit_buf = String::new();
 
         let mut expr_params = Vec::new();
         for (i, param) in params.iter().enumerate() {
@@ -943,6 +945,8 @@ impl ExprWeights {
                     if nested_brack_rs > 0 {
                         nested_params.push(param.clone());
                         println!("nested params: {nested_params:?}")
+                    } else if square_rc > 0 {
+                        intlit_buf.push_str(intlit);
                     } else {
                         expr_params.push(self.check_intlit(intlit.to_owned()));
                     }
@@ -954,6 +958,11 @@ impl ExprWeights {
                 Token::Ident(ident) => {
                     if nested_brack_rs > 0 {
                         nested_params.push(param.clone());
+                        continue;
+                    }
+
+                    if square_rc > 0 {
+                        intlit_buf.push_str(ident);
                         continue;
                     }
 
@@ -980,8 +989,17 @@ impl ExprWeights {
                         continue;
                     }
                 },
-                Token::Lsquare => (),
-                Token::Rsquare => (),
+                Token::Lsquare => {
+                    square_rc += 1;
+                },
+                Token::Rsquare => {
+                    square_rc -= 1;
+                    if square_rc == 0 {
+                        let intlit = self.check_intlit(intlit_buf.clone());
+                        println!("intlit: {intlit:?}");
+                        expr_params.push(intlit);
+                    }
+                },
                 Token::Lbrack => {
                     if i != 0 {
                         nested_brack_rs += 1;
@@ -997,8 +1015,40 @@ impl ExprWeights {
                         nested_brack_rs -= 1;
                     }
                 },
+                Token::Minus => {
+                    if square_rc > 0 {
+                        intlit_buf.push('-');
+                    } else {
+                        self.comp_err(&format!("can't have `-` operator outside of []"));
+                        exit(1);
+                    }
+                },
+                Token::Plus => {
+                    if square_rc > 0 {
+                        intlit_buf.push('+');
+                    } else {
+                        self.comp_err(&format!("can't have `+` operator outside of []"));
+                        exit(1);
+                    }
+                },
+                Token::Multiple => {
+                    if square_rc > 0 {
+                        intlit_buf.push('*');
+                    } else {
+                        self.comp_err(&format!("can't have `*` operator outside of []"));
+                        exit(1);
+                    }
+                },
+                Token::Divide => {
+                    if square_rc > 0 {
+                        intlit_buf.push('/');
+                    } else {
+                        self.comp_err(&format!("can't have `/` operator outside of []"));
+                        exit(1);
+                    }
+                },
                 _ => {
-                    self.comp_err(&format!("unexpected token: {:?}", param));
+                    self.comp_err(&format!("this unexpected token: {:?}", param));
                     exit(1);
                 } 
             }

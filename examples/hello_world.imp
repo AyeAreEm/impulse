@@ -1,3 +1,5 @@
+# CURRENTLY DOES NOT WORK. YOU CAN USE C EMBEDS TO EMULATE THIS THO
+
 _() main: {
     print("hello world")
 

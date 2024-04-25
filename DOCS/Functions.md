@@ -10,17 +10,15 @@ _() main: {
 ```
 This may look a bit alien for new programmers but it's nothing hard to understand.
 <br>
-the `_` is the type, which means void. `main` is the name. and the `:` is for assign to the code block (more spiritually than anything honestly)
+the `_` is the type, which means void. `main` is the name. and the `:` is for assigning to the code block (more spiritually than anything honestly)
 <br>
 if you are following the documentation file by file, you'd have read about this "assigment philosophy" in the variables doc. <a href="./Variables.md">if not</a>
 
 ## IMPORTANT NOTE
 The spirit of this language is impulse and bogding. You wouldn't think there's nothing else special about these?
 ```
-main(): _ {}
 _(): main {}
-(): main _ {}
-:() _ main {}
+_main(): {}
 _() main: {}
 ```
 These are all valid in impulse. the compiler doesn't care what order you put them in, as long as all the stuff you need to make a function is there. That does mean tho that no other syntax in this language can be written similarly to this or the compiler might make an oopsie.
