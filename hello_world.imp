@@ -1,33 +1,11 @@
 @import "stdio.h";
 
-struct vector: {
-    int x;
-    int y;
-}
-
-vector(int x int y) vector_new: {
-    vector new;
-    new.x: x;
-    new.y: y;
-    return new;
-}
-
 _() main: {
-    vector pos: vector_new(10 15);
-    @c [ 
-        printf("x coord: %d\n", pos.x);
-        printf("y coord: %d\n", pos.y);
-    ];
-
-    @array[10] int arr;
-    loop (i < 10) [+] {
-        arr[i]: i;
-    }
-
     loop (i < 10) [+] {
         if (i = 5) {
-            @c [ printf("we at 5\n"); ];
+            continue;
         }
-        @c [ printf("%d\n", arr[i]); ];
+        
+        @c [ printf("%d", i); ];
     }
 }

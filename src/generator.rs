@@ -398,6 +398,14 @@ impl Gen {
                     self.add_spaces(self.indent);
                     self.code.push_str("}\n");
                 },
+                Expr::Break => {
+                    self.add_spaces(self.indent);
+                    self.code.push_str("break;\n");
+                },
+                Expr::Continue => {
+                    self.add_spaces(self.indent);
+                    self.code.push_str("continue;\n");
+                },
                 unimpl => {
                     comp_err(&format!("{unimpl:?} is not implemented yet"));
                     exit(1);

@@ -34,6 +34,8 @@ pub enum Keyword {
 
     Underscore,
     Return,
+    Break,
+    Continue,
 
     If,
     OrIf,

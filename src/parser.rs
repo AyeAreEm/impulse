@@ -46,6 +46,8 @@ pub enum Expr {
     CEmbed(String),
 
     Return(Box<Expr>),
+    Break,
+    Continue,
 
     StructName(String),
     StructDef {
@@ -111,9 +113,11 @@ impl ExprWeights {
             ("and".to_string(), Keyword::And),
 
             ("loop".to_string(), Keyword::Loop),
-            // ("_".to_string(), Keyword::Underscore), 
 
             ("return".to_string(), Keyword::Return),
+            ("break".to_string(), Keyword::Break),
+            ("continue".to_string(), Keyword::Continue),
+
             ("struct".to_string(), Keyword::Struct),
         ]);
 
@@ -1510,6 +1514,14 @@ impl ExprWeights {
                         let keyword_res = self.keyword_map.get(ident);
                         match keyword_res {
                             Some(k) => {
+                                if let Keyword::Break = k {
+                                    return Expr::Break
+                                } else if let Keyword::Continue = k {
+                                    return Expr::Continue;
+                                }
+
+                                // ANYTHING THAT NEEDS AN IDENTIFIER AFTER THE KEYWORD IS HANDLED
+                                // BELOW
                                 if i + 1 == value.len() {
                                     self.comp_err(&format!("expected identifier after keyword {k:?}, got nothing"));
                                     exit(1);
@@ -1536,7 +1548,7 @@ impl ExprWeights {
                                 } else if let Expr::Func { .. } = found_ident {
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
                                 } else {
-                                    self.comp_err(&format!("unknown identifier {ident:?}"));
+                                    self.comp_err(&format!("unknown identifier: {ident:?}"));
                                     exit(1);
                                 }
                             },
