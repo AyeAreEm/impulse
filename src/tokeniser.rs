@@ -28,7 +28,8 @@ pub enum Token {
     Multiple,
     Divide,
 
-    // Dot,
+    Caret,
+    Ampersand,
 
     Ident(String),
     Str(String),
@@ -53,6 +54,8 @@ pub fn tokeniser(file: String) -> Vec<Token> {
         ('<', Token::SmallerThan),
         ('>', Token::BiggerThan),
         ('!', Token::Exclaim),
+        ('^', Token::Caret),
+        ('&', Token::Ampersand),
         // ('.', Token::Dot),
     ]);
 

@@ -61,6 +61,8 @@ impl Gen {
     fn handle_typ(&self, typ: Types) -> (String, String) {
         match typ {
             Types::I32 => return (String::from("int"), String::new()),
+            Types::U8 => return (String::from("unsigned char"), String::new()),
+            Types::I8 => return (String::from("signed char"), String::new()),
             Types::TypeDef(user_def) => return (format!("{user_def}"), String::new()),
             Types::Void => return (String::from("void"), String::new()),
             Types::Arr { typ: arr_typ, length } => {
@@ -70,6 +72,10 @@ impl Gen {
             },
             Types::ArrIndex { arr_typ: _, index_at } => {
                 return (String::new(), index_at)
+            },
+            Types::Pointer(ptotyp) => {
+                let sub_typ = self.handle_typ(*ptotyp).0;
+                return (format!("{sub_typ}*"), (String::new()))
             },
             unimpl => {
                 comp_err(&format!("{unimpl:?} is not implemented yet"));
@@ -181,6 +187,14 @@ impl Gen {
             },
             Expr::FuncCall { .. } => return self.handle_funccall(value.clone()),
             Expr::ArrayLit(arrlit) => return self.handle_arraylit(arrlit),
+            Expr::Address(atoval) =>{
+                let sub_val = self.handle_value(*atoval);
+                return format!("&{sub_val}")
+            },
+            Expr::DerefPointer(dptoval) => {
+                let sub_val = self.handle_value(*dptoval);
+                return format!("*{sub_val}")
+            },
             unimpl => {
                 comp_err(&format!("expression {unimpl:?} not implemented yet"));
                 exit(1);

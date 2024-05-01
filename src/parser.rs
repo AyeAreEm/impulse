@@ -21,6 +21,8 @@ pub enum Expr {
         info: Box<Expr>, // Expr = VariableName
         value: Box<Expr>, // Expr = VariableName | StrLit | IntLit | FuncCall
     },
+    DerefPointer(Box<Expr>),
+    Address(Box<Expr>),
 
     If(Vec<Expr>),
     OrIf(Vec<Expr>),
@@ -103,6 +105,8 @@ impl ExprWeights {
 
             ("i32".to_string(), Keyword::I32),
             ("int".to_string(), Keyword::I32),
+            ("u8".to_string(), Keyword::U8),
+            ("i8".to_string(), Keyword::I8),
             // ("string".to_string(), Keyword::Str),
 
             ("if".to_string(), Keyword::If),
@@ -170,7 +174,11 @@ impl ExprWeights {
     fn keyword_to_type(&self, kw: Keyword) -> Types {
         match kw {
             Keyword::I32 => return Types::I32,
+            Keyword::U8 => return Types::U8,
+            Keyword::I8 => return Types::I8,
             Keyword::TypeDef(user_def) => return Types::TypeDef(user_def),
+            Keyword::Pointer(typ, _) => return Types::Pointer(Box::new(typ)),
+            Keyword::Address => return Types::Address,
             _ => {
                 self.comp_err(&format!("can't convert {:?} to a type. type might not be reimplemented yet or defined.", kw));
                 exit(1);
@@ -660,6 +668,7 @@ impl ExprWeights {
         let mut brack_rc = 0;
         let mut in_bracks = false;
         let mut seen_colon = 0;
+        let mut has_caret = false;
 
         let mut params = Vec::new();
 
@@ -672,9 +681,18 @@ impl ExprWeights {
 
         for (i, token) in self.token_stack.iter().enumerate() {
             match token {
+                Token::Caret => {
+                    has_caret = true;
+                },
+                // NOT SURE IF THIS IS NEEDED, WILL REMOVE
                 Token::Underscore => {
-                    if name.is_empty() {
+                    if name.is_empty() || has_caret {
                         typ = Types::Void;
+
+                        if has_caret {
+                            typ = Types::Pointer(Box::new(typ));
+                            has_caret = false;
+                        }
                     } else if let Token::Ident(_) = self.token_stack[i+1] {
                         name.push('_');
                     }
@@ -712,6 +730,10 @@ impl ExprWeights {
                                 _ => {
                                     if let Types::None = typ {
                                         typ = self.keyword_to_type(keyword.clone());
+                                        if has_caret {
+                                            typ = Types::Pointer(Box::new(typ));
+                                            has_caret = false;
+                                        }
                                     } else {
                                         name.push_str(&ident);
                                     }
@@ -948,7 +970,6 @@ impl ExprWeights {
                 Token::Int(intlit) => {
                     if nested_brack_rs > 0 {
                         nested_params.push(param.clone());
-                        println!("nested params: {nested_params:?}")
                     } else if square_rc > 0 {
                         intlit_buf.push_str(intlit);
                     } else {
@@ -1000,7 +1021,6 @@ impl ExprWeights {
                     square_rc -= 1;
                     if square_rc == 0 {
                         let intlit = self.check_intlit(intlit_buf.clone());
-                        println!("intlit: {intlit:?}");
                         expr_params.push(intlit);
                     }
                 },
@@ -1052,7 +1072,7 @@ impl ExprWeights {
                     }
                 },
                 _ => {
-                    self.comp_err(&format!("this unexpected token: {:?}", param));
+                    self.comp_err(&format!("unexpected token: {:?}", param));
                     exit(1);
                 } 
             }
@@ -1288,38 +1308,128 @@ impl ExprWeights {
                     }
                 }
             },
+            Token::Underscore => {
+                self.comp_err(&format!("variables with type void are not supported. you can use a void pointer."));
+                exit(1);
+            },
+            Token::Caret => {
+                if var_info.len() < 3 {
+                    self.comp_err(&format!("expected more tokens after pointer"));
+                    exit(1);
+                }
+
+                if let Token::Ident(ident) = &var_info[1] {
+                    let keyword_res = self.keyword_map.get(ident);
+                    match keyword_res {
+                        Some(kw) => {
+                            let typ = self.keyword_to_type(kw.clone());
+                            keyword = Keyword::Pointer(typ.clone(), typ);
+                        },
+                        None => {
+                            match self.find_structure(ident) {
+                                Expr::StructDef { struct_name, .. } => {
+                                    match *struct_name {
+                                        Expr::StructName(name) => {
+                                            keyword = Keyword::Pointer(Types::TypeDef(name.clone()), Types::TypeDef(name));
+                                        },
+                                        _ => {
+                                            self.comp_err(&format!("expected a type after ^, found {ident} instead"));
+                                            exit(1);
+                                        },
+                                    }
+                                },
+                                _ => {
+                                    self.comp_err(&format!("expected a type after ^, found {ident} instead"));
+                                    exit(1);
+                                }
+                            }
+                        }
+                    }
+                } else if let Token::Caret = &var_info[1] {
+                    let mut pointer_counter = 2;
+                    for index in 2..var_info.len()-1 {
+                        match &var_info[index] {
+                            Token::Caret => {
+                                pointer_counter += 1;
+                            },
+                            Token::Ident(ident) => {
+                                let keyword_res = self.keyword_map.get(ident);
+                                match keyword_res {
+                                    Some(kw) => {
+                                        let mut typ = self.keyword_to_type(kw.clone());
+                                        let tmp = typ.clone();
+
+                                        for _ in 0..pointer_counter-1 {
+                                            typ = Types::Pointer(Box::new(typ));
+                                        }
+
+                                        keyword = Keyword::Pointer(typ, tmp);
+                                    },
+                                    None => {
+                                        match self.find_structure(ident) {
+                                            Expr::StructDef { struct_name, .. } => {
+                                                match *struct_name {
+                                                    Expr::StructName(name) => {
+                                                        let mut typ = Types::TypeDef(name.clone());
+
+                                                        for _ in 0..pointer_counter-1 {
+                                                            typ = Types::Pointer(Box::new(typ));
+                                                        }
+
+                                                        keyword = Keyword::Pointer(typ, Types::TypeDef(name));
+                                                    },
+                                                    _ => {
+                                                        self.comp_err(&format!("expected a type after ^, found {ident} instead"));
+                                                        exit(1);
+                                                    },
+                                                }
+                                            },
+                                            _ => {
+                                                self.comp_err(&format!("expected a type after ^, found {ident} instead"));
+                                                exit(1);
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            Token::Underscore => {
+                                let mut typ = Types::Void;
+                                let tmp = typ.clone();
+
+                                for _ in 0..pointer_counter-1 {
+                                    typ = Types::Pointer(Box::new(typ));
+                                }
+
+                                keyword = Keyword::Pointer(typ, tmp);
+                            },
+                            unexpected => {
+                                self.comp_err(&format!("expected identifier after ^, got {unexpected:?}"));
+                                exit(1);
+                            }
+                        }
+                    }
+                } else if let Token::Underscore = &var_info[1] {
+                    keyword = Keyword::Pointer(Types::Void, Types::Void);
+                } else {
+                    self.comp_err(&format!("expected identifier after ^, got {:?}", &var_info[2]));
+                    exit(1);
+                }
+            },
             _ => {
                 self.comp_err(&format!("unexpected token: {:?}", var_info[0]));
                 exit(1);
             }
         }
 
-        let mut name = String::new();
-        let mut had_under = false;
-        for i in 1..var_info.len() {
-            match &var_info[i] {
-                Token::Underscore => {
-                    if name.is_empty() {
-                        self.comp_err(&format!("unexpected void type"));
-                        exit(1);
-                    } else if let Token::Ident(_) = self.token_stack[i+1] {
-                        name.push('_');
-                        had_under = true;
-                    }
-                },
-                Token::Ident(ident) => {
-                    if i == 1 || had_under {
-                        name.push_str(&ident);
-                    } else {
-                        self.comp_err(&format!("variable name can't have spaces between words"));
-                        exit(1);
-                    }
-                },
-                _ => (),
+        let name = match &var_info[var_info.len()-1] {
+            Token::Ident(ident) => ident,
+            unexpected => {
+                self.comp_err(&format!("unexpected token in variable name: {:?}", unexpected));
+                exit(1);
             }
-        }
+        };
 
-        let keyword_res = self.keyword_map.get(&name);
+        let keyword_res = self.keyword_map.get(name);
         match keyword_res {
             Some(k) => {
                 self.comp_err(&format!("expected identifier, found keyword {k:?}"));
@@ -1328,20 +1438,32 @@ impl ExprWeights {
             None => (),
         };
 
-        if let Expr::StructDef { .. } = self.find_structure(&name) {
+        if let Expr::StructDef { .. } = self.find_structure(name) {
             self.comp_err(&format!("expected identifier, found struct name: {name}"));
             exit(1);
         }
 
-        if name == String::from(".") {
+        if name == &String::from(".") {
             self.comp_err(&format!("can't name a variable `.`"));
             exit(1);
         }
 
         let found_expr = self.find_ident(name.clone());
         if let Expr::None = found_expr {
+            match keyword {
+                Keyword::TypeDef(ref user_def) => {
+                    self.propagate_struct_fields(name.to_string(), user_def.to_string());
+                },
+                Keyword::Pointer(.., ref last_typ) => {
+                    if let Types::TypeDef(user_def) = last_typ {
+                        self.propagate_struct_fields(name.to_string(), user_def.to_string());
+                    }
+                },
+                _ => (),
+            }
+
             let typ = self.keyword_to_type(keyword.clone());
-            return Expr::VariableName { typ, name, reassign: false };
+            return Expr::VariableName { typ, name: name.to_owned(), reassign: false };
         } else if let Expr::VariableName { typ, name, .. } = found_expr {
             match keyword {
                 Keyword::None => {
@@ -1443,12 +1565,27 @@ impl ExprWeights {
         expr_params
     }
 
+    fn create_address(&self, ident: &String) -> Expr {
+        let found_ident = self.find_ident(ident.clone());
+        match found_ident {
+            Expr::VariableName { .. } => {
+                return Expr::Address(Box::new(found_ident))
+            },
+            unexpected => {
+                self.comp_err(&format!("unexpected expression {unexpected:?} when getting address of identifier: {ident:?}"));
+                exit(1);
+            }
+        }
+    }
+
     fn handle_right_assign(&mut self, value: Vec<Token>, is_right: bool) -> Expr {
         let mut buffer = Vec::new();
         let mut params = Vec::new();
         let mut brack_rc = 0;
         let mut pipe_rc = 0;
+        let mut pointer_counter = 0;
         let mut found_macro = false;
+        let mut found_amper = false;
 
         let mut returning = false;
 
@@ -1484,6 +1621,9 @@ impl ExprWeights {
                 Token::Pipe => {
                     pipe_rc += 1;
                 },
+                Token::Caret => {
+                    pointer_counter += 1;
+                },
                 _ => {
                     if brack_rc > 0 {
                         params.push(token.clone());
@@ -1507,6 +1647,10 @@ impl ExprWeights {
                 Token::Ident(ident) => {
                     if found_macro {
                         return self.handle_macros(ident, &i, &value);
+                    } else if found_amper {
+                        buffer.push(self.create_address(ident));
+                        found_amper = false;
+                        continue;
                     }
 
                     // check if this is an expr without a :
@@ -1514,10 +1658,19 @@ impl ExprWeights {
                         let keyword_res = self.keyword_map.get(ident);
                         match keyword_res {
                             Some(k) => {
+                                let mut keyword = k.clone();
+
                                 if let Keyword::Break = k {
                                     return Expr::Break
                                 } else if let Keyword::Continue = k {
                                     return Expr::Continue;
+                                } else if pointer_counter > 0 {
+                                    let mut typ = self.keyword_to_type(k.clone());
+                                    let tmp = typ.clone();
+                                    for _ in 0..pointer_counter-1 {
+                                        typ = Types::Pointer(Box::new(typ));
+                                    }
+                                    keyword = Keyword::Pointer(typ, tmp);
                                 }
 
                                 // ANYTHING THAT NEEDS AN IDENTIFIER AFTER THE KEYWORD IS HANDLED
@@ -1532,11 +1685,11 @@ impl ExprWeights {
                                     returning = true;
                                     continue;
                                 } else if self.in_struct_def {
-                                    let expr = self.create_define_var(k.clone(), value[i+1].clone());
+                                    let expr = self.create_define_var(keyword, value[i+1].clone());
                                     self.expr_stack.push(expr);
                                     return Expr::None
                                 } else {
-                                    return self.create_define_var(k.clone(), value[i+1].clone());
+                                    return self.create_define_var(keyword, value[i+1].clone());
                                 }
                             },
                             None => {
@@ -1590,7 +1743,54 @@ impl ExprWeights {
                 Token::Rsquare => (),
                 Token::Pipe => {
                     // handled above
-                }
+                },
+                Token::Caret => {
+                    if is_right {
+                        let top_expr_res = buffer.pop();
+                        let top_expr = match top_expr_res {
+                            Some(ex) => ex,
+                            None => {
+                                self.comp_err(&format!("unexpected ^ operator as there's no expression in front it."));
+                                exit(1);
+                            }
+                        };
+
+                        buffer.push(Expr::DerefPointer(Box::new(top_expr)));
+                    }
+                },
+                Token::Ampersand => {
+                    found_amper = true;
+                },
+                Token::Underscore => {
+                    if !is_right {
+                        if pointer_counter > 0 {
+                            let mut typ = Types::Void;
+                            for _ in 0..pointer_counter-1 {
+                                typ = Types::Pointer(Box::new(typ));
+                            }
+
+                            let keyword = Keyword::Pointer(typ, Types::Void);
+                            if i + 1 == value.len() {
+                                self.comp_err(&format!("expected identifier after keyword {keyword:?}, got nothing"));
+                                exit(1);
+                            }
+
+                            if self.in_struct_def {
+                                let expr = self.create_define_var(keyword, value[i+1].clone());
+                                self.expr_stack.push(expr);
+                                return Expr::None
+                            } else {
+                                return self.create_define_var(keyword, value[i+1].clone());
+                            }
+                        } else {
+                            self.comp_err(&format!("can't make void type. void pointers are allowed"));
+                            exit(1);
+                        }
+                    } else {
+                        self.comp_err(&format!("can't make void type. void pointers are allowed"));
+                        exit(1);
+                    }
+                },
                 _ => {
                     self.comp_err(&format!("unexpected token: {:?}", token));
                     exit(1);
@@ -1645,6 +1845,30 @@ impl ExprWeights {
         buffer[0].clone()
     }
 
+    fn propagate_struct_fields(&mut self, fname: String, user_def: String) {
+        if let Expr::StructDef { struct_fields, .. } = self.find_structure(&user_def) {
+            for field in struct_fields {
+                match field {
+                    Expr::VariableName { typ, name, .. } => {
+                        let new_name = format!("{fname}.{name}");
+                        let new_expr = Expr::Variable {
+                            info: Box::new(Expr::VariableName {
+                                typ,
+                                name: new_name,
+                                reassign: false,
+                            }),
+                            value: Box::new(Expr::None),
+                        };
+                        if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
+                            vars[self.current_scope].push(new_expr);
+                        }
+                    },
+                    _ => (),
+                }
+            }
+        }
+    }
+
     fn create_define_var(&mut self, kw: Keyword, ident: Token) -> Expr {
         let expr: Expr;
         let fname: String;
@@ -1693,28 +1917,13 @@ impl ExprWeights {
 
         match kw {
             Keyword::I32 => (),
-            Keyword::TypeDef(ref user_def) => {
-                if let Expr::StructDef { struct_fields, .. } = self.find_structure(&user_def) {
-                    for field in struct_fields {
-                        match field {
-                            Expr::VariableName { typ, name, .. } => {
-                                let new_name = format!("{fname}.{name}");
-                                let new_expr = Expr::Variable {
-                                    info: Box::new(Expr::VariableName {
-                                        typ,
-                                        name: new_name,
-                                        reassign: false,
-                                    }),
-                                    value: Box::new(Expr::None),
-                                };
-                                if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
-                                    vars[self.current_scope].push(new_expr);
-                                }
-                            },
-                            _ => (),
-                        }
-                    }
+            Keyword::Pointer(.., last) => {
+                if let Types::TypeDef(user_def) = last {
+                    self.propagate_struct_fields(fname, user_def.to_string());
                 }
+            },
+            Keyword::TypeDef(ref user_def) => {
+                self.propagate_struct_fields(fname, user_def.to_string());
             },
             Keyword::Str => {
                 self.comp_err(&format!("string literal not reimplemented yet"));
@@ -1820,7 +2029,10 @@ impl ExprWeights {
                 Token::SemiColon => {
                     self.handle_semicolon();
                 },
-                Token::Newline => self.line_num += 1,
+                Token::Newline => {
+                    self.error_if_stack_not_empty();
+                    self.line_num += 1;
+                },
                 _ => self.token_stack.push(self.tokens[self.current_token].clone()),
             }
 

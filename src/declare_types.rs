@@ -6,7 +6,9 @@ pub enum Lang {
 #[derive(Debug, Clone)]
 pub enum Types {
     I32,
-    Str,
+    U8,
+    I8,
+    // Str,
     Arr {
         typ: Box<Types>,
         length: String,
@@ -16,7 +18,10 @@ pub enum Types {
         index_at: String,
     },
 
-    Dynam(Box<Types>),
+    Pointer(Box<Types>),
+    Address,
+
+    // Dynam(Box<Types>),
     Void,
 
     TypeDef(String),
@@ -26,6 +31,8 @@ pub enum Types {
 #[derive(Debug, Clone)]
 pub enum Keyword {
     I32,
+    U8,
+    I8,
     Str,
 
     Println,
@@ -45,6 +52,9 @@ pub enum Keyword {
 
     Or,
     And,
+    
+    Pointer(Types, Types),
+    Address,
 
     Struct,
     TypeDef(String),
