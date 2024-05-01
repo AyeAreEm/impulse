@@ -1,5 +1,25 @@
+@import "stdlib.h";
+
 struct dynamic: {
     ^^_ data;
     int len;
     int cap;
+}
+
+^_(int size) alloc: {
+    @c [ return malloc(size); ];
+}
+
+dynamic() dynam_new: {
+    dynamic new;
+    new.len: 0;
+    new.cap: 50;
+    new.data: alloc([5 * 16]);
+
+    @c [
+        if (new.data == NULL) {
+            exit(1);
+        }
+    ];
+    return new;
 }
