@@ -1,25 +1,8 @@
-@import "stdlib.h";
+@import "base/dynamic.imp";
+@import "stdio.h";
 
-struct dynamic: {
-    ^^_ data;
-    int len;
-    int cap;
-}
-
-^_(int size) alloc: {
-    @c [ return malloc(size); ];
-}
-
-dynamic() dynam_new: {
-    dynamic new;
-    new.len: 0;
-    new.cap: 50;
-    new.data: alloc([5 * 16]);
-
-    @c [
-        if (new.data == NULL) {
-            exit(1);
-        }
-    ];
-    return new;
+_() main: {
+    dynamic arr: dynam_new();
+    free_mem(arr.data);
+    @c [ printf("it worked\n"); ];
 }

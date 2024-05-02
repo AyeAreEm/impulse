@@ -1,7 +1,0 @@
-@import "stdio.h";
-
-_() test: {
-    @c [
-        printf("this is a test");
-    ];
-}

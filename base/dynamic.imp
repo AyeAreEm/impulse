@@ -1,0 +1,29 @@
+@import "base/memory_alloc.imp";
+
+struct dynamic: {
+    ^^_ data;
+    int len;
+    int cap;
+}
+
+dynamic() dynam_new: {
+    dynamic array;
+    array.len: 0;
+    array.cap: 50;
+    array.data: alloc([array.cap * 8]);
+
+    @c [
+        if (array.data == NULL) {
+            exit(1);
+        }
+    ];
+    return array;
+}
+
+^_(^dynamic arr int index) dynam_at: {
+    if (index >= arr.len) {
+        @c [ exit(1); ];
+    }
+
+    return arr.data[index];
+}
