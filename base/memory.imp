@@ -1,0 +1,32 @@
+@import "stdlib.h";
+@import "string.h";
+
+^_(int len int size) alloc: {
+    @c [ return calloc(len, size); ];
+}
+
+^_(^_ address int new_size) re_alloc: {
+    @c [ return realloc(address, new_size); ];
+}
+
+^_(^_ dest ^_ src int n) mem_copy: {
+    @c [ return memcpy(dest, src, n); ];
+}
+
+^_(^_ str u8 c int n) mem_set: {
+    @c [ return memset(str, c, n); ];
+}
+
+^_(^_ dest ^_ src int n) mem_move: {
+    @c [ return memmove(dest, src, n); ];
+}
+
+int(^_ ptr1 ^_ ptr2 int n) mem_compare: {
+    @c [ return memcmp(ptr1, ptr2, n);];
+}
+
+_(^_ block) free_mem: {
+    @c [
+        free(block);
+    ];
+}

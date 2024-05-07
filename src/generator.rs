@@ -75,7 +75,7 @@ impl Gen {
             },
             Types::Pointer(ptotyp) => {
                 let sub_typ = self.handle_typ(*ptotyp).0;
-                return (format!("{sub_typ}*"), (String::new()))
+                return (format!("{sub_typ}*"), String::new())
             },
             unimpl => {
                 comp_err(&format!("{unimpl:?} is not implemented yet"));
@@ -86,17 +86,22 @@ impl Gen {
 
     fn handle_varname(&self, varname: Expr) -> String {
         match varname {
-            Expr::VariableName { typ, name, reassign } => {
+            Expr::VariableName { ref typ, reassign, .. } => {
+                let new_name = self.handle_deref_struct(varname.clone());
                 if let Types::ArrIndex { index_at, .. } = typ {
-                    return format!("{name}[{index_at}]")
+                    return format!("{new_name}[{index_at}]")
                 }
 
                 if reassign == false {
-                    let str_typ = self.handle_typ(typ);
-                    return format!("{} {name}{}", str_typ.0, str_typ.1)
+                    let str_typ = self.handle_typ(typ.clone());
+                    return format!("{} {new_name}{}", str_typ.0, str_typ.1)
                 } else {
-                    return format!("{name}")
+                    return format!("{new_name}")
                 }
+            },
+            Expr::DerefPointer(value) => {
+                let derefed = self.handle_varname(*value);
+                return format!("*{derefed}")
             },
             unexpected => {
                 comp_err(&format!("unexpected expression: {unexpected:?}"));
@@ -175,14 +180,48 @@ impl Gen {
         arrlit_code
     }
 
+    fn handle_deref_struct(&self, value: Expr) -> String {
+        match value {
+            Expr::VariableName { typ, name, field_data, .. } => {
+                if let Types::ArrIndex { arr_typ, .. } = typ {
+                    if let Types::Pointer(_) = *arr_typ {
+                        let new_name = name.replace(".", "->");
+                        return new_name
+                    } else {
+                        return name
+                    }
+                }
+
+                if field_data.0 && field_data.1 {
+                    match typ {
+                        Types::Pointer(_) => {
+                            let new_name = name.replace(".", "->");
+                            return new_name
+                        },
+                        _ => {
+                            return name
+                        }
+                    }
+                } else {
+                    return name
+                }
+            },
+            unexpected => {
+                comp_err(&format!("can't deference {unexpected:?}"));
+                exit(1);
+            }
+        }
+    }
+
     fn handle_value(&self, value: Expr) -> String {
         match value {
             Expr::IntLit(intlit) => return intlit,
-            Expr::VariableName { typ, name, .. } => {
+            Expr::VariableName { ref typ, .. } => {
+                let new_name = self.handle_deref_struct(value.clone());
                 if let Types::ArrIndex { index_at, .. } = typ {
-                    return format!("{name}[{index_at}]")
+                    return format!("{new_name}[{index_at}]")
                 } else {
-                    return name
+                    return new_name
                 }
             },
             Expr::FuncCall { .. } => return self.handle_funccall(value.clone()),
@@ -208,7 +247,16 @@ impl Gen {
         let mut had_angled = false;
         for condition in conditions {
             match condition {
-                Expr::VariableName { name, .. } => boolean_condition_code.push_str(&format!("{name}")),
+                Expr::VariableName { typ, .. } => {
+                    let new_name = self.handle_deref_struct(condition.clone());
+
+                    if let Types::ArrIndex { index_at, .. } = typ {
+                        boolean_condition_code.push_str(&format!("{new_name}[{index_at}]"));
+                        return boolean_condition_code
+                    } 
+
+                    boolean_condition_code.push_str(&format!("{new_name}"))
+                },
                 Expr::Equal => {
                     if had_angled {
                         boolean_condition_code.push_str("=");
@@ -259,7 +307,7 @@ impl Gen {
         loop_code.push_str("for (");
 
         match &conditions[0] {
-            Expr::VariableName { typ, name, reassign } => {
+            Expr::VariableName { typ, name, reassign, .. } => {
                 varname = name.to_owned();
                 if reassign == &true {
                     loop_code.push_str(&format!("{} {name} = 0; ", self.handle_typ(typ.clone()).0));
@@ -293,7 +341,7 @@ impl Gen {
         for (_index, expr) in expressions.into_iter().enumerate() {
             match expr {
                 Expr::Import(loc) => {
-                    if !self.imports.contains(&format!("#include <{loc}.h>\n")) {
+                    if !self.imports.contains(&format!("#include <{loc}.h>\n")) && !self.imports.contains(&format!("#include \"{loc}.h\"\n")) {
                         let libc_res = self.libc_map.get(&loc);
                         match libc_res {
                             Some(_) => {
@@ -353,10 +401,10 @@ impl Gen {
                     func_code.push_str(") {\n");
                     self.code.push_str(&func_code);
                 },
-                Expr::VariableName { typ, name, reassign } => {
+                Expr::VariableName { typ, name, reassign, field_data } => {
                     self.add_spaces(self.indent);
 
-                    let varname = self.handle_varname(Expr::VariableName { typ, name, reassign });
+                    let varname = self.handle_varname(Expr::VariableName { typ, name, reassign, field_data });
                     self.code.push_str(&format!("{varname} = {{0}};\n"));
                 },
                 Expr::Variable { info, value } => {

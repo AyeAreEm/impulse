@@ -1,4 +1,4 @@
-@import "base/memory_alloc.imp";
+@import "base/memory.imp";
 
 struct dynamic: {
     ^^_ data;
@@ -10,7 +10,7 @@ dynamic() dynam_new: {
     dynamic array;
     array.len: 0;
     array.cap: 50;
-    array.data: alloc([array.cap * 8]);
+    array.data: alloc(array.cap 8);
 
     @c [
         if (array.data == NULL) {
@@ -26,4 +26,30 @@ dynamic() dynam_new: {
     }
 
     return arr.data[index];
+}
+
+int(^dynamic arr) dynam_len: {
+    return arr.len;
+}
+
+_(^dynamic arr ^_ data) dynam_push: {
+    if ([arr.len + 1] >= arr.cap) {
+        arr.cap: [arr.cap + [arr.len + 1] * 2];
+        arr.data: re_alloc(arr.data [arr.cap * 8]);
+    }
+    arr.data[arr.len]: data;
+    arr.len: [arr.len + 1];
+}
+
+_(^dynamic arr int index ^_ data) dynam_insert: {
+    if (index >= arr.len) {
+        @c [ exit(1); ];
+    }
+
+    arr.data[index]: data;
+}
+
+_(^dynamic arr) dynam_clear: {
+    free_mem(arr.data);
+    arr^: dynam_new();
 }

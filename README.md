@@ -91,6 +91,13 @@ debug -> print something with a specific type
 @def -> define a static label for something (e.g. @def CAP: 100; or @def io: @import "stdio.h";)
 
 defer -> perform action right before the end of current scope
+usize -> unsigned integer type with the same number of bits as the platform's pointer type
+sizeof -> returns the size in bytes of a type
+
+standard library:
+windows -> either natively or a mapping to raylib
+networks -> http 1.0
+sockets -> websockets, etc
 ```
 for more info, look at the <a href="./DOCS/DOCS.md">Docs</a><br>
 for examples, check out the <a href="./examples">examples folder</a>

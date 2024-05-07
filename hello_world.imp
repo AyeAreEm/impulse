@@ -1,8 +1,1 @@
 @import "base/dynamic.imp";
-@import "stdio.h";
-
-_() main: {
-    dynamic arr: dynam_new();
-    free_mem(arr.data);
-    @c [ printf("it worked\n"); ];
-}
