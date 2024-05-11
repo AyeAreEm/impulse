@@ -63,6 +63,7 @@ impl Gen {
             Types::I32 => return (String::from("int"), String::new()),
             Types::U8 => return (String::from("unsigned char"), String::new()),
             Types::I8 => return (String::from("signed char"), String::new()),
+            Types::Char => return (String::from("char"), String::new()),
             Types::TypeDef(user_def) => return (format!("{user_def}"), String::new()),
             Types::Void => return (String::from("void"), String::new()),
             Types::Arr { typ: arr_typ, length } => {
@@ -144,6 +145,20 @@ impl Gen {
                                 funccall_code.push_str(&format!(", {}", self.handle_funccall(param.clone())))
                             }
                         },
+                        Expr::Address(_) => {
+                            if i == 0 {
+                                funccall_code.push_str(&self.handle_value(param.clone()));
+                            } else {
+                                funccall_code.push_str(&format!(", {}", self.handle_value(param.clone())));
+                            }
+                        },
+                        Expr::StrLit { .. } => {
+                            if i == 0 {
+                                funccall_code.push_str(&self.handle_value(param.clone()));
+                            } else {
+                                funccall_code.push_str(&format!(", {}", self.handle_value(param.clone())));
+                            }
+                        },
                         unimpl => {
                             comp_err(&format!("expression {unimpl:?} not implemented yet"));
                             exit(1);
@@ -216,6 +231,7 @@ impl Gen {
     fn handle_value(&self, value: Expr) -> String {
         match value {
             Expr::IntLit(intlit) => return intlit,
+            Expr::StrLit { content, .. } => return format!("\"{content}\""),
             Expr::VariableName { ref typ, .. } => {
                 let new_name = self.handle_deref_struct(value.clone());
                 if let Types::ArrIndex { index_at, .. } = typ {

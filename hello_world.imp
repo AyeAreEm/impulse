@@ -1,1 +1,20 @@
-@import "base/dynamic.imp";
+@import "stdio.h";
+
+struct Node: {
+    int value;
+    ^Node next;
+}
+
+struct List: {
+    ^Node head;
+    ^Node tail;
+}
+
+_() main: {
+    List arr;    
+    if (arr.head = 0) {
+        @c [
+            printf("it is zero");
+        ];
+    }
+}

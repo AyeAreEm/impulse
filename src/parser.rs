@@ -43,7 +43,10 @@ pub enum Expr {
     Or,
 
     IntLit(String),
-    StrLit(String),
+    StrLit {
+        content: String,
+        is_cstr: bool,
+    },
 
     Import(String),
     CEmbed(String),
@@ -109,6 +112,7 @@ impl ExprWeights {
             ("int".to_string(), Keyword::I32),
             ("u8".to_string(), Keyword::U8),
             ("i8".to_string(), Keyword::I8),
+            ("char".to_string(), Keyword::Char),
             // ("string".to_string(), Keyword::Str),
 
             ("if".to_string(), Keyword::If),
@@ -179,6 +183,7 @@ impl ExprWeights {
             Keyword::I32 => return Types::I32,
             Keyword::U8 => return Types::U8,
             Keyword::I8 => return Types::I8,
+            Keyword::Char => return Types::Char,
             Keyword::TypeDef(user_def) => return Types::TypeDef(user_def),
             Keyword::Pointer(pointer_to, _) => return Types::Pointer(Box::new(pointer_to)),
             Keyword::Address => return Types::Address,
@@ -225,7 +230,7 @@ impl ExprWeights {
     }
 
     fn check_intlit(&self, intlit: String) -> Expr {
-        // MAKE THIS SUPPORT OTHER NUMBER TYPES LIKE U8
+        // TODO: MAKE THIS SUPPORT OTHER NUMBER TYPES LIKE U8
 
         let symb_to_token: HashMap<char, Token> = HashMap::from([
             ('(', Token::Lbrack),
@@ -326,7 +331,7 @@ impl ExprWeights {
                 Token::Lsquare => clean.push('('),
                 Token::Rsquare => clean.push(')'),
                 Token::Ident(ident) => {
-                    // LATER CHECK IF ERROR IS NUM TOO LARGE
+                    // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let ident_num = ident.parse::<i32>();
                     let is_num = match ident_num {
                         Ok(_) => true,
@@ -394,6 +399,16 @@ impl ExprWeights {
         Expr::IntLit(clean)
     }
 
+    fn create_keyword_pointer(&self, typ: Types, pointer_counter: i32) -> (Keyword, i32) {
+        let mut tmp = typ.clone();
+
+        for _ in 0..pointer_counter-1 {
+            tmp = Types::Pointer(Box::new(tmp));
+        }
+
+        return (Keyword::Pointer(tmp, typ), 0)
+    }
+
     fn create_func(&mut self, typ: Types, params: Vec<Token>, name: String) {
         let mut variables = Vec::new();
         let mut expr_param = Vec::new();
@@ -408,14 +423,7 @@ impl ExprWeights {
                         match keyword_res {
                             Some(kw) => {
                                 if pointer_counter > 0 {
-                                    let mut this_typ = self.keyword_to_type(kw.to_owned());
-                                    let tmp = this_typ.clone();
-
-                                    for _ in 0..pointer_counter-1 {
-                                        this_typ = Types::Pointer(Box::new(this_typ));
-                                    }
-                                    pointer_counter = 0;
-                                    kw_buf = Keyword::Pointer(this_typ, tmp);
+                                    (kw_buf, pointer_counter) = self.create_keyword_pointer(self.keyword_to_type(kw.clone()), pointer_counter);
                                 } else {
                                     kw_buf = kw.clone();
                                 }
@@ -423,14 +431,7 @@ impl ExprWeights {
                             None => {
                                 if let Expr::StructDef { .. } = self.find_structure(ident) {
                                     if pointer_counter > 0 {
-                                        let mut this_typ = Types::TypeDef(ident.to_owned());
-                                        let tmp = this_typ.clone();
-
-                                        for _ in 0..pointer_counter-1 {
-                                            this_typ = Types::Pointer(Box::new(this_typ));
-                                        }
-                                        pointer_counter = 0;
-                                        kw_buf = Keyword::Pointer(this_typ, tmp);
+                                        (kw_buf, pointer_counter) = self.create_keyword_pointer(Types::TypeDef(ident.to_owned()), pointer_counter);
                                     } else {
                                         kw_buf = Keyword::TypeDef(ident.to_string());
                                     }
@@ -511,15 +512,8 @@ impl ExprWeights {
                     pointer_counter += 1;
                 },
                 Token::Underscore => {
-                    let mut typ = Types::Void;
-                    let tmp = typ.clone();
-
                     if pointer_counter > 0 {
-                        for _ in 0..pointer_counter-1 {
-                            typ = Types::Pointer(Box::new(typ));
-                        }
-                        pointer_counter = 0;
-                        kw_buf = Keyword::Pointer(typ, tmp);
+                        (kw_buf, pointer_counter) = self.create_keyword_pointer(Types::Void, pointer_counter);
                     } else {
                         self.comp_err(&format!("can't use void as type. void pointers work tho."));
                         exit(1);
@@ -623,7 +617,7 @@ impl ExprWeights {
                 Token::BiggerThan => expr_params.push(Expr::BiggerThan),
                 Token::Exclaim => expr_params.push(Expr::Exclaim),
                 Token::Ident(ident) => {
-                    // LATER CHECK IF ERROR IS NUM TOO LARGE
+                    // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let ident_num = ident.parse::<i32>();
                     let is_num = match ident_num {
                         Ok(_) => true,
@@ -795,7 +789,7 @@ impl ExprWeights {
                         has_caret = true;
                     }
                 },
-                // NOT SURE IF THIS IS NEEDED, WILL REMOVE
+                // TODO: NOT SURE IF THIS IS NEEDED, WILL REMOVE
                 Token::Underscore => {
                     if in_bracks {
                         params.push(token.clone());
@@ -816,7 +810,7 @@ impl ExprWeights {
                     if in_bracks {
                         params.push(token.clone());
                     } else {
-                        // LATER CHECK IF ERROR IS NUM TOO LARGE
+                        // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                         let ident_num = ident.parse::<i32>();
                         match ident_num {
                             Ok(_) => {
@@ -1078,6 +1072,7 @@ impl ExprWeights {
         let mut nested_params = Vec::new();
         let mut square_rc = 0;
         let mut intlit_buf = String::new();
+        let mut found_amper = false;
 
         let mut expr_params = Vec::new();
         for (i, param) in params.iter().enumerate() {
@@ -1091,12 +1086,20 @@ impl ExprWeights {
                         expr_params.push(self.check_intlit(intlit.to_owned()));
                     }
                 },
-                Token::Str(_) => {
-                    self.comp_err(&format!("string literal not reimplemented yet"));
-                    exit(1);
+                Token::Str(strlit) => {
+                    if nested_brack_rs > 0 {
+                        nested_params.push(param.clone());
+                    } else if square_rc > 0 {
+                        self.comp_err(&format!("expected integers inside [], found token {:?}", param));
+                        exit(1);
+                    } else {
+                        expr_params.push(Expr::StrLit {
+                            content: strlit.to_owned(),
+                            is_cstr: false
+                        });
+                    }
                 },
                 Token::Ident(ident) => {
-                    // println!("ident: {ident:?}");
                     if nested_brack_rs > 0 {
                         nested_params.push(param.clone());
                         continue;
@@ -1107,7 +1110,13 @@ impl ExprWeights {
                         continue;
                     }
 
-                    // LATER CHECK IF ERROR IS NUM TOO LARGE
+                    if found_amper {
+                        expr_params.push(self.create_address(ident));
+                        found_amper = false;
+                        continue;
+                    }
+
+                    // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let ident_num = ident.parse::<i32>();
                     let is_num = match ident_num {
                         Ok(_) => true,
@@ -1193,6 +1202,10 @@ impl ExprWeights {
                         exit(1);
                     }
                 },
+                Token::Ampersand => {
+                    found_amper = true;
+                },
+                Token::Quote => (),
                 _ => {
                     self.comp_err(&format!("unexpected token: {:?}", param));
                     exit(1);
@@ -1458,7 +1471,7 @@ impl ExprWeights {
                             if let Token::Int(intlit) = &var_info[3] {
                                 return self.handle_array_macro(intlit, var_info[5..].to_vec());
                             } else {
-                                // RMBER TO CHECK THE ACTUAL LENGTH IN TYPE CHECKER
+                                // TODO_TYPECHECK: RMBER TO CHECK THE ACTUAL LENGTH IN TYPE CHECKER
                                 return self.handle_array_macro(&String::from("-1"), var_info[2..].to_vec());
                             }
                         },
@@ -1517,27 +1530,14 @@ impl ExprWeights {
                                 let keyword_res = self.keyword_map.get(ident);
                                 match keyword_res {
                                     Some(kw) => {
-                                        let mut typ = self.keyword_to_type(kw.clone());
-                                        let tmp = typ.clone();
-
-                                        for _ in 0..pointer_counter-1 {
-                                            typ = Types::Pointer(Box::new(typ));
-                                        }
-
-                                        keyword = Keyword::Pointer(typ, tmp);
+                                        (keyword, pointer_counter) = self.create_keyword_pointer(self.keyword_to_type(kw.clone()), pointer_counter);
                                     },
                                     None => {
                                         match self.find_structure(ident) {
                                             Expr::StructDef { struct_name, .. } => {
                                                 match *struct_name {
                                                     Expr::StructName(name) => {
-                                                        let mut typ = Types::TypeDef(name.clone());
-
-                                                        for _ in 0..pointer_counter-1 {
-                                                            typ = Types::Pointer(Box::new(typ));
-                                                        }
-
-                                                        keyword = Keyword::Pointer(typ, Types::TypeDef(name));
+                                                        (keyword, pointer_counter) = self.create_keyword_pointer(Types::TypeDef(name.clone()), pointer_counter);
                                                     },
                                                     _ => {
                                                         self.comp_err(&format!("expected a type after ^, found {ident} instead"));
@@ -1554,14 +1554,7 @@ impl ExprWeights {
                                 }
                             },
                             Token::Underscore => {
-                                let mut typ = Types::Void;
-                                let tmp = typ.clone();
-
-                                for _ in 0..pointer_counter-1 {
-                                    typ = Types::Pointer(Box::new(typ));
-                                }
-
-                                keyword = Keyword::Pointer(typ, tmp);
+                                (keyword, pointer_counter) = self.create_keyword_pointer(Types::Void, pointer_counter);
                             },
                             unexpected => {
                                 self.comp_err(&format!("expected identifier after ^, got {unexpected:?}"));
@@ -1660,7 +1653,7 @@ impl ExprWeights {
                         continue;
                     }
 
-                    // LATER CHECK IF ERROR IS NUM TOO LARGE
+                    // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let ident_num = ident.parse::<i32>();
                     match ident_num {
                         Ok(_) => {
@@ -1798,12 +1791,14 @@ impl ExprWeights {
 
             match token {
                 Token::Int(intlit) => {
-                    // ARRAYS INDEXING WITH [i+1] WILL NOT WORK WITH THIS
+                    // TODO: ARRAYS INDEXING WITH [i+1] WILL NOT WORK WITH THIS
                     buffer.push(self.check_intlit(intlit.to_string()));
                 },
-                Token::Str(_) => {
-                    self.comp_err(&format!("string literal not reimplemented yet"));
-                    exit(1);
+                Token::Str(strlit) => {
+                    buffer.push(Expr::StrLit {
+                        content: strlit.to_string(),
+                        is_cstr: false,
+                    });
                 },
                 Token::Ident(ident) => {
                     if found_macro {
@@ -1826,16 +1821,11 @@ impl ExprWeights {
                                 } else if let Keyword::Continue = k {
                                     return Expr::Continue;
                                 } else if pointer_counter > 0 {
-                                    let mut typ = self.keyword_to_type(k.clone());
-                                    let tmp = typ.clone();
-                                    for _ in 0..pointer_counter-1 {
-                                        typ = Types::Pointer(Box::new(typ));
-                                    }
-                                    keyword = Keyword::Pointer(typ, tmp);
+                                    (keyword, pointer_counter) = self.create_keyword_pointer(self.keyword_to_type(k.clone()), pointer_counter);
                                 }
 
-                                // ANYTHING THAT NEEDS AN IDENTIFIER AFTER THE KEYWORD IS HANDLED
-                                // BELOW
+                                // anything that needs an identifier after the keyword is handled
+                                // below
                                 if i + 1 == value.len() {
                                     self.comp_err(&format!("expected identifier after keyword {k:?}, got nothing"));
                                     exit(1);
@@ -1857,19 +1847,50 @@ impl ExprWeights {
                                 let found_ident = self.find_ident(ident.to_owned());
                                 if returning {}
                                 else if let Expr::StructDef { .. } = found_ident {
+                                    if self.in_struct_def {
+                                        let k: Keyword;
+                                        if pointer_counter > 0 {
+                                            k = self.create_keyword_pointer(
+                                                Types::TypeDef(ident.clone()),
+                                                pointer_counter
+                                            ).0;
+                                        } else {
+                                            k = Keyword::TypeDef(ident.clone());
+                                        }
+
+                                        let expr = self.create_define_var(k, value[i+1].clone());
+                                        self.expr_stack.push(expr);
+                                        return Expr::None
+                                    }
+
                                     let k = Keyword::TypeDef(ident.clone());
                                     return self.create_define_var(k, value[i+1].clone())
                                 } else if let Expr::Func { .. } = found_ident {
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
                                 } else {
-                                    self.comp_err(&format!("unknown identifier: {ident:?}"));
+                                    if self.in_struct_def && !self.current_func.is_empty() {
+                                        let k: Keyword;
+                                        if pointer_counter > 0 {
+                                            k = self.create_keyword_pointer(
+                                                Types::TypeDef(format!("struct {}", self.current_func)),
+                                                pointer_counter
+                                            ).0;
+                                        } else {
+                                            k = Keyword::TypeDef(format!("struct {}", self.current_func));
+                                        }
+
+                                        let expr = self.create_define_var(k, value[i+1].clone());
+                                        self.expr_stack.push(expr);
+                                        return Expr::None
+                                    }
+                                    self.comp_err(&format!("unknown identifier: {ident}"));
                                     exit(1);
                                 }
                             },
                         }
                     }
 
-                    // LATER CHECK IF ERROR IS NUM TOO LARGE
+                    // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let ident_num = ident.parse::<i32>();
                     let is_num = match ident_num {
                         Ok(_) => true,
@@ -1925,12 +1946,7 @@ impl ExprWeights {
                 Token::Underscore => {
                     if !is_right {
                         if pointer_counter > 0 {
-                            let mut typ = Types::Void;
-                            for _ in 0..pointer_counter-1 {
-                                typ = Types::Pointer(Box::new(typ));
-                            }
-
-                            let keyword = Keyword::Pointer(typ, Types::Void);
+                            let keyword = self.create_keyword_pointer(Types::Void, pointer_counter).0;
                             if i + 1 == value.len() {
                                 self.comp_err(&format!("expected identifier after keyword {keyword:?}, got nothing"));
                                 exit(1);
@@ -2052,7 +2068,7 @@ impl ExprWeights {
 
         match ident {
             Token::Ident(word) => {
-                // LATER CHECK IF ERROR IS NUM TOO LARGE
+                // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                 let ident_num = word.parse::<i32>();
                 let is_num = match ident_num {
                     Ok(_) => true,
@@ -2123,6 +2139,10 @@ impl ExprWeights {
 
         let left_expr = self.handle_left_assign(left);
         let right_expr = self.handle_right_assign(right, true);
+
+        // if let Expr::VariableName { typ, name, reassign, field_data } = left_expr {
+        //     // CHECK IF TYPE IS A CSTR OR STRING, THEN CHANGE THE STRLIT IS_CSTR FIELD
+        // }
 
         let expr = Expr::Variable { info: Box::new(left_expr), value: Box::new(right_expr) };
         if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
@@ -2224,4 +2244,3 @@ impl ExprWeights {
         self.program.clone()
     }
 }
-

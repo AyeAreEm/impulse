@@ -15,7 +15,7 @@ syntax keyword impulseKeywords break continue return
 syntax keyword impulseBranches if orif else
 syntax keyword impulseLoops loop
 syntax keyword impulseDataStruct struct
-syntax keyword impulseTypeNames int i32 u8 _
+syntax keyword impulseTypeNames int i32 i8 u8 _ char
 
 syntax match impulseFuncCallName "\<\w\+\>\ze\s*("
 syntax match impulseMacros "@\(import\|c\|array\)"
