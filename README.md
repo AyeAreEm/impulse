@@ -95,6 +95,7 @@ usize -> unsigned integer type with the same number of bits as the platform's po
 sizeof -> returns the size in bytes of a type
 
 default struct values -> so that there isn't a need for a constructor as its baked into the struct
+functions in structs -> basically methods
 
 standard library:
 windows -> either natively or a mapping to raylib
