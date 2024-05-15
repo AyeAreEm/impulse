@@ -75,8 +75,6 @@ return [foo(num) - foo(num)];
 
 ### Ideas
 ```
-bool -> boolean
-
 u32 -> 32 bit usigned integer (with support for other lengths of bits)
 i32 -> 32 bit integer (with support for other lengths of bits)
 f64 -> 64 bit float (with support for 32 bit)
