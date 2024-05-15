@@ -103,6 +103,7 @@ networks -> http 1.0
 sockets -> websockets, etc
 arenas -> block of memory that all gets freed at the same time
 recycle -> used to reuse memory in a arena that should be freed but can't since it's in the block (it will just now be avaible again in the block)
+allocators -> different allocators (this also makes sure the dev knows they eventually need to free the memory). need function pointers for this to work
 ```
 for more info, look at the <a href="./DOCS/DOCS.md">Docs</a><br>
 for examples, check out the <a href="./examples">examples folder</a>

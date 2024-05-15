@@ -42,6 +42,9 @@ pub enum Expr {
     And,
     Or,
 
+    True,
+    False,
+
     IntLit(String),
     StrLit {
         content: String,
@@ -113,6 +116,7 @@ impl ExprWeights {
             ("u8".to_string(), Keyword::U8),
             ("i8".to_string(), Keyword::I8),
             ("char".to_string(), Keyword::Char),
+            ("bool".to_string(), Keyword::Bool),
             // ("string".to_string(), Keyword::Str),
 
             ("if".to_string(), Keyword::If),
@@ -178,12 +182,30 @@ impl ExprWeights {
         }
     }
 
+    fn import_stdbool(&mut self) {
+        let mut found = false;
+        for import in &self.imports {
+            if import == &String::from("stdbool.h") {
+                found = true;
+                break;
+            }
+        }
+
+        if !found {
+            match self.handle_import_macro(&String::from("stdbool.h")) {
+                Expr::None => (),
+                import => self.program.push(import),
+            }
+        }
+    }
+
     fn keyword_to_type(&self, kw: Keyword) -> Types {
         match kw {
             Keyword::I32 => return Types::I32,
             Keyword::U8 => return Types::U8,
             Keyword::I8 => return Types::I8,
             Keyword::Char => return Types::Char,
+            Keyword::Bool => return Types::Bool,
             Keyword::TypeDef(user_def) => return Types::TypeDef(user_def),
             Keyword::Pointer(pointer_to, _) => return Types::Pointer(Box::new(pointer_to)),
             Keyword::Address => return Types::Address,
@@ -1205,6 +1227,26 @@ impl ExprWeights {
                 Token::Ampersand => {
                     found_amper = true;
                 },
+                Token::True => {
+                    if square_rc > 0 {
+                        self.comp_err(&format!("can't have `true` inside integer literal"));
+                        exit(1);
+                    } else if nested_brack_rs > 0 {
+                        nested_params.push(param.clone());
+                    } else {
+                        expr_params.push(Expr::True);
+                    }
+                },
+                Token::False => {
+                    if square_rc > 0 {
+                        self.comp_err(&format!("can't have `false` inside integer literal"));
+                        exit(1);
+                    } else if nested_brack_rs > 0 {
+                        nested_params.push(param.clone());
+                    } else {
+                        expr_params.push(Expr::False);
+                    }
+                },
                 Token::Quote => (),
                 _ => {
                     self.comp_err(&format!("unexpected token: {:?}", param));
@@ -1226,6 +1268,7 @@ impl ExprWeights {
 
     fn handle_import_macro(&mut self, path: &String) -> Expr {
         if path.chars().nth(path.len()-1).unwrap() == 'h' {
+            self.imports.push(path.to_string());
             let no_extension = path.split_at(path.len()-2);
             return Expr::Import(no_extension.0.to_string())
         } else {
@@ -1820,9 +1863,12 @@ impl ExprWeights {
                                     return Expr::Break
                                 } else if let Keyword::Continue = k {
                                     return Expr::Continue;
+                                }else if let Keyword::Return = k {
+                                    returning = true;
+                                    continue;
                                 } else if pointer_counter > 0 {
-                                    (keyword, pointer_counter) = self.create_keyword_pointer(self.keyword_to_type(k.clone()), pointer_counter);
-                                }
+                                    (keyword, _) = self.create_keyword_pointer(self.keyword_to_type(k.clone()), pointer_counter);
+                                } 
 
                                 // anything that needs an identifier after the keyword is handled
                                 // below
@@ -1832,10 +1878,7 @@ impl ExprWeights {
                                 }
 
                                 // similar syntax between defining var and returning, check which
-                                if let Keyword::Return = k {
-                                    returning = true;
-                                    continue;
-                                } else if self.in_struct_def {
+                                if self.in_struct_def {
                                     let expr = self.create_define_var(keyword, value[i+1].clone());
                                     self.expr_stack.push(expr);
                                     return Expr::None
@@ -1968,14 +2011,24 @@ impl ExprWeights {
                         exit(1);
                     }
                 },
+                Token::True => {
+                    buffer.push(Expr::True);
+                },
+                Token::False => {
+                    buffer.push(Expr::False);
+                },
                 _ => {
-                    self.comp_err(&format!("unexpected token: {:?}", token));
+                    self.comp_err(&format!("this unexpected token: {:?}", token));
                     exit(1);
                 }
             }
         }
 
         if buffer.is_empty() && params.is_empty() {
+            if returning {
+                return Expr::Return(Box::new(Expr::None));
+            }
+
             self.comp_err(&format!("expected a token, got none."));
             exit(1);
         }
@@ -2032,6 +2085,7 @@ impl ExprWeights {
                 self.comp_err(&format!("can't use return inside struct"));
                 exit(1);
             }
+
             return Expr::Return(Box::new(buffer[0].clone()))
         }
         buffer[0].clone()
@@ -2110,6 +2164,7 @@ impl ExprWeights {
 
         match kw {
             Keyword::I32 => (),
+            Keyword::Bool => (),
             Keyword::Pointer(.., last) => {
                 if let Types::TypeDef(user_def) = last {
                     self.propagate_struct_fields(fname, user_def.to_string());
@@ -2205,6 +2260,8 @@ impl ExprWeights {
 
     pub fn parser(&mut self) -> Vec<Expr> {
         let mut curl_rc = 0;
+
+        self.import_stdbool();
 
         while self.current_token < self.tokens.len() {
             match self.tokens[self.current_token] {

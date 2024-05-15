@@ -35,6 +35,7 @@ impl Gen {
         let libc_map = HashMap::from([
             ("stdio".to_string(), true),
             ("stdlib".to_string(), true),
+            ("stdbool".to_string(), true),
             ("string".to_string(), true),
         ]);
 
@@ -60,10 +61,11 @@ impl Gen {
 
     fn handle_typ(&self, typ: Types) -> (String, String) {
         match typ {
-            Types::I32 => return (String::from("int"), String::new()),
-            Types::U8 => return (String::from("unsigned char"), String::new()),
-            Types::I8 => return (String::from("signed char"), String::new()),
-            Types::Char => return (String::from("char"), String::new()),
+            Types::I32 => (String::from("int"), String::new()),
+            Types::U8 => (String::from("unsigned char"), String::new()),
+            Types::I8 => (String::from("signed char"), String::new()),
+            Types::Char => (String::from("char"), String::new()),
+            Types::Bool => (String::from("bool"), String::new()),
             Types::TypeDef(user_def) => return (format!("{user_def}"), String::new()),
             Types::Void => return (String::from("void"), String::new()),
             Types::Arr { typ: arr_typ, length } => {
@@ -159,6 +161,20 @@ impl Gen {
                                 funccall_code.push_str(&format!(", {}", self.handle_value(param.clone())));
                             }
                         },
+                        Expr::True => {
+                            if i == 0 {
+                                funccall_code.push_str("true");
+                            } else {
+                                funccall_code.push_str(", true");
+                            }
+                        },
+                        Expr::False => {
+                            if i == 0 {
+                                funccall_code.push_str("false");
+                            } else {
+                                funccall_code.push_str(", false");
+                            }
+                        },
                         unimpl => {
                             comp_err(&format!("expression {unimpl:?} not implemented yet"));
                             exit(1);
@@ -230,8 +246,10 @@ impl Gen {
 
     fn handle_value(&self, value: Expr) -> String {
         match value {
-            Expr::IntLit(intlit) => return intlit,
-            Expr::StrLit { content, .. } => return format!("\"{content}\""),
+            Expr::IntLit(intlit) => intlit,
+            Expr::StrLit { content, .. } => format!("\"{content}\""),
+            Expr::True => String::from("true"),
+            Expr::False => String::from("false"),
             Expr::VariableName { ref typ, .. } => {
                 let new_name = self.handle_deref_struct(value.clone());
                 if let Types::ArrIndex { index_at, .. } = typ {
@@ -250,6 +268,7 @@ impl Gen {
                 let sub_val = self.handle_value(*dptoval);
                 return format!("*{sub_val}")
             },
+            Expr::None => String::new(),
             unimpl => {
                 comp_err(&format!("expression {unimpl:?} not implemented yet"));
                 exit(1);

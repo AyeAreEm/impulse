@@ -1,4 +1,5 @@
 @import "base/memory.imp";
+@import "stdio.h";
 
 struct string: {
     ^char data;
@@ -7,10 +8,13 @@ struct string: {
 }
 
 int(^char str) c_strlen: {
+    # maybe just write out the code instead of making a function that calls a function
+    # func calls are more expensive than rewriting
     @c [ return strlen(str);];
 }
 
-int(^char dest int byte_size ^char src) str_copy: {
+int(^char dest int byte_size ^char src) cstr_copy: {
+    # doubt i could write safe code that copies strings
     @c [return strcpy_s(dest, byte_size, src);];
 }
 
@@ -29,10 +33,8 @@ string() str_new: {
 }
 
 _(^string str int modifier) str_resize: {
-    if ([str.len + modifier] >= str.cap) {
-        int increase: [[str.len + modifier] * 2];
-        str.cap: [str.cap + increase];
-    }
+    int increase: [[str.len + modifier] * 2];
+    str.cap: [str.cap + increase];
 
     int new_size: [str.cap + 1];
     str.data: re_alloc(str.data new_size);
@@ -40,13 +42,97 @@ _(^string str int modifier) str_resize: {
 
 string(^char str) str_from: {
     string new: str_new();
+    int cstr_len: c_strlen(str);
 
-    int size: c_strlen(str);
-    if (size > new.cap) {
-        str_resize(&new 0);
+    if (cstr_len > new.cap) {
+        str_resize(&new cstr_len);
     }
 
-    new.len: c_strlen(str);
-    str_copy(new.data [new.cap + 1] str);
+    new.len: cstr_len;
+    cstr_copy(new.data [new.cap + 1] str);
     return new;
+}
+
+# string_cmp here
+
+_(^string str char ch) str_push: {
+    if ([str.len + 1] >= str.cap) {
+        str_resize(str 0);
+    }
+
+    str.data[str.len]: ch;
+    str.len: [str.len + 1];
+}
+
+_(^string dest ^string src) str_pushstr: {
+    if ([dest.len + src.len] >= dest.cap) {
+        str_resize(dest src.len);
+    }
+
+    loop (i < src.len) [+] {
+        dest.data[dest.len]: src.data[i];
+        dest.len: [dest.len + 1];
+    }
+}
+
+char(^string str) str_pop: {
+    str.len: [str.len - 1];
+    char ch: str.data[str.len];
+    return ch;
+}
+
+_(^string str) str_clear: {
+    free_mem(str.data);
+    
+    str.len: 0;
+    str.cap: 50;
+    str.data: alloc(str.cap 1);
+    @c [
+        if (str->data == NULL) {
+            // need to give back an error instead
+            exit(1);
+        }
+    ];
+}
+
+int(string str) str_to_int: {
+    # this needs to be a i64
+    i32 num;
+    loop (i < str.len) [+] {
+        @c [num = (num * 10) + (str.data[i] - '0');];
+    }
+
+    @c [
+        if (num >= INT_MIN && num <= INT_MAX) {
+            return (int)num;
+        } else {
+            exit(1);
+        }
+    ];
+}
+
+^char(string str) str_to_cstr: {
+    if (str.len = 0) {
+        ^char cstr: alloc(1 1);
+        @c [
+            if (cstr == NULL) {
+                exit(1);
+            }
+
+            cstr[0] = '\0';
+        ];
+        return cstr;
+    }
+
+    ^char cstr: alloc([str.len+1] 1);
+    @c [cstr[str.len] = '\0';];
+    return cstr;
+}
+
+_(string str) str_print: {
+    loop (i < str.len) [+] {
+        @c [printf("%c", str.data[i]);];
+    }
+
+    @c [printf("\n");];
 }

@@ -8,4 +8,7 @@ _() main: {
 
     string another_time: "another time"
     print("hello world " another_time)
+
+    # c embed version
+    @c [ printf("hello world"); ];
 }

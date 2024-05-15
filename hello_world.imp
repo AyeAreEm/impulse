@@ -1,20 +1,17 @@
 @import "stdio.h";
 
-struct Node: {
-    int value;
-    ^Node next;
-}
+_(bool original) greet: {
+    if (!original) {
+        @c [printf("hello there?\n");];
+        return;
+    }
 
-struct List: {
-    ^Node head;
-    ^Node tail;
+    @c [printf("hello world\n");];
 }
 
 _() main: {
-    List arr;    
-    if (arr.head = 0) {
-        @c [
-            printf("it is zero");
-        ];
-    }
+    bool norm: true;
+
+    greet(norm);
+    greet(false);
 }

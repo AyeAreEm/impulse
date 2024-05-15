@@ -31,10 +31,21 @@ pub enum Token {
     Caret,
     Ampersand,
 
+    True,
+    False,
+
     Ident(String),
     Str(String),
     Int(String),
     Digit(char), // this is a single digit inside an Int
+}
+
+fn check_ident(word: &String) -> Token {
+    match word.as_str() {
+        "true" => Token::True,
+        "false" => Token::False,
+        _ => Token::Ident(word.to_owned())
+    }
 }
 
 pub fn tokeniser(file: String) -> Vec<Token> {
@@ -87,7 +98,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             square_occurences += 1;
             if !in_squares {
                 if buf.len() > 0 {
-                    tokens.push(Token::Ident(buf.clone()));
+                    tokens.push(check_ident(&buf));
                     buf.clear();
                 }
 
@@ -146,7 +157,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
 
         if c == ' ' || c == '\n' || c == '\r' || c == ';' {
             if buf.len() > 0 {
-                tokens.push(Token::Ident(buf.clone()));
+                tokens.push(check_ident(&buf));
                 buf.clear();
             }
 
@@ -170,7 +181,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
 
         if token.0 {
             if buf.len() > 0 {
-                tokens.push(Token::Ident(buf.clone()));
+                tokens.push(check_ident(&buf));
                 buf.clear();
             }
             tokens.push(token.1);

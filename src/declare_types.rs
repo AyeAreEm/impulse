@@ -9,6 +9,7 @@ pub enum Types {
     U8,
     I8,
     Char,
+    Bool,
     // Str,
     Arr {
         typ: Box<Types>,
@@ -36,6 +37,7 @@ pub enum Keyword {
     I8,
     Char,
     Str,
+    Bool,
 
     Println,
     Print,

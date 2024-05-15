@@ -15,7 +15,8 @@ syntax keyword impulseKeywords break continue return
 syntax keyword impulseBranches if orif else
 syntax keyword impulseLoops loop
 syntax keyword impulseDataStruct struct
-syntax keyword impulseTypeNames int i32 i8 u8 _ char
+syntax keyword impulseTypeNames int i32 i8 u8 _ char bool
+syntax keyword impulseTrueFalse true false
 
 syntax match impulseFuncCallName "\<\w\+\>\ze\s*("
 syntax match impulseMacros "@\(import\|c\|array\)"
@@ -36,6 +37,7 @@ highlight link impulseNumber Number
 highlight link impulseTypeNames Type
 highlight link impulseEscapes SpecialChar
 highlight link impulseFuncCallName Function
+highlight link impulseTrueFalse Function
 highlight link impulseSymbols Operator
 
 let b:current_syntax = "impulse"
