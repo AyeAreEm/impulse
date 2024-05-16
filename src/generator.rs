@@ -494,6 +494,11 @@ impl Gen {
                     let val = self.handle_value(*value);
                     self.code.push_str(&format!("return {val};\n"))
                 },
+                Expr::StartBlock => {
+                    self.add_spaces(self.indent);
+                    self.indent += 1;
+                    self.code.push_str("{\n");
+                },
                 Expr::EndBlock => {
                     self.indent -= 1;
                     self.add_spaces(self.indent);

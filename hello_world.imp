@@ -1,7 +1,10 @@
-@import "base/io.imp";
+@import "stdio.h";
 
 _() main: {
-    string input: read_in();
-    str_print(input);
-    free_mem(input.data);
+    int x: 10;
+    {
+        x: 5;
+    }
+
+    @c [printf("%d\n", x);];
 }

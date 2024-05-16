@@ -71,6 +71,7 @@ pub enum Expr {
     //     index_at: Box<Expr>, // Expr = IntLit
     // },
 
+    StartBlock,
     EndBlock,
     None,
 }
@@ -1013,10 +1014,14 @@ impl ExprWeights {
             }
 
             self.create_func(typ.clone(), params.clone(), name.clone());
+            return
         } else if seen_colon > 1 {
             self.comp_err("unexpected assignment operator `:`");
             exit(1);
         }
+
+        self.new_scope(Expr::None);
+        self.program.push(Expr::StartBlock);
     }
 
     fn find_variable(&self, ident: &String) -> Expr {
