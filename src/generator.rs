@@ -214,10 +214,14 @@ impl Gen {
     fn handle_deref_struct(&self, value: Expr) -> String {
         match value {
             Expr::VariableName { typ, name, field_data, .. } => {
-                if let Types::ArrIndex { arr_typ, .. } = typ {
-                    if let Types::Pointer(_) = *arr_typ {
-                        let new_name = name.replace(".", "->");
-                        return new_name
+                if let Types::ArrIndex { ref arr_typ, .. } = typ {
+                    if field_data.0 && field_data.1 {
+                        if let Types::Pointer(_) = **arr_typ {
+                            let new_name = name.replace(".", "->");
+                            return new_name
+                        } else {
+                            return name
+                        }
                     } else {
                         return name
                     }
@@ -287,10 +291,9 @@ impl Gen {
 
                     if let Types::ArrIndex { index_at, .. } = typ {
                         boolean_condition_code.push_str(&format!("{new_name}[{index_at}]"));
-                        return boolean_condition_code
-                    } 
-
-                    boolean_condition_code.push_str(&format!("{new_name}"))
+                    } else {
+                        boolean_condition_code.push_str(&format!("{new_name}"))
+                    }
                 },
                 Expr::Equal => {
                     if had_angled {
@@ -309,8 +312,8 @@ impl Gen {
                     had_angled = true;
                 },
                 Expr::Exclaim => {
-                  boolean_condition_code.push_str("!");
-                  had_angled = true;
+                    boolean_condition_code.push_str("!");
+                    had_angled = true;
                 },
                 Expr::IntLit(intlit) => {
                     boolean_condition_code.push_str(&format!("{intlit}"))
@@ -460,7 +463,7 @@ impl Gen {
                     self.add_spaces(self.indent);
                     self.indent += 1;
                     
-                    let if_code = self.handle_branch(&String::from("if"), conditions);
+                    let if_code = self.handle_branch(&String::from("if "), conditions);
                     // don't need to add \n, handle_branch does it
                     self.code.push_str(&if_code);
                 },
@@ -468,7 +471,7 @@ impl Gen {
                     self.add_spaces(self.indent);
                     self.indent += 1;
                     
-                    let orif_code = self.handle_branch(&String::from("else if"), conditions);
+                    let orif_code = self.handle_branch(&String::from("else if "), conditions);
                     // don't need to add \n, handle_branch does it
                     self.code.push_str(&orif_code);
                 },

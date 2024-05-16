@@ -237,7 +237,7 @@ impl ExprWeights {
             if self.in_scope && self.current_scope == 0 {
                 self.in_scope = false;
             } else if self.in_scope && self.current_scope > 0 {
-                self.in_scope = false;
+                // self.in_scope = false; This might slight be broken
                 vars[self.current_scope].pop();
                 self.current_scope -= 1;
             } else {
@@ -631,6 +631,7 @@ impl ExprWeights {
 
         let mut expr_params = Vec::new();
         let mut side_affect = Expr::None;
+        let mut had_index = false;
 
         for (i, param) in params.iter().enumerate() {
             match param {
@@ -685,7 +686,24 @@ impl ExprWeights {
                             }
                         },
                         Expr::VariableName { typ, name, reassign, field_data } => {
-                            expr_params.push(Expr::VariableName { typ, name, reassign, field_data });
+                            if i != params.len()-1 {
+                                if let Token::Int(index) = &params[i+1] {
+                                    had_index = true;
+                                    expr_params.push(Expr::VariableName {
+                                        typ: Types::ArrIndex {
+                                            arr_typ: Box::new(typ),
+                                            index_at: index.to_owned(),
+                                        },
+                                        name,
+                                        reassign,
+                                        field_data
+                                    });
+                                } else {
+                                    expr_params.push(Expr::VariableName { typ, name, reassign, field_data });
+                                }
+                            } else {
+                                expr_params.push(Expr::VariableName { typ, name, reassign, field_data });
+                            }
                         },
                         Expr::None => {
                             if is_loop && expr_params.is_empty() {
@@ -713,6 +731,10 @@ impl ExprWeights {
                     }
                 },
                 Token::Int(intlit) => {
+                    if had_index {
+                        had_index = false;
+                        continue;
+                    }
                     expr_params.push(self.check_intlit(intlit.to_owned()));
                 },
                 _ => {
@@ -1001,7 +1023,7 @@ impl ExprWeights {
         let variables_res = self.func_to_vars.get(&self.current_func);
         let variables = match variables_res {
             Some(vars) => vars.clone(),
-            None => vec![],
+            None => return Expr::None,
         };
 
         for vars in &variables[self.current_scope] {
@@ -1946,12 +1968,20 @@ impl ExprWeights {
                     }
 
                     let expr = self.find_ident(ident.to_string());
-                    if let Expr::None = expr {
-                        self.comp_err(&format!("unknown identifier: {}", ident));
-                        exit(1);
-                    } else {
-                        buffer.push(expr);
-                        continue;
+                    match expr {
+                        Expr::VariableName { ref typ, ref name, reassign, field_data } => {
+                            if field_data.0 && field_data.1 {
+                                let new_name = name.replace(".", "->");
+                                buffer.push(Expr::VariableName { typ: typ.clone(), name: new_name, reassign, field_data })
+                            } else {
+                                buffer.push(expr)
+                            }
+                        }
+                        Expr::None => {
+                            self.comp_err(&format!("unknown identifier: {}", ident));
+                            exit(1);
+                        },
+                        _ => buffer.push(expr),
                     }
                 },
                 Token::Lbrack => {

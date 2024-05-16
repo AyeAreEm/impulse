@@ -1,17 +1,13 @@
-@import "stdio.h";
-
-_(bool original) greet: {
-    if (!original) {
-        @c [printf("hello there?\n");];
-        return;
-    }
-
-    @c [printf("hello world\n");];
-}
+@import "base/string.imp";
 
 _() main: {
-    bool norm: true;
+    string word1: str_from("hello there");
+    string word2: str_from("hello world");
 
-    greet(norm);
-    greet(false);
+    bool is_same: str_compare(word1 word2);
+    if (is_same) {
+        @c [printf("it is the same");];
+    } else {
+        @c [printf("it is NOT the same");];
+    }
 }

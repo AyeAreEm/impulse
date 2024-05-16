@@ -53,7 +53,19 @@ string(^char str) str_from: {
     return new;
 }
 
-# string_cmp here
+bool(string str1 string str2) str_compare: {
+    if (str1.len != str2.len) {
+        return false;
+    }
+
+    loop (i < str1.len) [+] {
+        if (str1.data[i] != str2.data[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 _(^string str char ch) str_push: {
     if ([str.len + 1] >= str.cap) {
