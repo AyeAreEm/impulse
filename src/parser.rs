@@ -114,11 +114,14 @@ impl ExprWeights {
 
             ("i32".to_string(), Keyword::I32),
             ("int".to_string(), Keyword::I32),
+
             ("u8".to_string(), Keyword::U8),
             ("i8".to_string(), Keyword::I8),
             ("char".to_string(), Keyword::Char),
+
+            ("usize".to_string(), Keyword::Usize),
+
             ("bool".to_string(), Keyword::Bool),
-            // ("string".to_string(), Keyword::Str),
 
             ("if".to_string(), Keyword::If),
             ("orif".to_string(), Keyword::OrIf),
@@ -183,29 +186,13 @@ impl ExprWeights {
         }
     }
 
-    fn import_stdbool(&mut self) {
-        let mut found = false;
-        for import in &self.imports {
-            if import == &String::from("stdbool.h") {
-                found = true;
-                break;
-            }
-        }
-
-        if !found {
-            match self.handle_import_macro(&String::from("stdbool.h")) {
-                Expr::None => (),
-                import => self.program.push(import),
-            }
-        }
-    }
-
     fn keyword_to_type(&self, kw: Keyword) -> Types {
         match kw {
             Keyword::I32 => return Types::I32,
             Keyword::U8 => return Types::U8,
             Keyword::I8 => return Types::I8,
             Keyword::Char => return Types::Char,
+            Keyword::Usize => return Types::Usize,
             Keyword::Bool => return Types::Bool,
             Keyword::TypeDef(user_def) => return Types::TypeDef(user_def),
             Keyword::Pointer(pointer_to, _) => return Types::Pointer(Box::new(pointer_to)),
@@ -2053,7 +2040,7 @@ impl ExprWeights {
                     buffer.push(Expr::False);
                 },
                 _ => {
-                    self.comp_err(&format!("this unexpected token: {:?}", token));
+                    self.comp_err(&format!("unexpected token: {:?}", token));
                     exit(1);
                 }
             }
@@ -2200,6 +2187,7 @@ impl ExprWeights {
         match kw {
             Keyword::I32 => (),
             Keyword::Bool => (),
+            Keyword::Usize => (),
             Keyword::Pointer(.., last) => {
                 if let Types::TypeDef(user_def) = last {
                     self.propagate_struct_fields(fname, user_def.to_string());
@@ -2207,10 +2195,6 @@ impl ExprWeights {
             },
             Keyword::TypeDef(ref user_def) => {
                 self.propagate_struct_fields(fname, user_def.to_string());
-            },
-            Keyword::Str => {
-                self.comp_err(&format!("string literal not reimplemented yet"));
-                exit(1);
             },
             _ => {
                 self.comp_err(&format!("unexpected keyword: {kw:?}"));
@@ -2295,8 +2279,6 @@ impl ExprWeights {
 
     pub fn parser(&mut self) -> Vec<Expr> {
         let mut curl_rc = 0;
-
-        self.import_stdbool();
 
         while self.current_token < self.tokens.len() {
             match self.tokens[self.current_token] {

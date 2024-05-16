@@ -44,11 +44,11 @@ _() main: {
     @array int nums: |10 20 30|;
     int new_num: 10;
 
-    nums|0|: nums|0| * new_num;
-    nums|1|: nums|1| * new_num;
-    nums|2|: nums|2| * new_num;
+    nums[0]: [nums[0] * new_num];
+    nums[1]: [nums[1] * new_num];
+    nums[2]: [nums[2] * new_num];
 
-    print(nums|1|);
+    print(nums[1]);
 }
 ```
 
@@ -71,6 +71,11 @@ Open a terminal:<br>
 Error when doing math on two functions, only the `-` appears. not sure if the `return` is helping cause this error or it's just something with integer literals and function calls.
 ```
 return [foo(num) - foo(num)];
+```
+
+Can't call function inside conditions
+```
+if (foo(num) = 0) {}
 ```
 
 ### Ideas
@@ -96,7 +101,8 @@ default struct values -> so that there isn't a need for a constructor as its bak
 functions in structs -> basically methods
 
 standard library:
-windows -> either natively or a mapping to raylib
+windows gui -> either natively or a mapping to raylib
+hashmaps -> hashmap / hash table / etc. maybe make it fairly efficient and fast
 networks -> http 1.0
 sockets -> websockets, etc
 arenas -> block of memory that all gets freed at the same time

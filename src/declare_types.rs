@@ -6,11 +6,13 @@ pub enum Lang {
 #[derive(Debug, Clone)]
 pub enum Types {
     I32,
+
     U8,
     I8,
     Char,
+
+    Usize,
     Bool,
-    // Str,
     Arr {
         typ: Box<Types>,
         length: String,
@@ -33,10 +35,12 @@ pub enum Types {
 #[derive(Debug, Clone)]
 pub enum Keyword {
     I32,
+
     U8,
     I8,
     Char,
-    Str,
+
+    Usize,
     Bool,
 
     Println,

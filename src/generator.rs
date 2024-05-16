@@ -36,6 +36,7 @@ impl Gen {
             ("stdio".to_string(), true),
             ("stdlib".to_string(), true),
             ("stdbool".to_string(), true),
+            ("stddef".to_string(), true),
             ("string".to_string(), true),
         ]);
 
@@ -59,13 +60,24 @@ impl Gen {
         }
     }
 
-    fn handle_typ(&self, typ: Types) -> (String, String) {
+    fn handle_typ(&mut self, typ: Types) -> (String, String) {
         match typ {
             Types::I32 => (String::from("int"), String::new()),
             Types::U8 => (String::from("unsigned char"), String::new()),
             Types::I8 => (String::from("signed char"), String::new()),
             Types::Char => (String::from("char"), String::new()),
-            Types::Bool => (String::from("bool"), String::new()),
+            Types::Usize => {
+                if !self.imports.contains("#include <stddef.h>\n") {
+                    self.imports.push_str("#include <stddef.h>\n");
+                }
+                (String::from("size_t"), String::new())
+            },
+            Types::Bool => {
+                if !self.imports.contains("#include <stdbool.h>\n") {
+                    self.imports.push_str("#include <stdbool.h>\n");
+                }
+                (String::from("bool"), String::new())
+            },
             Types::TypeDef(user_def) => return (format!("{user_def}"), String::new()),
             Types::Void => return (String::from("void"), String::new()),
             Types::Arr { typ: arr_typ, length } => {
@@ -87,7 +99,7 @@ impl Gen {
         }
     }
 
-    fn handle_varname(&self, varname: Expr) -> String {
+    fn handle_varname(&mut self, varname: Expr) -> String {
         match varname {
             Expr::VariableName { ref typ, reassign, .. } => {
                 let new_name = self.handle_deref_struct(varname.clone());
@@ -339,7 +351,7 @@ impl Gen {
         branch_code
     }
 
-    fn handle_loop(&self, conditions: Vec<Expr>, modifier: Expr) -> String {
+    fn handle_loop(&mut self, conditions: Vec<Expr>, modifier: Expr) -> String {
         let mut loop_code = String::new();
         let mut varname = String::new();
         loop_code.push_str("for (");
