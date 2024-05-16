@@ -353,6 +353,7 @@ impl Gen {
                     loop_code.push_str(&format!(";"));
                 }
             },
+            Expr::Exclaim => loop_code.push_str(&format!(";")),
             _ => (),
         }
 

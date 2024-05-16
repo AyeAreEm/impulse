@@ -1,13 +1,7 @@
-@import "base/string.imp";
+@import "base/io.imp";
 
 _() main: {
-    string word1: str_from("hello there");
-    string word2: str_from("hello world");
-
-    bool is_same: str_compare(word1 word2);
-    if (is_same) {
-        @c [printf("it is the same");];
-    } else {
-        @c [printf("it is NOT the same");];
-    }
+    string input: read_in();
+    str_print(input);
+    free_mem(input.data);
 }
