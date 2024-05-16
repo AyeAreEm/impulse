@@ -3,11 +3,11 @@
 
 struct string: {
     ^char data;
-    int cap;
-    int len;
+    usize cap;
+    usize len;
 }
 
-int(^char str) c_strlen: {
+usize(^char str) c_strlen: {
     # maybe just write out the code instead of making a function that calls a function
     # func calls are more expensive than rewriting
     @c [ return strlen(str);];
@@ -32,8 +32,8 @@ string() str_new: {
     return new;
 }
 
-_(^string str int modifier) str_resize: {
-    int increase: [[str.len + modifier] * 2];
+_(^string str usize modifier) str_resize: {
+    usize increase: [[str.len + modifier] * 2];
     str.cap: [str.cap + increase];
 
     int new_size: [str.cap + 1];
@@ -42,7 +42,7 @@ _(^string str int modifier) str_resize: {
 
 string(^char str) str_from: {
     string new: str_new();
-    int cstr_len: c_strlen(str);
+    usize cstr_len: c_strlen(str);
 
     if (cstr_len > new.cap) {
         str_resize(&new cstr_len);

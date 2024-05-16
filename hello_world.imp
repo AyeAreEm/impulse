@@ -1,7 +1,6 @@
-usize() gimme_ten: {
-    return 10;
-}
+@import "base/string.imp";
 
 _() main: {
-    usize i: gimme_ten();
+    string word: str_from("hello world");
+    str_print(word);
 }

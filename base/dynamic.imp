@@ -2,8 +2,8 @@
 
 struct dynamic: {
     ^^_ data;
-    int len;
-    int cap;
+    usize len;
+    usize cap;
 }
 
 dynamic() dynam_new: {
@@ -20,7 +20,7 @@ dynamic() dynam_new: {
     return array;
 }
 
-^_(^dynamic arr int index) dynam_at: {
+^_(^dynamic arr usize index) dynam_at: {
     if (index >= arr.len) {
         @c [ exit(1); ];
     }
@@ -28,7 +28,7 @@ dynamic() dynam_new: {
     return arr.data[index];
 }
 
-int(^dynamic arr) dynam_len: {
+usize(^dynamic arr) dynam_len: {
     return arr.len;
 }
 
@@ -41,7 +41,7 @@ _(^dynamic arr ^_ data) dynam_push: {
     arr.len: [arr.len + 1];
 }
 
-_(^dynamic arr int index ^_ data) dynam_insert: {
+_(^dynamic arr usize index ^_ data) dynam_insert: {
     if (index >= arr.len) {
         @c [ exit(1); ];
     }
