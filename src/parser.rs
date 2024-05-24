@@ -374,7 +374,7 @@ impl ExprWeights {
                                 }
                             } else {
                                 match typ {
-                                    Types::I32 | Types::U8 | Types::I8 | Types::Usize => clean.push_str(&ident),
+                                    Types::I32 | Types::U8 | Types::I8 | Types::Usize | Types::Pointer(_) => clean.push_str(&ident),
                                     _ => {
                                         self.comp_err(&format!("variable {name} is not an integer. {typ:?}:{name}"));
                                         exit(1);
@@ -1285,38 +1285,50 @@ impl ExprWeights {
             self.imports.push(path.to_string());
             let no_extension = path.split_at(path.len()-2);
             return Expr::Import(no_extension.0.to_string())
-        } else {
-            if !self.imports.is_empty() {
-                for imp in &self.imports {
-                    if imp == path {
-                        return Expr::None
-                    }
-                }
+        }
 
-                self.imports.push(path.to_string());
-            } else {
-                self.imports.push(path.to_string());
+        if !self.imports.is_empty() {
+            for imp in &self.imports {
+                if imp == path {
+                    return Expr::None
+                }
             }
 
-            let file_res = fs::read_to_string(path);
-            let content = match file_res {
-                Ok(content) => content,
-                Err(_) => {
-                    self.comp_err("unable to read file");
-                    exit(1);
-                },
-            };
-
-            let tokens = tokeniser(content);
-            let mut parse = ExprWeights::new(tokens, path);
-            let mut expressions = parse.parser();
-
-            self.functions.append(&mut parse.functions);
-            self.structures.append(&mut parse.structures);
-            self.imports.append(&mut parse.imports);
-            self.program.append(&mut expressions);
-            return Expr::None
+            self.imports.push(path.to_string());
+        } else {
+            self.imports.push(path.to_string());
         }
+        println!("now importing {path}");
+
+        let file_res = fs::read_to_string(path);
+        let content = match file_res {
+            Ok(content) => content,
+            Err(_) => {
+                self.comp_err("unable to read file");
+                exit(1);
+            },
+        };
+
+        let tokens = tokeniser(content);
+        let mut parse = ExprWeights::new(tokens, path);
+        parse.functions = self.functions.clone();
+        parse.imports = self.imports.clone();
+        let mut expressions = parse.parser();
+
+        if self.imports.len() != parse.imports.len() {
+            let mut new = parse.imports[self.imports.len()..].to_vec();
+            self.imports.append(&mut new);
+        }
+
+        if self.functions.len() != parse.functions.len() {
+            let mut new = parse.functions[self.functions.len()..].to_vec();
+            self.functions.append(&mut new);
+        }
+
+        // might need to do the same thing to structures as done with imports and functions
+        self.structures.append(&mut parse.structures);
+        self.program.append(&mut expressions);
+        return Expr::None
     }
 
     fn handle_array_macro(&mut self, length: &String, tokens: Vec<Token>) -> Expr {
@@ -1904,24 +1916,20 @@ impl ExprWeights {
                                 let found_ident = self.find_ident(ident.to_owned());
                                 if returning {}
                                 else if let Expr::StructDef { .. } = found_ident {
-                                    if self.in_struct_def {
-                                        let k: Keyword;
-                                        if pointer_counter > 0 {
-                                            k = self.create_keyword_pointer(
-                                                Types::TypeDef(ident.clone()),
-                                                pointer_counter
-                                            ).0;
-                                        } else {
-                                            k = Keyword::TypeDef(ident.clone());
-                                        }
-
-                                        let expr = self.create_define_var(k, value[i+1].clone());
-                                        self.expr_stack.push(expr);
-                                        return Expr::None
+                                    let k: Keyword;
+                                    if pointer_counter > 0 {
+                                        (k, _) = self.create_keyword_pointer(Types::TypeDef(ident.clone()), pointer_counter);
+                                    } else {
+                                        k = Keyword::TypeDef(ident.clone());
                                     }
 
-                                    let k = Keyword::TypeDef(ident.clone());
-                                    return self.create_define_var(k, value[i+1].clone())
+                                    if self.in_struct_def {
+                                        let expr = self.create_define_var(k, value[i+1].clone());
+                                        self.expr_stack.push(expr);
+                                        return Expr::None;
+                                    }
+
+                                    return self.create_define_var(k, value[i+1].clone());
                                 } else if let Expr::Func { .. } = found_ident {
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
                                 } else {
@@ -1970,6 +1978,7 @@ impl ExprWeights {
                             }
                         }
                         Expr::None => {
+                            println!("all functions: {:?}", self.functions);
                             self.comp_err(&format!("unknown identifier: {}", ident));
                             exit(1);
                         },

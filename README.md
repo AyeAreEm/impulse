@@ -94,7 +94,6 @@ debug -> print something with a specific type
 @def -> define a static label for something (e.g. @def CAP: 100; or @def io: @import "stdio.h";)
 
 defer -> perform action right before the end of current scope
-usize -> unsigned integer type with the same number of bits as the platform's pointer type
 sizeof -> returns the size in bytes of a type
 
 default struct values -> so that there isn't a need for a constructor as its baked into the struct

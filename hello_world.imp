@@ -1,6 +1,16 @@
-@import "base/string.imp";
+@import "base/memory.imp";
 
-_() main: {
-    string word: str_from("hello world");
-    str_print(word);
+struct Dyn_Header: {
+    usize len;
+    usize cap;
+}
+
+^_(usize item_size) dyn_new: {
+    ^_ ptr;
+    usize INIT_CAP: 16;
+    usize size: [item_size * INIT_CAP + 16];
+    ^Dyn_Header header;
+    ^int x;
+
+    return ptr;
 }
