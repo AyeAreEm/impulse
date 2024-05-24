@@ -240,15 +240,8 @@ impl Gen {
                 }
 
                 if field_data.0 && field_data.1 {
-                    match typ {
-                        Types::Pointer(_) => {
-                            let new_name = name.replace(".", "->");
-                            return new_name
-                        },
-                        _ => {
-                            return name
-                        }
-                    }
+                    let new_name = name.replace(".", "->");
+                    return new_name
                 } else {
                     return name
                 }

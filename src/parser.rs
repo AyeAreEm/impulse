@@ -420,6 +420,7 @@ impl ExprWeights {
     }
 
     fn create_func(&mut self, typ: Types, params: Vec<Token>, name: String) {
+        println!("type: {typ:?}, name: {name}");
         let mut variables = Vec::new();
         let mut expr_param = Vec::new();
         let mut kw_buf = Keyword::None;
@@ -801,7 +802,7 @@ impl ExprWeights {
         let mut brack_rc = 0;
         let mut in_bracks = false;
         let mut seen_colon = 0;
-        let mut has_caret = false;
+        let mut pointer_counter = 0;
 
         let mut params = Vec::new();
 
@@ -818,7 +819,7 @@ impl ExprWeights {
                     if in_bracks {
                         params.push(token.clone());
                     } else {
-                        has_caret = true;
+                        pointer_counter += 1;
                     }
                 },
                 // TODO: NOT SURE IF THIS IS NEEDED, WILL REMOVE
@@ -826,12 +827,12 @@ impl ExprWeights {
                     if in_bracks {
                         params.push(token.clone());
                     } else {
-                        if name.is_empty() || has_caret {
+                        if name.is_empty() || pointer_counter > 0 {
                             typ = Types::Void;
 
-                            if has_caret {
-                                typ = Types::Pointer(Box::new(typ));
-                                has_caret = false;
+                            if pointer_counter > 0 {
+                                let tmp_kw = self.create_keyword_pointer(Types::Void, pointer_counter).0;
+                                typ = self.keyword_to_type(tmp_kw);
                             }
                         } else if let Token::Ident(_) = self.token_stack[i+1] {
                             name.push('_');
@@ -867,13 +868,12 @@ impl ExprWeights {
                                 Keyword::If | Keyword::OrIf | Keyword::Else => create_branch = true,
                                 Keyword::Loop => create_loop = true,
                                 Keyword::Struct => create_struct = true,
-                                Keyword::TypeDef(ref user_def) => typ = Types::TypeDef(user_def.to_owned()),
                                 _ => {
                                     if let Types::None = typ {
                                         typ = self.keyword_to_type(keyword.clone());
-                                        if has_caret {
-                                            typ = Types::Pointer(Box::new(typ));
-                                            has_caret = false;
+                                        if pointer_counter > 0 {
+                                            let tmp_kw = self.create_keyword_pointer(typ, pointer_counter).0;
+                                            typ = self.keyword_to_type(tmp_kw);
                                         }
                                     } else {
                                         name.push_str(&ident);
@@ -1675,11 +1675,11 @@ impl ExprWeights {
         if let Expr::None = found_expr {
             match keyword {
                 Keyword::TypeDef(ref user_def) => {
-                    self.propagate_struct_fields(name.to_string(), user_def.to_string());
+                    self.propagate_struct_fields(name.to_string(), user_def.to_string(), false);
                 },
                 Keyword::Pointer(.., ref last_typ) => {
                     if let Types::TypeDef(user_def) = last_typ {
-                        self.propagate_struct_fields(name.to_string(), user_def.to_string());
+                        self.propagate_struct_fields(name.to_string(), user_def.to_string(), true);
                     }
                 },
                 _ => (),
@@ -2122,7 +2122,7 @@ impl ExprWeights {
         buffer[0].clone()
     }
 
-    fn propagate_struct_fields(&mut self, fname: String, user_def: String) {
+    fn propagate_struct_fields(&mut self, fname: String, user_def: String, is_ptr: bool) {
         if let Expr::StructDef { struct_fields, .. } = self.find_structure(&user_def) {
             for field in struct_fields {
                 match field {
@@ -2133,7 +2133,7 @@ impl ExprWeights {
                                 typ,
                                 name: new_name,
                                 reassign: false,
-                                field_data: (true, false),
+                                field_data: (true, is_ptr),
                             }),
                             value: Box::new(Expr::None),
                         };
@@ -2199,11 +2199,11 @@ impl ExprWeights {
             Keyword::Usize => (),
             Keyword::Pointer(.., last) => {
                 if let Types::TypeDef(user_def) = last {
-                    self.propagate_struct_fields(fname, user_def.to_string());
+                    self.propagate_struct_fields(fname, user_def.to_string(), true);
                 }
             },
             Keyword::TypeDef(ref user_def) => {
-                self.propagate_struct_fields(fname, user_def.to_string());
+                self.propagate_struct_fields(fname, user_def.to_string(), false);
             },
             _ => {
                 self.comp_err(&format!("unexpected keyword: {kw:?}"));

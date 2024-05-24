@@ -9,8 +9,17 @@ struct Dyn_Header: {
     ^_ ptr;
     usize INIT_CAP: 16;
     usize size: [item_size * INIT_CAP + 16];
-    ^Dyn_Header header;
-    ^int x;
+    ^Dyn_Header header: alloc(size 1);
+    
+    if (header) {
+        header.cap: INIT_CAP;
+        header.len: 0;
+        ptr: [header + 1];
+    }
 
     return ptr;
+}
+
+^Dyn_Header(^_ arr) dyn_header: {
+    @c [return (Dyn_Header*)(arr) - 1;];
 }
