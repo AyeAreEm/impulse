@@ -1,0 +1,57 @@
+@import "stdio.h";
+
+int(int left int curr int right) check_rule: {
+    if (left = 1 and curr = 1 and right = 1) {
+        return 0;
+    } orif (left = 1 and curr = 1 and right = 0) {
+        return 1;
+    } orif (left = 1 and curr = 0 and right = 1) {
+        return 1;
+    } orif (left = 1 and curr = 0 and right = 0) {
+        return 0;
+    } orif (left = 0 and curr = 1 and right = 1) {
+        return 1;
+    } orif (left = 0 and curr = 1 and right = 0) {
+        return 1;
+    } orif (left = 0 and curr = 0 and right = 1) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+_(int cell) display: {
+    if (cell = 1) {
+        @c [printf("#");];
+    } else {
+        @c [printf(" ");];
+    }
+}
+
+_() main: {
+    int gens: 30;
+    @array[8] int cells: |0 1 1 1 1 0 1 1|;
+    @array[8] int next_gen;
+
+    loop (gen < gens) {
+        loop (i < 8) {
+            int left;
+            if (i = 0) {
+                left: cells[7];
+            } else {
+                left: cells[i - 1];
+            }
+
+            int right;
+            if (i = 7) {
+                right: cells[0];
+            } else {
+                right: cells[i + 1];
+            }
+
+            int curr: cells[i];
+            int new_cell: check_rule(left curr right);
+            display(new_cell);
+        }
+    }
+}

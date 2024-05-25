@@ -181,7 +181,7 @@ impl ExprWeights {
 
     fn error_if_stack_not_empty(&self) {
         if !self.token_stack.is_empty() {
-            self.comp_err("might be a missing `;`. expression stack is not empty when it should be");
+            self.comp_err("might be a missing `;`. stack is not empty when it should be");
             exit(1);
         }
     }
@@ -1977,10 +1977,6 @@ impl ExprWeights {
                             }
                         }
                         Expr::None => {
-                            // println!("all functions: {:?}", self.functions);
-                            println!("current scope: {}", self.current_scope);
-                            println!("current func: {}", self.current_func);
-                            println!("in func: {}", self.in_func);
                             self.comp_err(&format!("unknown identifier: {}", ident));
                             exit(1);
                         },

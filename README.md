@@ -84,9 +84,7 @@ u32 -> 32 bit usigned integer (with support for other lengths of bits)
 i32 -> 32 bit integer (with support for other lengths of bits)
 f64 -> 64 bit float (with support for 32 bit)
 
-@iter i: 5 {} -> simple loop, not really an iterator type
-break -> break out of loop
-continue -> continue next to elem in loop
+for -> different than loop. it's like `for fruit in fruits {}` but it'd be `for (fruits) [fruit] {}`
 
 print -> print something with the type it is
 debug -> print something with a specific type

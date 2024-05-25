@@ -37,7 +37,7 @@ pub enum Token {
     Ident(String),
     Str(String),
     Int(String),
-    Digit(char), // this is a single digit inside an Int
+    // Digit(char), // this is a single digit inside an Int
 }
 
 fn check_ident(word: &String) -> Token {
@@ -79,7 +79,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
     let mut comment_line = false;
 
     for c in file.chars() {
-        if c == '#' {
+        if c == '#' && !in_squares && !in_quotes {
             comment_line = true;
             continue;
         }
