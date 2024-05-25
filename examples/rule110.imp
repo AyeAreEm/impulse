@@ -28,30 +28,39 @@ _(int cell) display: {
     }
 }
 
+_(^int dest ^int src int len) copy: {
+    loop (i < len) [+] {
+        dest[i]: src[i];
+    }
+}
+
 _() main: {
-    int gens: 30;
-    @array[8] int cells: |0 1 1 1 1 0 1 1|;
-    @array[8] int next_gen;
+    int gens: 100;
+    @array[80] int cells: |1 1 0 0 1 0 1 0|;
+    @array[80] int next_gen;
 
-    loop (gen < gens) {
-        loop (i < 8) {
-            int left;
+    loop (gen < gens) [+] {
+        loop (i < 80) [+] {
+            int l_index;
             if (i = 0) {
-                left: cells[7];
+                l_index: 79;
             } else {
-                left: cells[i - 1];
+                l_index: [i - 1];
             }
-
-            int right;
-            if (i = 7) {
-                right: cells[0];
-            } else {
-                right: cells[i + 1];
-            }
+            int left: cells[l_index];
 
             int curr: cells[i];
+
+            int r_index: [[i + 1] % 80];
+            int right: cells[r_index];
+
             int new_cell: check_rule(left curr right);
+            next_gen[i]: new_cell;
             display(new_cell);
         }
+
+        @c [printf("\n");];
+
+        copy(cells next_gen 80);
     }
 }

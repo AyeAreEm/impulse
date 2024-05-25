@@ -252,6 +252,7 @@ impl ExprWeights {
             ('*', Token::Multiple),
             ('/', Token::Divide),
             ('|', Token::Pipe),
+            ('%', Token::Mod),
             // ('.', Token::Dot),
         ]);
 
@@ -340,6 +341,7 @@ impl ExprWeights {
                 Token::Divide => clean.push('/'),
                 Token::Lsquare => clean.push('('),
                 Token::Rsquare => clean.push(')'),
+                Token::Mod => clean.push('%'),
                 Token::Ident(ident) => {
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let ident_num = ident.parse::<i32>();

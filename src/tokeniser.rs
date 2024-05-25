@@ -27,6 +27,7 @@ pub enum Token {
     Minus,
     Multiple,
     Divide,
+    Mod,
 
     Caret,
     Ampersand,
