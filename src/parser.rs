@@ -420,7 +420,6 @@ impl ExprWeights {
     }
 
     fn create_func(&mut self, typ: Types, params: Vec<Token>, name: String) {
-        println!("type: {typ:?}, name: {name}");
         let mut variables = Vec::new();
         let mut expr_param = Vec::new();
         let mut kw_buf = Keyword::None;
@@ -972,6 +971,7 @@ impl ExprWeights {
 
                     self.token_stack.clear();
                     self.program.push(Expr::Else);
+                    self.new_scope(Expr::None);
                     return
                 }
                 _ => self.create_branch(keyword, params),
@@ -1298,7 +1298,6 @@ impl ExprWeights {
         } else {
             self.imports.push(path.to_string());
         }
-        println!("now importing {path}");
 
         let file_res = fs::read_to_string(path);
         let content = match file_res {
@@ -1978,7 +1977,10 @@ impl ExprWeights {
                             }
                         }
                         Expr::None => {
-                            println!("all functions: {:?}", self.functions);
+                            // println!("all functions: {:?}", self.functions);
+                            println!("current scope: {}", self.current_scope);
+                            println!("current func: {}", self.current_func);
+                            println!("in func: {}", self.in_func);
                             self.comp_err(&format!("unknown identifier: {}", ident));
                             exit(1);
                         },

@@ -23,3 +23,34 @@ struct Dyn_Header: {
 ^Dyn_Header(^_ arr) dyn_header: {
     @c [return (Dyn_Header*)(arr) - 1;];
 }
+
+^_(^_ arr usize item_count usize item_size) dyn_ensure_cap: {
+    ^Dyn_Header header: dyn_header(arr);
+    usize desired_cap: [header.len + item_count];
+
+    if (header.cap < desired_cap) {
+        usize new_cap: [header.cap * 2];
+
+        loop (new_cap < desired_cap) {
+            new_cap: [new_cap * 2];
+        }
+
+        usize new_size: [16 + new_cap * item_size];
+        ^Dyn_Header new_header: alloc(new_size 1);
+
+        if (new_header) {
+            usize old_size;
+            @c [old_size = sizeof(*header) + header->len * item_size;];
+            mem_copy(new_header header old_size);
+            free_mem(header);
+            new_header.cap: new_cap;
+            header: [new_header + 1];
+        } else {
+            header: 0;
+        }
+    } else {
+        header: [header + 1];
+    }
+
+    return header;
+}
