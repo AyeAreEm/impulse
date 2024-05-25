@@ -364,11 +364,10 @@ impl ExprWeights {
                         Expr::VariableName { typ, name, field_data, .. } => {
                             if field_data.0 && field_data.1 {
                                 match typ {
-                                    Types::I32 | Types::U8 | Types::I8 | Types::Usize => clean.push_str(&ident),
-                                    Types::Pointer(_) => {
+                                    Types::I32 | Types::U8 | Types::I8 | Types::Usize | Types::Pointer(_) => {
                                         let new_name = ident.replace(".", "->");
-                                        clean.push_str(&new_name);
-                                    },
+                                        clean.push_str(&new_name)
+                                    } ,
                                     _ => {
                                         self.comp_err(&format!("variable {name} is not an integer. {typ:?}:{name}"));
                                         exit(1);
