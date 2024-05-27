@@ -286,7 +286,7 @@ impl Gen {
 
     }
 
-    fn handle_boolean_condition(&self, conditions: &Vec<Expr>) -> String {
+    fn handle_boolean_condition(&mut self, conditions: &Vec<Expr>) -> String {
         let mut boolean_condition_code = String::new();
         let mut had_angled = false;
         for condition in conditions {
@@ -326,6 +326,18 @@ impl Gen {
                 // Expr::StrLit(string) => boolean_condition_code.push_str(&format!("{string}")),
                 Expr::Or => boolean_condition_code.push_str("||"),
                 Expr::And => boolean_condition_code.push_str("&&"),
+                Expr::True => {
+                    if !self.imports.contains("#include <stdbool.h>\n") {
+                        self.imports.push_str("#include <stdbool.h>\n");
+                    }
+                    boolean_condition_code.push_str("true")
+                },
+                Expr::False => {
+                    if !self.imports.contains("#include <stdbool.h>\n") {
+                        self.imports.push_str("#include <stdbool.h>\n");
+                    }
+                    boolean_condition_code.push_str("false")
+                },
                 _ => (),
             }
         }
@@ -333,7 +345,7 @@ impl Gen {
         boolean_condition_code
     }
 
-    fn handle_branch(&self, branch_typ: &String, conditions: Vec<Expr>) -> String {
+    fn handle_branch(&mut self, branch_typ: &String, conditions: Vec<Expr>) -> String {
         let mut branch_code = String::new();
         branch_code.push_str(&format!("{branch_typ}("));
 

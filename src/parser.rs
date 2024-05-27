@@ -628,6 +628,8 @@ impl ExprWeights {
                 Token::SmallerThan => expr_params.push(Expr::SmallerThan),
                 Token::BiggerThan => expr_params.push(Expr::BiggerThan),
                 Token::Exclaim => expr_params.push(Expr::Exclaim),
+                Token::True => expr_params.push(Expr::True),
+                Token::False => expr_params.push(Expr::False),
                 Token::Ident(ident) => {
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let ident_num = ident.parse::<i32>();
@@ -929,6 +931,22 @@ impl ExprWeights {
                         params.push(token.clone());
                     } else {
                         self.comp_err("`!` needs to be inside brackets");
+                        exit(1);
+                    }
+                },
+                Token::True => {
+                    if in_bracks {
+                        params.push(token.clone());
+                    } else {
+                        self.comp_err("expected `true` in brackets");
+                        exit(1);
+                    }
+                },
+                Token::False => {
+                    if in_bracks {
+                        params.push(token.clone());
+                    } else {
+                        self.comp_err("expected `false` in brackets");
                         exit(1);
                     }
                 },

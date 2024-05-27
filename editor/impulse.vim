@@ -11,6 +11,7 @@ if exists("b:current_syntax")
 endif
 
 syntax match impulseSymbols /\v[;:=<>!&^()[\]{}*\/]/
+syntax keyword impulseAndOr and or
 syntax keyword impulseKeywords break continue return
 syntax keyword impulseBranches if orif else
 syntax keyword impulseLoops loop
@@ -39,5 +40,6 @@ highlight link impulseEscapes SpecialChar
 highlight link impulseFuncCallName Function
 highlight link impulseTrueFalse Function
 highlight link impulseSymbols Operator
+highlight link impulseAndOr Operator
 
 let b:current_syntax = "impulse"
