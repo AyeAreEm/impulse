@@ -2082,17 +2082,47 @@ impl ExprWeights {
         }
 
         if buffer.len() > 1 {
-            if let Expr::VariableName { typ, name, .. } = &buffer[0] {
-                if let Types::Arr { .. } = typ {
-                } else if let Types::Pointer { .. } = typ {
-                } else {
-                    self.comp_err(&format!("couldn't handle expressions: {:?}", buffer));
-                    exit(1);
-                }
+            match &buffer[0] {
+                Expr::Address(varname) => {
+                    if let Expr::VariableName { typ, name, .. } = *varname.clone() {
+                        if let Types::Arr { .. } = typ {
+                        } else if let Types::Pointer { .. } = typ {
+                        } else {
+                            self.comp_err(&format!("couldn't handle expressions: {:?}", buffer));
+                            exit(1);
+                        }
 
-                if let Expr::IntLit(intlit) = &buffer[1] {
-                    if returning {
-                        let returning_expr = Expr::VariableName {
+                        if let Expr::IntLit(intlit) = &buffer[1] {
+                            let expr = Expr::Address(Box::new(Expr::VariableName {
+                                typ: Types::ArrIndex {
+                                    arr_typ: Box::new(typ.clone()),
+                                    index_at: intlit.to_owned()
+                                },
+                                name: name.to_owned(),
+                                reassign: false,
+                                field_data: (false, false)
+                            }));
+                            if returning {
+                                return Expr::Return(Box::new(expr))
+                            } else {
+                                return expr;
+                            }
+                        } else {
+                            self.comp_err(&format!("couldn't handle expressions: {:?}", buffer));
+                            exit(1);
+                        }
+                    }
+                }
+                Expr::VariableName { typ, name, .. } => {
+                    if let Types::Arr { .. } = typ {
+                    } else if let Types::Pointer { .. } = typ {
+                    } else {
+                        self.comp_err(&format!("couldn't handle expressions: {:?}", buffer));
+                        exit(1);
+                    }
+
+                    if let Expr::IntLit(intlit) = &buffer[1] {
+                        let expr = Expr::VariableName {
                             typ: Types::ArrIndex {
                                 arr_typ: Box::new(typ.clone()),
                                 index_at: intlit.to_owned()
@@ -2101,25 +2131,20 @@ impl ExprWeights {
                             reassign: false,
                             field_data: (false, false),
                         };
-                        return Expr::Return(Box::new(returning_expr))
-                    } else {
-                        return Expr::VariableName {
-                            typ: Types::ArrIndex {
-                                arr_typ: Box::new(typ.clone()),
-                                index_at: intlit.to_owned()
-                            },
-                            name: name.to_owned(),
-                            reassign: true,
-                            field_data: (false, false),
+                        if returning {
+                            return Expr::Return(Box::new(expr))
+                        } else {
+                            return expr;
                         }
+                    } else {
+                        self.comp_err(&format!("couldn't handle expressions: {:?}", buffer));
+                        exit(1);
                     }
-                } else {
+                },
+                _ => {
                     self.comp_err(&format!("couldn't handle expressions: {:?}", buffer));
                     exit(1);
-                }
-            } else {
-                self.comp_err(&format!("couldn't handle expressions: {:?}", buffer));
-                exit(1);
+                },
             }
         }
 
