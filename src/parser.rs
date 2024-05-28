@@ -8,6 +8,11 @@ pub enum Expr {
         params: Vec<Expr>,
         name: String,
     },
+    MacroFunc {
+        typ: Types,
+        params: Vec<Expr>,
+        name: String,
+    },
     FuncCall {
         name: String,
         gave_params: Vec<Expr>,
@@ -123,6 +128,8 @@ impl ExprWeights {
 
             ("bool".to_string(), Keyword::Bool),
 
+            ("typeid".to_string(), Keyword::TypeId),
+
             ("if".to_string(), Keyword::If),
             ("orif".to_string(), Keyword::OrIf),
             ("else".to_string(), Keyword::Else),
@@ -188,15 +195,16 @@ impl ExprWeights {
 
     fn keyword_to_type(&self, kw: Keyword) -> Types {
         match kw {
-            Keyword::I32 => return Types::I32,
-            Keyword::U8 => return Types::U8,
-            Keyword::I8 => return Types::I8,
-            Keyword::Char => return Types::Char,
-            Keyword::Usize => return Types::Usize,
-            Keyword::Bool => return Types::Bool,
-            Keyword::TypeDef(user_def) => return Types::TypeDef(user_def),
-            Keyword::Pointer(pointer_to, _) => return Types::Pointer(Box::new(pointer_to)),
-            Keyword::Address => return Types::Address,
+            Keyword::I32 => Types::I32,
+            Keyword::U8 => Types::U8,
+            Keyword::I8 => Types::I8,
+            Keyword::Char => Types::Char,
+            Keyword::Usize => Types::Usize,
+            Keyword::Bool => Types::Bool,
+            Keyword::TypeId => Types::TypeId,
+            Keyword::TypeDef(user_def) =>  Types::TypeDef(user_def),
+            Keyword::Pointer(pointer_to, _) => Types::Pointer(Box::new(pointer_to)),
+            Keyword::Address => Types::Address,
             _ => {
                 self.comp_err(&format!("can't convert {:?} to a type. type might not be reimplemented yet or defined.", kw));
                 exit(1);
@@ -425,6 +433,7 @@ impl ExprWeights {
         let mut expr_param = Vec::new();
         let mut kw_buf = Keyword::None;
         let mut pointer_counter = 0;
+        let mut is_macro_func = false;
 
         for (_i, param) in params.iter().enumerate() {
             match param {
@@ -437,6 +446,7 @@ impl ExprWeights {
                                     (kw_buf, pointer_counter) = self.create_keyword_pointer(self.keyword_to_type(kw.clone()), pointer_counter);
                                 } else {
                                     kw_buf = kw.clone();
+                                    if let Keyword::TypeId = kw_buf {is_macro_func = true};
                                 }
                             },
                             None => {
@@ -537,7 +547,11 @@ impl ExprWeights {
             }
         }
 
-        if let Expr::Func { .. } = self.find_func(&name) {
+        let found_func = self.find_func(&name);
+        if let Expr::Func { .. } = found_func {
+            self.comp_err(&format!("identifier {name} already declared as another function"));
+            exit(1);
+        } else if let Expr::MacroFunc { .. } = found_func {
             self.comp_err(&format!("identifier {name} already declared as another function"));
             exit(1);
         } else if let Expr::StructDef { .. } = self.find_structure(&name) {
@@ -545,7 +559,11 @@ impl ExprWeights {
             exit(1);
         }
 
-        let expr = Expr::Func { typ, params: variables, name: name.clone() };
+        let expr = if is_macro_func {
+            Expr::MacroFunc { typ, params: variables, name: name.clone() }
+        } else {
+            Expr::Func { typ, params: variables, name: name.clone() }
+        };
         self.functions.push(expr.clone());
         self.current_func = name.clone();
         self.func_to_vars.entry(name.clone()).or_insert(vec![expr_param]);
@@ -572,9 +590,12 @@ impl ExprWeights {
             None => (),
         }
 
-        if let Expr::Func { .. } = self.find_func(&name) {
+        let found_func = self.find_func(&name);
+        if let Expr::Func { .. } = found_func {
             self.comp_err(&format!("identifier {name} already declared as another function"));
             exit(1);
+        } else if let Expr::MacroFunc { .. } = found_func {
+
         } else if let Expr::StructDef { .. } = self.find_structure(&name) {
             self.comp_err(&format!("identifier {name} already declared as struct"));
             exit(1);
@@ -1059,7 +1080,7 @@ impl ExprWeights {
     fn find_func(&self, ident: &String) -> Expr {
         for func in &self.functions {
             match func {
-                Expr::Func { typ: _, params: _, name } => {
+                Expr::Func { name, .. } | Expr::MacroFunc { name, .. } => {
                     if name == ident {
                         return func.clone()
                     }
@@ -1128,6 +1149,7 @@ impl ExprWeights {
         let mut square_rc = 0;
         let mut intlit_buf = String::new();
         let mut found_amper = false;
+        let mut found_typeid = false;
 
         let mut expr_params = Vec::new();
         for (i, param) in params.iter().enumerate() {
@@ -1153,6 +1175,19 @@ impl ExprWeights {
                             is_cstr: false
                         });
                     }
+                },
+                Token::Dollar => {
+                    if nested_brack_rs > 0 {
+                        nested_params.push(param.clone());
+                        continue;
+                    }
+
+                    if square_rc > 0 {
+                        self.comp_err(&format!("expected integers inside [], found token {:?}", param));
+                        exit(1);
+                    }
+
+                    found_typeid = true;
                 },
                 Token::Ident(ident) => {
                     if nested_brack_rs > 0 {
@@ -1180,6 +1215,25 @@ impl ExprWeights {
 
                     if is_num {
                         expr_params.push(Expr::IntLit(ident.to_string()));
+                        continue;
+                    }
+
+                    if found_typeid {
+                        let keyword_res = self.keyword_map.get(ident);
+                        match keyword_res {
+                            Some(kw) => {
+                                let _ = self.keyword_to_type(kw.clone());
+                                expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.to_string(), reassign: false, field_data: (false, false) });
+                            },
+                            None => {
+                                if let Expr::StructDef { .. } = self.find_structure(ident) {
+                                    expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.to_string(), reassign: false, field_data: (false, false) });
+                                } else {
+                                    self.comp_err(&format!("expected keyword, got {ident}"));
+                                    exit(1);
+                                }
+                            }
+                        }
                         continue;
                     }
 
@@ -1289,7 +1343,7 @@ impl ExprWeights {
         }
 
         match expr {
-            Expr::Func { name, .. } => {
+            Expr::Func { name, .. } | Expr::MacroFunc { name, .. } => {
                 return Expr::FuncCall { name:name.to_owned(), gave_params: expr_params }
             },
             _ => {
@@ -1949,6 +2003,8 @@ impl ExprWeights {
 
                                     return self.create_define_var(k, value[i+1].clone());
                                 } else if let Expr::Func { .. } = found_ident {
+                                    return self.create_func_call(&found_ident, value[i+1..].to_vec());
+                                } else if let Expr::MacroFunc { .. } = found_ident {
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
                                 } else {
                                     if self.in_struct_def && !self.current_func.is_empty() {

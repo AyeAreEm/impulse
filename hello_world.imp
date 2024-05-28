@@ -1,73 +1,18 @@
-@import "base/memory.imp";
+@import "stdio.h";
 
-struct dyn_header: {
-    usize len;
-    usize cap;
+_(typeid T) check_size: {
+    @c [printf("%zu\n", sizeof(T));];
 }
 
-^_(usize item_size) dyn_new: {
-    ^_ ptr;
-    usize INIT_CAP: 16;
-    usize size: [item_size * INIT_CAP + 16];
-    ^dyn_header header: alloc(size 1);
-    
-    if (header) {
-        header.cap: INIT_CAP;
-        header.len: 0;
-        ptr: [header + 1];
-    }
-
-    return ptr;
+struct vector: {
+    int x;
+    int y;
 }
-
-^dyn_header(^_ arr) get_dyn_header: {
-    @c [return (dyn_header*)(arr) - 1;];
-}
-
-^_(^_ arr usize item_count usize item_size) dyn_ensure_cap: {
-    ^dyn_header header: get_dyn_header(arr);
-    usize desired_cap: [header.len + item_count];
-
-    if (header.cap < desired_cap) {
-        usize new_cap: [header.cap * 2];
-
-        loop (new_cap < desired_cap) {
-            new_cap: [new_cap * 2];
-        }
-
-        usize new_size: [16 + new_cap * item_size];
-        ^dyn_header new_header: alloc(new_size 1);
-
-        if (new_header) {
-            usize old_size;
-            @c [old_size = sizeof(*header) + header->len * item_size;];
-            mem_copy(new_header header old_size);
-            free_mem(header);
-            new_header.cap: new_cap;
-            header: [new_header + 1];
-        } else {
-            header: 0;
-        }
-    } else {
-        header: [header + 1];
-    }
-
-    return header;
-}
-
-@c "dyn_push" [
-#define dyn_push(arr, value) ( \
-    (arr) = dyn_ensure_cap(arr, 1, sizeof(value)), \
-    (arr)[dyn_len(arr)] = (value), \
-    &(arr)[dyn_header(arr)->len++])
-];
 
 _() main: {
-    ^int nums: dyn_new(4);
-    @dynamic int nums;
-    dyn_push(nums 4);
-
-    string word: "hello world";
-    @dynamic string words;
-    dyn_push(words str_from("hello world"));
+    check_size($i32);
+    check_size($char);
+    check_size($i8);
+    check_size($u8);
+    check_size($vector);
 }

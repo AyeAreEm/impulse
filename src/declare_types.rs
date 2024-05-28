@@ -13,6 +13,8 @@ pub enum Types {
 
     Usize,
     Bool,
+    TypeId,
+
     Arr {
         typ: Box<Types>,
         length: String,
@@ -42,6 +44,7 @@ pub enum Keyword {
 
     Usize,
     Bool,
+    TypeId,
 
     Println,
     Print,

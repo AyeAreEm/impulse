@@ -31,6 +31,7 @@ pub enum Token {
 
     Caret,
     Ampersand,
+    Dollar,
 
     True,
     False,
@@ -68,6 +69,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
         ('!', Token::Exclaim),
         ('^', Token::Caret),
         ('&', Token::Ampersand),
+        ('$', Token::Dollar),
         // ('.', Token::Dot),
     ]);
 

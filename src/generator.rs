@@ -10,6 +10,8 @@ pub struct Gen {
     out_file: String,
     libc_map: HashMap<String, bool>,
     indent: i32,
+    in_macro_func: bool,
+    curl_rc: i32,
     lang: Lang,
 }
 
@@ -47,6 +49,8 @@ impl Gen {
             out_file,
             libc_map,
             indent: 0,
+            in_macro_func: false,
+            curl_rc: 0,
             lang,
         }
     }
@@ -57,6 +61,27 @@ impl Gen {
             for _ in 0..spaces {
                 self.code.push(' ');
             }
+        }
+    }
+
+    fn type_to_name<'a>(&'a mut self, typ: &'a str) -> &str {
+        match typ {
+            "i32" => "int",
+            "u8" => "unsigned char",
+            "i8" => "signed char",
+            "usize" => {
+                if !self.imports.contains("#include <stddef.h>\n") {
+                    self.imports.push_str("#include <stddef.h>\n");
+                }
+                return "size_t"
+            },
+            "bool" => {
+                if !self.imports.contains("#include <stdbool.h>\n") {
+                    self.imports.push_str("#include <stdbool.h>\n");
+                }
+                return "bool"
+            },
+            same => same,
         }
     }
 
@@ -125,7 +150,7 @@ impl Gen {
         }
     }
 
-    fn handle_funccall(&self, funccall: Expr) -> String {
+    fn handle_funccall(&mut self, funccall: Expr) -> String {
         match funccall {
             Expr::FuncCall { name, gave_params } => {
                 let mut funccall_code = String::new();
@@ -145,11 +170,16 @@ impl Gen {
                                 funccall_code.push_str(&format!(", {intlit}"))
                             }
                         },
-                        Expr::VariableName { name, .. } => {
+                        Expr::VariableName { name, typ, .. } => {
+                            let mut clean_name = name.clone();
+                            if let Types::TypeId = typ {
+                                clean_name = self.type_to_name(&clean_name).to_string();
+                            }
+
                             if i == 0 {
-                                funccall_code.push_str(name)
+                                funccall_code.push_str(&clean_name)
                             } else {
-                                funccall_code.push_str(&format!(", {}", name))
+                                funccall_code.push_str(&format!(", {}", clean_name))
                             }
                         },
                         Expr::FuncCall { .. } => {
@@ -205,7 +235,7 @@ impl Gen {
 
     }
 
-    fn handle_arraylit(&self, arrlit: Vec<Expr>) -> String {
+    fn handle_arraylit(&mut self, arrlit: Vec<Expr>) -> String {
         let mut arrlit_code = String::new();
         arrlit_code.push('{');
 
@@ -253,7 +283,7 @@ impl Gen {
         }
     }
 
-    fn handle_value(&self, value: Expr) -> String {
+    fn handle_value(&mut self, value: Expr) -> String {
         match value {
             Expr::IntLit(intlit) => intlit,
             Expr::StrLit { content, .. } => format!("\"{content}\""),
@@ -411,8 +441,19 @@ impl Gen {
                     }
                 },
                 Expr::CEmbed(embed) => {
-                    self.add_spaces(self.indent);
-                    self.code.push_str(&format!("{embed}\n"))
+                    let mut clean_embed = String::new();
+
+                    for (i, ch) in embed.chars().enumerate() {
+                        if ch == '\n' && self.in_macro_func {
+                            clean_embed.push_str("\\\n");
+                        } else if i == embed.len() - 1 && self.in_macro_func {
+                            clean_embed.push_str(&format!("{ch}\\"));
+                        } else {
+                            clean_embed.push(ch);
+                        }
+                    }
+
+                    self.code.push_str(&format!("{clean_embed}\n"))
                 },
                 Expr::StructDef { struct_name, struct_fields } => {
                     let mut def_code = String::new();
@@ -455,6 +496,25 @@ impl Gen {
                         }
                     }
                     func_code.push_str(") {\n");
+                    self.code.push_str(&func_code);
+                },
+                Expr::MacroFunc { params, name, .. } => {
+                    self.indent += 1;
+                    self.curl_rc += 1;
+                    self.in_macro_func = true;
+
+                    let mut func_code = String::from("#define ");
+                    func_code.push_str(&format!("{name}("));
+
+                    for (i, param) in params.iter().enumerate() {
+                        if i == 0 {
+                            func_code.push_str(&self.handle_value(param.clone()));
+                        } else {
+                            let comma_separated = format!(", {}", self.handle_value(param.clone()));
+                            func_code.push_str(&comma_separated);
+                        }
+                    }
+                    func_code.push_str(") ({\\\n");
                     self.code.push_str(&func_code);
                 },
                 Expr::VariableName { typ, name, reassign, field_data } => {
@@ -519,7 +579,19 @@ impl Gen {
                 Expr::EndBlock => {
                     self.indent -= 1;
                     self.add_spaces(self.indent);
-                    self.code.push_str("}\n");
+
+                    if self.curl_rc > 0 {
+                        self.curl_rc -= 1;
+
+                        if self.curl_rc == 0 && self.in_macro_func {
+                            self.in_macro_func = false;
+                            self.code.push_str("})\n");
+                        } else {
+                            self.code.push_str("}\n");
+                        }
+                    } else {
+                        self.code.push_str("}\n");
+                    }
                 },
                 Expr::Break => {
                     self.add_spaces(self.indent);
