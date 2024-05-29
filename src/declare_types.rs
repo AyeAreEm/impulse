@@ -14,6 +14,7 @@ pub enum Types {
     Usize,
     Bool,
     TypeId,
+    Generic(String),
 
     Arr {
         typ: Box<Types>,
@@ -45,6 +46,7 @@ pub enum Keyword {
     Usize,
     Bool,
     TypeId,
+    Generic(String),
 
     Println,
     Print,

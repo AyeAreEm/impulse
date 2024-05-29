@@ -202,6 +202,7 @@ impl ExprWeights {
             Keyword::Usize => Types::Usize,
             Keyword::Bool => Types::Bool,
             Keyword::TypeId => Types::TypeId,
+            Keyword::Generic(typ) => Types::Generic(typ),
             Keyword::TypeDef(user_def) =>  Types::TypeDef(user_def),
             Keyword::Pointer(pointer_to, _) => Types::Pointer(Box::new(pointer_to)),
             Keyword::Address => Types::Address,
@@ -434,6 +435,7 @@ impl ExprWeights {
         let mut kw_buf = Keyword::None;
         let mut pointer_counter = 0;
         let mut is_macro_func = false;
+        let mut is_generic = false;
 
         for (_i, param) in params.iter().enumerate() {
             match param {
@@ -444,6 +446,9 @@ impl ExprWeights {
                             Some(kw) => {
                                 if pointer_counter > 0 {
                                     (kw_buf, pointer_counter) = self.create_keyword_pointer(self.keyword_to_type(kw.clone()), pointer_counter);
+                                } else if is_generic {
+                                    self.comp_err(&format!("declaring generic but {} is already an identifier", ident));
+                                    exit(1);
                                 } else {
                                     kw_buf = kw.clone();
                                     if let Keyword::TypeId = kw_buf {is_macro_func = true};
@@ -456,6 +461,10 @@ impl ExprWeights {
                                     } else {
                                         kw_buf = Keyword::TypeDef(ident.to_string());
                                     }
+                                } else if is_generic {
+                                    // TODO: check if ident is an already declared identifier
+                                    kw_buf = Keyword::Generic(ident.to_owned());
+                                    is_generic = false;
                                 } else {
                                     self.comp_err(&format!("expected a type, got {}", ident));
                                     exit(1);
@@ -539,6 +548,9 @@ impl ExprWeights {
                         self.comp_err(&format!("can't use void as type. void pointers work tho."));
                         exit(1);
                     }
+                },
+                Token::Dollar => {
+                    is_generic = true;
                 },
                 _ => {
                     self.comp_err(&format!("unexpected token in function argument: {param:?}"));
@@ -835,9 +847,17 @@ impl ExprWeights {
         let mut loop_modifier = String::new();
 
         let mut create_struct = false;
+        let mut create_generic = false;
 
         for (i, token) in self.token_stack.iter().enumerate() {
             match token {
+                Token::Dollar => {
+                    if in_bracks {
+                        params.push(token.clone());
+                    } else {
+                        create_generic = true;
+                    }
+                },
                 Token::Caret => {
                     if in_bracks {
                         params.push(token.clone());
@@ -893,7 +913,10 @@ impl ExprWeights {
                                 Keyword::Struct => create_struct = true,
                                 _ => {
                                     if let Types::None = typ {
-                                        typ = self.keyword_to_type(keyword.clone());
+                                        typ = if create_generic {
+                                            // TODO: check if ident is already declared
+                                            Types::Generic(ident.to_owned()) // might cause errors idk lmao
+                                        } else {self.keyword_to_type(keyword.clone())};
                                         if pointer_counter > 0 {
                                             let tmp_kw = self.create_keyword_pointer(typ, pointer_counter).0;
                                             typ = self.keyword_to_type(tmp_kw);
@@ -982,7 +1005,10 @@ impl ExprWeights {
                         exit(1);
                     }
                 },
-                _ => (),
+                unexpected => {
+                    self.comp_err(&format!("unexpected token: {unexpected:?}"));
+                    exit(1);
+                },
             }
         }
 
@@ -2017,7 +2043,7 @@ impl ExprWeights {
                                 } else if let Expr::MacroFunc { .. } = found_ident {
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
                                 } else {
-                                    if self.in_struct_def && !self.current_func.is_empty() {
+                                    if self.in_struct_def && !self.current_func.is_empty() && ident == &self.current_func {
                                         let k: Keyword;
                                         if pointer_counter > 0 {
                                             k = self.create_keyword_pointer(

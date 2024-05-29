@@ -13,11 +13,15 @@ bool(typeid T typeid K) type_compare: {
     return str_compare(type(T) type(K));
 }
 
+#_($T var) example: {
+
+#}
+
+struct vector: {
+    blah x;
+    blah y;
+}
+
 _() main: {
-    bool is_same: type_compare($int $int);
-    if (is_same) {
-        @c [printf("yippe");];
-    } else {
-        @c [printf("booo");];
-    }
+    vector pos;
 }
