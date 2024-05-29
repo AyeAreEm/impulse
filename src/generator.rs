@@ -528,14 +528,22 @@ impl Gen {
 
                     let varname = self.handle_varname(*info);
                     let var_val = self.handle_value(*value);
-
-                    self.code.push_str(&format!("{varname} = {var_val};\n"));
+                    
+                    if self.in_macro_func {
+                        self.code.push_str(&format!("{varname} = {var_val};\\\n"));
+                    } else {
+                        self.code.push_str(&format!("{varname} = {var_val};\n"));
+                    }
                 },
                 Expr::FuncCall { name, gave_params } => {
                     self.add_spaces(self.indent);
 
                     let call = self.handle_funccall(Expr::FuncCall { name, gave_params });
-                    self.code.push_str(&format!("{call};\n"));
+                    if self.in_macro_func {
+                        self.code.push_str(&format!("{call};\\\n"));
+                    } else {
+                        self.code.push_str(&format!("{call};\n"));
+                    }
                 },
                 Expr::If(conditions) => {
                     self.add_spaces(self.indent);
@@ -569,7 +577,11 @@ impl Gen {
                     self.add_spaces(self.indent);
                     
                     let val = self.handle_value(*value);
-                    self.code.push_str(&format!("return {val};\n"))
+                    if self.in_macro_func {
+                        self.code.push_str(&format!("{val};\\\n"))
+                    } else {
+                        self.code.push_str(&format!("return {val};\n"))
+                    }
                 },
                 Expr::StartBlock => {
                     self.add_spaces(self.indent);

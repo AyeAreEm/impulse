@@ -1,18 +1,23 @@
 @import "stdio.h";
+@import "string.h";
 
-_(typeid T) check_size: {
-    @c [printf("%zu\n", sizeof(T));];
+^char(typeid T) type: {
+    @c [#T;];
 }
 
-struct vector: {
-    int x;
-    int y;
+int(^char str1 ^char str2) str_compare: {
+    @c [return strcmp(str1, str2);];
+}
+
+bool(typeid T typeid K) type_compare: {
+    return str_compare(type(T) type(K));
 }
 
 _() main: {
-    check_size($i32);
-    check_size($char);
-    check_size($i8);
-    check_size($u8);
-    check_size($vector);
+    bool is_same: type_compare($int $int);
+    if (is_same) {
+        @c [printf("yippe");];
+    } else {
+        @c [printf("booo");];
+    }
 }

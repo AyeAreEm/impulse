@@ -1228,6 +1228,13 @@ impl ExprWeights {
                             None => {
                                 if let Expr::StructDef { .. } = self.find_structure(ident) {
                                     expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.to_string(), reassign: false, field_data: (false, false) });
+                                } else if let Expr::VariableName { typ, name, .. } = self.find_variable(ident) {
+                                    if let Types::TypeId = typ {
+                                        expr_params.push(Expr::VariableName { typ: typ.clone(), name: name.clone(), reassign: false, field_data: (false, false) })
+                                    } else {
+                                        self.comp_err(&format!("expected keyword, got {ident}"));
+                                        exit(1);
+                                    }
                                 } else {
                                     self.comp_err(&format!("expected keyword, got {ident}"));
                                     exit(1);
@@ -1242,6 +1249,8 @@ impl ExprWeights {
                         self.comp_err(&format!("unknown identifier: {}", ident));
                         exit(1);
                     } else if let Expr::Func { .. } = expr {
+                        nested_func = expr;
+                    } else if let Expr::MacroFunc { .. } = expr {
                         nested_func = expr;
                     } else if let Expr::VariableName {ref typ, reassign, field_data, ..} = expr {
                         if field_data.0 && field_data.1 {
@@ -1274,6 +1283,7 @@ impl ExprWeights {
                         nested_brack_rs -= 1;
                         if nested_brack_rs == 0 {
                             expr_params.push(self.create_func_call(&nested_func, nested_params.clone()));
+                            nested_params.clear();
                         }
                     } else {
                         nested_brack_rs -= 1;
@@ -2137,6 +2147,15 @@ impl ExprWeights {
             exit(1);
         }
 
+        if returning && buffer.len() <= 1 {
+            if self.in_struct_def {
+                self.comp_err(&format!("can't use return inside struct"));
+                exit(1);
+            }
+
+            return Expr::Return(Box::new(buffer[0].clone()))
+        }
+        
         if buffer.len() > 1 {
             match &buffer[0] {
                 Expr::Address(varname) => {
@@ -2209,14 +2228,6 @@ impl ExprWeights {
             return Expr::ArrayLit(arrlit)
         }
 
-        if returning {
-            if self.in_struct_def {
-                self.comp_err(&format!("can't use return inside struct"));
-                exit(1);
-            }
-
-            return Expr::Return(Box::new(buffer[0].clone()))
-        }
         buffer[0].clone()
     }
 
