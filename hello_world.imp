@@ -1,28 +1,28 @@
 @import "stdio.h";
 @import "string.h";
 
-struct(typeid T) vector: {
-   T x;
-   T y;
-}
+#struct(typeid T) vector: {
+#   T x;
+#   T y;
+#}
 
-vector(typeid T $T x $T y) vector_xy: {
-    vector(T) new;
-    new.x: x;
-    new.y: y;
-    return new;
-}
+#vector(typeid T $T x $T y) vector_xy: {
+#    vector(T) new;
+#    new.x: x;
+#    new.y: y;
+#    return new;
+#}
 
-^char(typeid T) type_to_cstr: {
-    @c [#T;];
-}
+#^char(typeid T) type_to_cstr: {
+#    @c [#T;];
+#}
 
-bool(typeid T typeid K) type_compare: {
-    bool same: false;
-    @c [same = !strcmp(#T, #K);];
+#bool(typeid T typeid K) type_compare: {
+#    bool same: false;
+#    @c [same = !strcmp(#T, #K);];
 
-    return same;
-}
+#    return same;
+#}
 
 _(typeid T) init_100: {
     $T x: 100;
