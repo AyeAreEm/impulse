@@ -1267,6 +1267,7 @@ impl ExprWeights {
                                 }
                             }
                         }
+                        found_typeid = false;
                         continue;
                     }
 
@@ -1746,6 +1747,32 @@ impl ExprWeights {
                     exit(1);
                 }
             },
+            Token::Dollar => {
+                if var_info.len() < 3 {
+                    self.comp_err(&format!("expected more tokens after `$`"));
+                    exit(1);
+                }
+
+                if let Token::Ident(typeid_ident) = &var_info[1] {
+                    let found_var = self.find_variable(typeid_ident);
+                    if let Expr::VariableName { typ, name, .. } = found_var {
+                        if let Types::TypeId = typ {
+                            keyword = Keyword::Generic(name);
+                        } else {
+                            self.comp_err(&format!("expected {typeid_ident:?} to be typeid. instead is {typ:?}"));
+                            exit(1);
+                        }
+                    } else {
+                        self.comp_err(&format!("undefined typeid: {typeid_ident}"));
+                        exit(1);
+                    }
+                }
+
+                let typ = self.keyword_to_type(keyword.clone());
+                if let Token::Ident(varname) = &var_info[2] {
+                    return Expr::VariableName { typ, name: varname.to_owned(), reassign: false, field_data: (false, false) }
+                }
+            },
             _ => {
                 self.comp_err(&format!("unexpected token: {:?}", var_info[0]));
                 exit(1);
@@ -1919,6 +1946,7 @@ impl ExprWeights {
         let mut found_amper = false;
 
         let mut returning = false;
+        let mut create_generic = false;
 
         for (i, token) in value.iter().enumerate() {
             // handle right bracket occurences
@@ -1997,12 +2025,12 @@ impl ExprWeights {
                                     return Expr::Break
                                 } else if let Keyword::Continue = k {
                                     return Expr::Continue;
-                                }else if let Keyword::Return = k {
+                                } else if let Keyword::Return = k {
                                     returning = true;
                                     continue;
                                 } else if pointer_counter > 0 {
                                     (keyword, _) = self.create_keyword_pointer(self.keyword_to_type(k.clone()), pointer_counter);
-                                } 
+                                }
 
                                 // anything that needs an identifier after the keyword is handled
                                 // below
@@ -2023,7 +2051,29 @@ impl ExprWeights {
                             None => {
                                 let found_ident = self.find_ident(ident.to_owned());
                                 if returning {}
-                                else if let Expr::StructDef { .. } = found_ident {
+                                else if create_generic {
+                                    if let Expr::VariableName { typ, name, .. } = found_ident {
+                                        if let Types::TypeId = typ {
+                                            let keyword = Keyword::Generic(name);
+
+                                            if i + 1 == value.len() {
+                                                self.comp_err(&format!("expected identifier after keyword {keyword:?}, got nothing"));
+                                                exit(1);
+                                            }
+
+                                            if self.in_struct_def {
+                                                let expr = self.create_define_var(keyword, value[i+1].clone());
+                                                self.expr_stack.push(expr);
+                                                return Expr::None
+                                            } else {
+                                                return self.create_define_var(keyword, value[i+1].clone());
+                                            }
+                                        } else {
+                                            self.comp_err(&format!("expected typeid after `$`, got {typ:?}"));
+                                            exit(1);
+                                        }
+                                    }
+                                } else if let Expr::StructDef { .. } = found_ident {
                                     let k: Keyword;
                                     if pointer_counter > 0 {
                                         (k, _) = self.create_keyword_pointer(Types::TypeDef(ident.clone()), pointer_counter);
@@ -2100,15 +2150,18 @@ impl ExprWeights {
                 Token::Rbrack => {
                     // handled above
                 },
+                Token::Pipe => {
+                    // handled above
+                },
                 Token::Macro => {
                     found_macro = true;
+                },
+                Token::Dollar => {
+                    create_generic = true;
                 },
                 Token::Quote => (),
                 Token::Lsquare => (),
                 Token::Rsquare => (),
-                Token::Pipe => {
-                    // handled above
-                },
                 Token::Caret => {
                     if is_right {
                         let top_expr_res = buffer.pop();
@@ -2329,9 +2382,9 @@ impl ExprWeights {
         }
 
         match kw {
-            Keyword::I32 => (),
-            Keyword::Bool => (),
-            Keyword::Usize => (),
+            Keyword::I32 | Keyword::I8 | Keyword::U8 |
+            Keyword::Char | Keyword::Usize | Keyword::Bool => (),
+            Keyword::Generic(_) => (),
             Keyword::Pointer(.., last) => {
                 if let Types::TypeDef(user_def) = last {
                     self.propagate_struct_fields(fname, user_def.to_string(), true);

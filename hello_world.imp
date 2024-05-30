@@ -1,27 +1,44 @@
 @import "stdio.h";
-@import "string.h";
+#@import "string.h";
 
-^char(typeid T) type: {
-    @c [#T;];
-}
-
-int(^char str1 ^char str2) str_compare: {
-    @c [return strcmp(str1, str2);];
-}
-
-bool(typeid T typeid K) type_compare: {
-    return str_compare(type(T) type(K));
-}
-
-#_($T var) example: {
-
+#struct(typeid T) vector: {
+#   T x;
+#   T y;
 #}
 
-struct vector: {
-    blah x;
-    blah y;
+#vector(typeid T $T x $T y) vector_xy: {
+#    vector(T) new;
+#    new.x: x;
+#    new.y: y;
+#    return new;
+#}
+
+#^char(typeid T) type_to_cstr: {
+#    @c [#T;];
+#}
+
+#bool(typeid T typeid K) type_compare: {
+#    bool same: false;
+#    @c [same = !strcmp(#T, #K);];
+
+#    return same;
+#}
+
+_(typeid T) init_100: {
+    $T x: 100;
+    return x;
+}
+
+_(typeid T $T x) change_100: {
+    x: 100;
+    return x;
 }
 
 _() main: {
-    vector pos;
+#    vector($int) pos: vector_xy(10 15);
+    int x: init_100($int);
+    i8 y: 127;
+    change_100($i8 y);
+
+    @c [printf("x: %d, y: %d\n", x, y);];
 }

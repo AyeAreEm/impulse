@@ -117,6 +117,14 @@ impl Gen {
                 let sub_typ = self.handle_typ(*ptotyp).0;
                 return (format!("{sub_typ}*"), String::new())
             },
+            Types::Generic(typeid) => {
+                if !self.in_macro_func {
+                    comp_err("failed to handle generic at compile time.");
+                    exit(1);
+                }
+
+                (format!("{typeid}"), String::new())
+            }
             unimpl => {
                 comp_err(&format!("{unimpl:?} is not implemented yet"));
                 exit(1);
@@ -521,7 +529,11 @@ impl Gen {
                     self.add_spaces(self.indent);
 
                     let varname = self.handle_varname(Expr::VariableName { typ, name, reassign, field_data });
-                    self.code.push_str(&format!("{varname} = {{0}};\n"));
+                    if self.in_macro_func {
+                        self.code.push_str(&format!("{varname} = {{0}};\\\n"));
+                    } else {
+                        self.code.push_str(&format!("{varname} = {{0}};\n"));
+                    }
                 },
                 Expr::Variable { info, value } => {
                     self.add_spaces(self.indent);
