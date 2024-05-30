@@ -1191,7 +1191,6 @@ impl ExprWeights {
         let mut square_rc = 0;
         let mut intlit_buf = String::new();
         let mut found_amper = false;
-        let mut found_typeid = false;
 
         let mut expr_params = Vec::new();
         for (i, param) in params.iter().enumerate() {
@@ -1217,19 +1216,6 @@ impl ExprWeights {
                             is_cstr: false
                         });
                     }
-                },
-                Token::Dollar => {
-                    if nested_brack_rs > 0 {
-                        nested_params.push(param.clone());
-                        continue;
-                    }
-
-                    if square_rc > 0 {
-                        self.comp_err(&format!("expected integers inside [], found token {:?}", param));
-                        exit(1);
-                    }
-
-                    found_typeid = true;
                 },
                 Token::Ident(ident) => {
                     if nested_brack_rs > 0 {
@@ -1260,37 +1246,19 @@ impl ExprWeights {
                         continue;
                     }
 
-                    if found_typeid {
-                        let keyword_res = self.keyword_map.get(ident);
-                        match keyword_res {
-                            Some(kw) => {
-                                let _ = self.keyword_to_type(kw.clone());
-                                expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.to_string(), reassign: false, field_data: (false, false) });
-                            },
-                            None => {
-                                if let Expr::StructDef { .. } = self.find_structure(ident) {
-                                    expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.to_string(), reassign: false, field_data: (false, false) });
-                                } else if let Expr::VariableName { typ, name, .. } = self.find_variable(ident) {
-                                    if let Types::TypeId = typ {
-                                        expr_params.push(Expr::VariableName { typ: typ.clone(), name: name.clone(), reassign: false, field_data: (false, false) })
-                                    } else {
-                                        self.comp_err(&format!("expected keyword, got {ident}"));
-                                        exit(1);
-                                    }
-                                } else {
-                                    self.comp_err(&format!("expected keyword, got {ident}"));
-                                    exit(1);
-                                }
-                            }
-                        }
-                        found_typeid = false;
-                        continue;
-                    }
-
                     let expr = self.find_ident(ident.to_string());
                     if let Expr::None = expr {
-                        self.comp_err(&format!("unknown identifier: {}", ident));
-                        exit(1);
+                        let keyword_rs = self.keyword_map.get(ident);
+                        match keyword_rs {
+                            Some(keyword) => {
+                                let _ = self.keyword_to_type(keyword.clone());
+                                expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.clone(), reassign: false, field_data: (false, false) })
+                            },
+                            None => {
+                                self.comp_err(&format!("unknown identifier: {}", ident));
+                                exit(1);
+                            }
+                        }
                     } else if let Expr::Func { .. } = expr {
                         nested_func = expr;
                     } else if let Expr::MacroFunc { .. } = expr {

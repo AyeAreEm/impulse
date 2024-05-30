@@ -25,7 +25,7 @@ fn build(filename: &String, out_filename: &String, keep_c: bool) {
     let mut parse = ExprWeights::new(tokens, filename);
     let expressions = parse.parser();
     for expr in &expressions {
-        println!("{:?}", expr);
+        println!("{:?}", expr.0);
     }
 
     let mut gen = Gen::new(filename.to_string(), out_filename.clone(), Lang::C);
