@@ -6,12 +6,18 @@ use crate::parser::*;
 pub struct Gen {
     imports: String,
     comp_imports:  String,
+
+    indent: i32,
     code: String,
+
+    in_file: String,
+    line_num: u32,
     out_file: String,
     libc_map: HashMap<String, bool>,
-    indent: i32,
+
     in_macro_func: bool,
     curl_rc: i32,
+
     lang: Lang,
 }
 
@@ -28,12 +34,8 @@ pub struct Gen {
 //     varname
 // }
 
-fn comp_err(error_msg: &str) {
-    println!("\x1b[91merror\x1b[0m: {error_msg}");
-}
-
 impl Gen {
-    pub fn new(out_file: String, lang: Lang) -> Gen {
+    pub fn new(in_file: String, out_file: String, lang: Lang) -> Gen {
         let libc_map = HashMap::from([
             ("stdio".to_string(), true),
             ("stdlib".to_string(), true),
@@ -46,13 +48,20 @@ impl Gen {
             imports: String::new(),
             comp_imports: String::new(),
             code: String::new(),
+            in_file,
             out_file,
+            line_num: 0,
             libc_map,
             indent: 0,
             in_macro_func: false,
             curl_rc: 0,
             lang,
         }
+    }
+
+    fn comp_err(&self, error_msg: &str) {
+        println!("\x1b[91merror\x1b[0m: {}:{}", self.in_file, self.line_num);
+        println!("\x1b[91merror\x1b[0m: {error_msg}");
     }
 
     fn add_spaces(&mut self, indent: i32) {
@@ -119,14 +128,14 @@ impl Gen {
             },
             Types::Generic(typeid) => {
                 if !self.in_macro_func {
-                    comp_err("failed to handle generic at compile time.");
+                    self.comp_err("failed to handle generic at compile time.");
                     exit(1);
                 }
 
                 (format!("{typeid}"), String::new())
             }
             unimpl => {
-                comp_err(&format!("{unimpl:?} is not implemented yet"));
+                self.comp_err(&format!("{unimpl:?} is not implemented yet"));
                 exit(1);
             }
         }
@@ -152,7 +161,7 @@ impl Gen {
                 return format!("*{derefed}")
             },
             unexpected => {
-                comp_err(&format!("unexpected expression: {unexpected:?}"));
+                self.comp_err(&format!("unexpected expression: {unexpected:?}"));
                 exit(1);
             },
         }
@@ -226,7 +235,7 @@ impl Gen {
                             }
                         },
                         unimpl => {
-                            comp_err(&format!("expression {unimpl:?} not implemented yet"));
+                            self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                             exit(1);
                         }
                     }
@@ -236,7 +245,7 @@ impl Gen {
                 return funccall_code
             },
             unexpected => {
-                comp_err(&format!("unexpected expression: {unexpected:?}"));
+                self.comp_err(&format!("unexpected expression: {unexpected:?}"));
                 exit(1);
             },
         }
@@ -285,7 +294,7 @@ impl Gen {
                 }
             },
             unexpected => {
-                comp_err(&format!("can't deference {unexpected:?}"));
+                self.comp_err(&format!("can't deference {unexpected:?}"));
                 exit(1);
             }
         }
@@ -317,7 +326,7 @@ impl Gen {
             },
             Expr::None => String::new(),
             unimpl => {
-                comp_err(&format!("expression {unimpl:?} not implemented yet"));
+                self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                 exit(1);
             }
         }
@@ -431,8 +440,12 @@ impl Gen {
         loop_code
     }
 
-    pub fn generate(&mut self, expressions: Vec<Expr>) {
-        for (_index, expr) in expressions.into_iter().enumerate() {
+    pub fn generate(&mut self, expressions: Vec<(Expr, String, u32)>) {
+        for (_index, info) in expressions.into_iter().enumerate() {
+            let expr = info.0;
+            self.in_file = info.1;
+            self.line_num = info.2;
+
             match expr {
                 Expr::Import(loc) => {
                     if !self.imports.contains(&format!("#include <{loc}.h>\n")) && !self.imports.contains(&format!("#include \"{loc}.h\"\n")) {
@@ -626,7 +639,7 @@ impl Gen {
                     self.code.push_str("continue;\n");
                 },
                 unimpl => {
-                    comp_err(&format!("{unimpl:?} is not implemented yet"));
+                    self.comp_err(&format!("{unimpl:?} is not implemented yet"));
                     exit(1);
                 }
             }
@@ -636,7 +649,7 @@ impl Gen {
         match fs::write("./output.c", c_code) {
             Ok(_) => (),
             Err(err) => {
-                comp_err(&format!("{err}"));
+                self.comp_err(&format!("{err}"));
                 exit(1);
             }
         }

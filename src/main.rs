@@ -28,7 +28,7 @@ fn build(filename: &String, out_filename: &String, keep_c: bool) {
         println!("{:?}", expr);
     }
 
-    let mut gen = Gen::new(out_filename.clone(), Lang::C);
+    let mut gen = Gen::new(filename.to_string(), out_filename.clone(), Lang::C);
     gen.generate(expressions);
 
     if !keep_c {

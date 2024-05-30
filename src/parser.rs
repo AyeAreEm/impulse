@@ -105,7 +105,7 @@ pub struct ExprWeights {
     line_num: u32,
     
     imports: Vec<String>,
-    program: Vec<Expr>,
+    program: Vec<(Expr, String, u32)>,
     filename: String,
 }
 
@@ -184,6 +184,10 @@ impl ExprWeights {
     fn comp_err(&self, error_msg: &str) {
         println!("\x1b[91merror\x1b[0m: {}:{}", self.filename, self.line_num);
         println!("\x1b[91merror\x1b[0m: {error_msg}");
+    }
+
+    fn program_push(&mut self, expr: Expr) {
+        self.program.push((expr, self.filename.clone(), self.line_num));
     }
 
     fn error_if_stack_not_empty(&self) {
@@ -581,7 +585,7 @@ impl ExprWeights {
         self.func_to_vars.entry(name.clone()).or_insert(vec![expr_param]);
         self.in_func = true;
 
-        self.program.push(expr);
+        self.program_push(expr);
         self.token_stack.clear();
     }
 
@@ -629,10 +633,10 @@ impl ExprWeights {
 
         // push to a list of structs
         let expr = Expr::StructDef { struct_name: Box::new(name.clone()), struct_fields: exprs };
-        self.program.push(expr.clone());
+        self.program_push(expr.clone());
         match name {
             Expr::StructName(struct_name) => {
-                self.program.push(Expr::EndStruct(struct_name.clone()));
+                self.program_push(Expr::EndStruct(struct_name.clone()));
                 self.func_to_vars.remove(&struct_name);
             },
             _ => {
@@ -788,12 +792,12 @@ impl ExprWeights {
             Keyword::If => {
                 self.token_stack.clear();
                 self.new_scope(Expr::None);
-                self.program.push(Expr::If(expr_params));
+                self.program_push(Expr::If(expr_params));
             },
             Keyword::OrIf => {
                 self.token_stack.clear();
                 self.new_scope(Expr::None);
-                self.program.push(Expr::OrIf(expr_params));
+                self.program_push(Expr::OrIf(expr_params));
             },
             _ => (),
         }
@@ -817,7 +821,7 @@ impl ExprWeights {
                     },
                 }
 
-                self.program.push(Expr::Loop {
+                self.program_push(Expr::Loop {
                     condition: expr_params.0,
                     modifier: Box::new(Expr::IntLit(modifier.to_owned())),
                 });
@@ -1036,7 +1040,7 @@ impl ExprWeights {
                     }
 
                     self.token_stack.clear();
-                    self.program.push(Expr::Else);
+                    self.program_push(Expr::Else);
                     self.new_scope(Expr::None);
                     return
                 }
@@ -1074,7 +1078,7 @@ impl ExprWeights {
         }
 
         self.new_scope(Expr::None);
-        self.program.push(Expr::StartBlock);
+        self.program_push(Expr::StartBlock);
     }
 
     fn find_variable(&self, ident: &String) -> Expr {
@@ -2421,7 +2425,7 @@ impl ExprWeights {
         }
 
         self.token_stack.clear();
-        self.program.push(expr);
+        self.program_push(expr);
     }
 
     fn handle_semicolon(&mut self) {
@@ -2471,10 +2475,10 @@ impl ExprWeights {
             _ => (),
         }
 
-        self.program.push(expr)
+        self.program_push(expr)
     }
 
-    pub fn parser(&mut self) -> Vec<Expr> {
+    pub fn parser(&mut self) -> Vec<(Expr, String, u32)> {
         let mut curl_rc = 0;
 
         while self.current_token < self.tokens.len() {
@@ -2491,7 +2495,7 @@ impl ExprWeights {
                     if self.in_struct_def {
                         self.create_struct();
                     } else {
-                        self.program.push(Expr::EndBlock);
+                        self.program_push(Expr::EndBlock);
                     }
                 },
                 Token::SemiColon => {
