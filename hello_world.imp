@@ -1,41 +1,17 @@
 @import "stdio.h";
-@import "string.h";
-
-#struct(typeid T) vector: {
-#   T x;
-#   T y;
-#}
-
-#vector(typeid T $T x $T y) vector_xy: {
-#    vector(T) new;
-#    new.x: x;
-#    new.y: y;
-#    return new;
-#}
-
-#^char(typeid T) type_to_cstr: {
-#    @c [#T;];
-#}
-
-#bool(typeid T typeid K) type_compare: {
-#    bool same: false;
-#    @c [same = !strcmp(#T, #K);];
-
-#    return same;
-#}
 
 _(typeid T) init_100: {
     $T x: 100;
     return x;
 }
 
-_(typeid T $T x) change_100: {
+# this will error since K is not defined, before it wouldn't error
+_(typeid T $K x) change_100: {
     x: 100;
     return x;
 }
 
 _() main: {
-#    vector($int) pos: vector_xy(10 15);
     int x: init_100($int);
     i8 y: 127;
     change_100($i8 y);

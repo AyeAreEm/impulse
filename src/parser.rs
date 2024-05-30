@@ -436,6 +436,7 @@ impl ExprWeights {
     fn create_func(&mut self, typ: Types, params: Vec<Token>, name: String) {
         let mut variables = Vec::new();
         let mut expr_param = Vec::new();
+        let mut typeid_names = Vec::new();
         let mut kw_buf = Keyword::None;
         let mut pointer_counter = 0;
         let mut is_macro_func = false;
@@ -466,9 +467,18 @@ impl ExprWeights {
                                         kw_buf = Keyword::TypeDef(ident.to_string());
                                     }
                                 } else if is_generic {
-                                    // TODO: check if ident is an already declared identifier
-                                    kw_buf = Keyword::Generic(ident.to_owned());
-                                    is_generic = false;
+                                    for name in &typeid_names {
+                                        if name == ident {
+                                            kw_buf = Keyword::Generic(ident.to_owned());
+                                            is_generic = false;
+                                            break;
+                                        }
+                                    }
+
+                                    if is_generic {
+                                        self.comp_err(&format!("generic type {ident} hasn't been defined as a typeid yet."));
+                                        exit(1);
+                                    }
                                 } else {
                                     self.comp_err(&format!("expected a type, got {}", ident));
                                     exit(1);
@@ -523,6 +533,8 @@ impl ExprWeights {
                                     }
                                 }
                             }
+                        } else if let Types::TypeId = typ {
+                            typeid_names.push(ident.to_owned());
                         }
 
                         let final_expr = Expr::VariableName {
