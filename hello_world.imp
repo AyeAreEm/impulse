@@ -1,19 +1,18 @@
 @import "stdio.h";
-_(typeid T) init_100: {
-    $T num: 100;
-    return num;
+
+struct[T] vector: {
+   $T x;
+   $T y;
 }
 
-_(typeid T $T num) change_100: {
-    num: 100;
-    return num;
+_(typeid T) show_size: {
+    @c [printf("size: %zu", sizeof(T));];
 }
 
 _() main: {
-    int x: init_100(int);
+    vector[u8] pos;
+    pos.x: 10;
+    pos.y: 100;
 
-    int y: 200;
-    change_100(int y);
-
-    @c[printf("x: %d, y: %d\n", x, y);];
+    @c [printf("pos x: %d, pos y: %d", pos.x, pos.y);];
 }

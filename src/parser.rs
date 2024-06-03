@@ -70,6 +70,16 @@ pub enum Expr {
     },
     EndStruct(String),
 
+    MacroStructName {
+        name: String,
+        generics: Vec<Expr>,
+    },
+    MacroStructDef {
+        struct_name: Box<Expr>, // Expr = StructName
+        struct_fields: Vec<Expr>, // Expr = VarName
+    },
+    MacroEndStruct(String),
+
     ArrayLit(Vec<Expr>),
     // ArrayIndex {
     //     array_variable: Box<Expr>, // Expr = VarName
@@ -207,7 +217,7 @@ impl ExprWeights {
             Keyword::Bool => Types::Bool,
             Keyword::TypeId => Types::TypeId,
             Keyword::Generic(typ) => Types::Generic(typ),
-            Keyword::TypeDef(user_def) =>  Types::TypeDef(user_def),
+            Keyword::TypeDef { type_name, generics } =>  Types::TypeDef { type_name, generics },
             Keyword::Pointer(pointer_to, _) => Types::Pointer(Box::new(pointer_to)),
             Keyword::Address => Types::Address,
             _ => {
@@ -462,9 +472,15 @@ impl ExprWeights {
                             None => {
                                 if let Expr::StructDef { .. } = self.find_structure(ident) {
                                     if pointer_counter > 0 {
-                                        (kw_buf, pointer_counter) = self.create_keyword_pointer(Types::TypeDef(ident.to_owned()), pointer_counter);
+                                        (kw_buf, pointer_counter) = self.create_keyword_pointer(Types::TypeDef {
+                                            type_name: ident.to_owned(),
+                                            generics: vec![],
+                                        }, pointer_counter);
                                     } else {
-                                        kw_buf = Keyword::TypeDef(ident.to_string());
+                                        kw_buf = Keyword::TypeDef {
+                                            type_name: ident.to_string(),
+                                            generics: vec![],
+                                        };
                                     }
                                 } else if is_generic {
                                     for name in &typeid_names {
@@ -487,7 +503,7 @@ impl ExprWeights {
                         }
                     } else {
                         let typ = self.keyword_to_type(kw_buf.clone());
-                        if let Types::TypeDef(ref user_def) = typ {
+                        if let Types::TypeDef {type_name: ref user_def, .. } = typ {
                             if let Expr::StructDef { struct_fields, .. } = self.find_structure(&user_def) {
                                 for field in struct_fields {
                                     match field {
@@ -510,7 +526,7 @@ impl ExprWeights {
                                 }
                             }
                         } else if let Keyword::Pointer(.., last) = kw_buf {
-                            if let Types::TypeDef(ref user_def) = last {
+                            if let Types::TypeDef { type_name: ref user_def, .. } = last {
                                 if let Expr::StructDef { struct_fields, .. } = self.find_structure(&user_def) {
                                     for field in struct_fields {
                                         match field {
@@ -602,7 +618,7 @@ impl ExprWeights {
     }
 
     // this starts defining a struct
-    fn create_struct_def(&mut self, name: String) {
+    fn create_struct_def(&mut self, name: String, generics: Expr) {
         if self.in_func {
             self.comp_err(&format!("cannot make struct {name} inside a function"));
             exit(1);
@@ -623,17 +639,55 @@ impl ExprWeights {
             self.comp_err(&format!("identifier {name} already declared as another function"));
             exit(1);
         } else if let Expr::MacroFunc { .. } = found_func {
-
+            self.comp_err(&format!("identifier {name} already declared as another function"));
+            exit(1);
         } else if let Expr::StructDef { .. } = self.find_structure(&name) {
             self.comp_err(&format!("identifier {name} already declared as struct"));
             exit(1);
         }
 
+        let mut pass_generic = Vec::new();
+        match generics {
+            Expr::None => (),
+            Expr::IntLit(generic) => {
+                let mut name_buf = String::new();
+                for (i, ch) in generic.chars().enumerate() {
+                    if ch == ' ' || ch == '\n' || i == generic.len()-1 {
+                        if i == generic.len() - 1 {
+                            name_buf.push(ch);
+                        }
+
+                        let gen_var = Expr::Variable {
+                            info: Box::new(Expr::VariableName {
+                                typ: Types::TypeId,
+                                name: name_buf.clone(),
+                                reassign: false,
+                                field_data: (false, false),
+                            }),
+                            value: Box::new(Expr::None)
+                        };
+                        pass_generic.push(gen_var);
+                        name_buf.clear();
+                    } else {
+                        name_buf.push(ch);
+                    }
+                }
+            },
+            unexpected => {
+                self.comp_err(&format!("unexpected expression {unexpected:?} when making struct {name}"));
+                exit(1);
+            },
+        }
+
         self.current_func = name.clone();
-        self.func_to_vars.entry(name.clone()).or_insert(vec![vec![]]);
+        self.func_to_vars.entry(name.clone()).or_insert(vec![pass_generic.clone()]);
         self.in_struct_def = true;
 
-        self.expr_stack.push(Expr::StructName(name));
+        if pass_generic.is_empty() {
+            self.expr_stack.push(Expr::StructName(name));
+        } else {
+            self.expr_stack.push(Expr::MacroStructName{name, generics: pass_generic});
+        }
         self.token_stack.clear();
     }
 
@@ -644,12 +698,19 @@ impl ExprWeights {
         self.expr_stack.clear();
 
         // push to a list of structs
-        let expr = Expr::StructDef { struct_name: Box::new(name.clone()), struct_fields: exprs };
+        let expr = if let Expr::MacroStructName { .. } = name {
+            Expr::MacroStructDef { struct_name: Box::new(name.clone()), struct_fields: exprs }
+        } else {
+            Expr::StructDef { struct_name: Box::new(name.clone()), struct_fields: exprs }
+        };
         self.program_push(expr.clone());
         match name {
             Expr::StructName(struct_name) => {
                 self.program_push(Expr::EndStruct(struct_name.clone()));
                 self.func_to_vars.remove(&struct_name);
+            },
+            Expr::MacroStructName { name, .. } => {
+                self.program_push(Expr::MacroEndStruct(name));
             },
             _ => {
                 self.comp_err(&format!("unexpected expression when creating struct"));
@@ -864,6 +925,7 @@ impl ExprWeights {
 
         let mut create_struct = false;
         let mut create_generic = false;
+        let mut generic_subtype = Expr::None;
 
         for (i, token) in self.token_stack.iter().enumerate() {
             match token {
@@ -920,7 +982,7 @@ impl ExprWeights {
                             };
 
                             if let Expr::StructDef { .. } = self.find_structure(ident) {
-                                keyword = Keyword::TypeDef(ident.to_string());
+                                keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: vec![] };
                             }
 
                             match keyword {
@@ -1016,11 +1078,15 @@ impl ExprWeights {
                         break;
                     } else if in_bracks {
                         params.push(token.clone());
+                    } else if create_struct {
+                        generic_subtype = Expr::IntLit(symbols.to_string());
                     } else {
                         self.comp_err(&format!("unexpected integer literal in block definition: {symbols}"));
                         exit(1);
                     }
                 },
+                Token::Lsquare => (),
+                Token::Rsquare => (), // these might break stuff idk
                 unexpected => {
                     self.comp_err(&format!("unexpected token: {unexpected:?}"));
                     exit(1);
@@ -1071,7 +1137,7 @@ impl ExprWeights {
                 self.comp_err(&format!("expected assigment operator `:`. did you mean `struct {name}: {{`?"));
                 exit(1);
             } else {
-                self.create_struct_def(name.clone());
+                self.create_struct_def(name.clone(), generic_subtype);
                 return
             }
         }
@@ -1139,6 +1205,21 @@ impl ExprWeights {
             match struc {
                 Expr::StructDef { struct_name, .. } => {
                     match *struct_name.clone() {
+                        Expr::StructName(acc_name) => {
+                            if &acc_name == ident {
+                                return struc.clone()
+                            }
+                        },
+                        _ => (),
+                    }
+                },
+                Expr::MacroStructDef { struct_name, .. } => {
+                    match *struct_name.clone() {
+                        Expr::MacroStructName { name: acc_name, .. } => {
+                            if &acc_name == ident {
+                                return struc.clone()
+                            }
+                        },
                         Expr::StructName(acc_name) => {
                             if &acc_name == ident {
                                 return struc.clone()
@@ -1438,7 +1519,7 @@ impl ExprWeights {
                     Some(kw) => keyword = kw.clone(),
                     None => {
                         if let Expr::StructDef { .. } = self.find_structure(ident) {
-                            keyword = Keyword::TypeDef(ident.to_string());
+                            keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: vec![] };
                         } else {
                             self.comp_err(&format!("expected keyword, got {ident}"));
                             exit(1);
@@ -1544,7 +1625,7 @@ impl ExprWeights {
                     None => {
                         match self.find_structure(ident) {
                             Expr::StructDef { .. } => {
-                                keyword = Keyword::TypeDef(ident.to_string())
+                                keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: vec![] }
                             },
                             _ => (),
                         };
@@ -1666,7 +1747,8 @@ impl ExprWeights {
                                 Expr::StructDef { struct_name, .. } => {
                                     match *struct_name {
                                         Expr::StructName(name) => {
-                                            keyword = Keyword::Pointer(Types::TypeDef(name.clone()), Types::TypeDef(name));
+                                            let tmp = Types::TypeDef { type_name: name.clone(), generics: vec![] };
+                                            keyword = Keyword::Pointer(tmp.clone(), tmp);
                                         },
                                         _ => {
                                             self.comp_err(&format!("expected a type after ^, found {ident} instead"));
@@ -1699,7 +1781,10 @@ impl ExprWeights {
                                             Expr::StructDef { struct_name, .. } => {
                                                 match *struct_name {
                                                     Expr::StructName(name) => {
-                                                        (keyword, pointer_counter) = self.create_keyword_pointer(Types::TypeDef(name.clone()), pointer_counter);
+                                                        (keyword, pointer_counter) = self.create_keyword_pointer(Types::TypeDef {
+                                                            type_name: name.clone(),
+                                                            generics: vec![],
+                                                        }, pointer_counter);
                                                     },
                                                     _ => {
                                                         self.comp_err(&format!("expected a type after ^, found {ident} instead"));
@@ -1793,11 +1878,11 @@ impl ExprWeights {
         let found_expr = self.find_ident(name.clone());
         if let Expr::None = found_expr {
             match keyword {
-                Keyword::TypeDef(ref user_def) => {
+                Keyword::TypeDef {type_name: ref user_def, ..} => {
                     self.propagate_struct_fields(name.to_string(), user_def.to_string(), false);
                 },
                 Keyword::Pointer(.., ref last_typ) => {
-                    if let Types::TypeDef(user_def) = last_typ {
+                    if let Types::TypeDef {type_name: user_def, ..} = last_typ {
                         self.propagate_struct_fields(name.to_string(), user_def.to_string(), true);
                     }
                 },
@@ -2025,11 +2110,11 @@ impl ExprWeights {
 
                                 // similar syntax between defining var and returning, check which
                                 if self.in_struct_def {
-                                    let expr = self.create_define_var(keyword, value[i+1].clone());
+                                    let expr = self.create_define_var(keyword, value[i+1].clone(), vec![]);
                                     self.expr_stack.push(expr);
                                     return Expr::None
                                 } else {
-                                    return self.create_define_var(keyword, value[i+1].clone());
+                                    return self.create_define_var(keyword, value[i+1].clone(), vec![]);
                                 }
                             },
                             None => {
@@ -2046,11 +2131,17 @@ impl ExprWeights {
                                             }
 
                                             if self.in_struct_def {
-                                                let expr = self.create_define_var(keyword, value[i+1].clone());
+                                                let expr = if i + 2 < value.len() {
+                                                    let slice = value[i+1..value.len()-1].to_vec();
+                                                    let last = value.last().unwrap().clone();
+                                                    self.create_define_var(keyword, last, slice)
+                                                } else {
+                                                    self.create_define_var(keyword, value[i+1].clone(), vec![])
+                                                };
                                                 self.expr_stack.push(expr);
                                                 return Expr::None
                                             } else {
-                                                return self.create_define_var(keyword, value[i+1].clone());
+                                                return self.create_define_var(keyword, value[i+1].clone(), vec![]);
                                             }
                                         } else {
                                             self.comp_err(&format!("expected typeid after `$`, got {typ:?}"));
@@ -2058,37 +2149,57 @@ impl ExprWeights {
                                         }
                                     }
                                 } else if let Expr::StructDef { .. } = found_ident {
-                                    let k: Keyword;
+                                    let mut k = Keyword::TypeDef {
+                                        type_name: ident.clone(), 
+                                        generics: vec![]
+                                    };
+
                                     if pointer_counter > 0 {
-                                        (k, _) = self.create_keyword_pointer(Types::TypeDef(ident.clone()), pointer_counter);
-                                    } else {
-                                        k = Keyword::TypeDef(ident.clone());
+                                        (k, _) = self.create_keyword_pointer(self.keyword_to_type(k), pointer_counter);
                                     }
 
                                     if self.in_struct_def {
-                                        let expr = self.create_define_var(k, value[i+1].clone());
+                                        let expr = self.create_define_var(k, value[i+1].clone(), vec![]);
                                         self.expr_stack.push(expr);
                                         return Expr::None;
                                     }
 
-                                    return self.create_define_var(k, value[i+1].clone());
+                                    return self.create_define_var(k, value[i+1].clone(), vec![]);
+                                } else if let Expr::MacroStructDef { .. } = found_ident {
+                                    let mut k = Keyword::TypeDef {
+                                        type_name: ident.clone(), 
+                                        generics: vec![]
+                                    };
+
+                                    if pointer_counter > 0 {
+                                        (k, _) = self.create_keyword_pointer(self.keyword_to_type(k), pointer_counter);
+                                    }
+
+                                    let slice = value[i+1..value.len()-1].to_vec();
+                                    let last = value.last().unwrap().clone();
+                                    // TODO: figure out how this messes things up
+                                    if self.in_struct_def {
+                                        let expr = self.create_define_var(k, value[i+1].clone(), vec![]);
+                                        self.expr_stack.push(expr);
+                                        return Expr::None;
+                                    }
+
+                                    return self.create_define_var(k, last, slice)
                                 } else if let Expr::Func { .. } = found_ident {
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
                                 } else if let Expr::MacroFunc { .. } = found_ident {
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
                                 } else {
                                     if self.in_struct_def && !self.current_func.is_empty() && ident == &self.current_func {
-                                        let k: Keyword;
+                                        let mut k = Keyword::TypeDef {
+                                            type_name: format!("struct {}", self.current_func), 
+                                            generics: vec![]
+                                        };
                                         if pointer_counter > 0 {
-                                            k = self.create_keyword_pointer(
-                                                Types::TypeDef(format!("struct {}", self.current_func)),
-                                                pointer_counter
-                                            ).0;
-                                        } else {
-                                            k = Keyword::TypeDef(format!("struct {}", self.current_func));
+                                            k = self.create_keyword_pointer(self.keyword_to_type(k), pointer_counter).0;
                                         }
 
-                                        let expr = self.create_define_var(k, value[i+1].clone());
+                                        let expr = self.create_define_var(k, value[i+1].clone(), vec![]);
                                         self.expr_stack.push(expr);
                                         return Expr::None
                                     }
@@ -2173,11 +2284,11 @@ impl ExprWeights {
                             }
 
                             if self.in_struct_def {
-                                let expr = self.create_define_var(keyword, value[i+1].clone());
+                                let expr = self.create_define_var(keyword, value[i+1].clone(), vec![]);
                                 self.expr_stack.push(expr);
                                 return Expr::None
                             } else {
-                                return self.create_define_var(keyword, value[i+1].clone());
+                                return self.create_define_var(keyword, value[i+1].clone(), vec![]);
                             }
                         } else {
                             self.comp_err(&format!("can't make void type. void pointers are allowed"));
@@ -2295,33 +2406,76 @@ impl ExprWeights {
     }
 
     fn propagate_struct_fields(&mut self, fname: String, user_def: String, is_ptr: bool) {
-        if let Expr::StructDef { struct_fields, .. } = self.find_structure(&user_def) {
-            for field in struct_fields {
-                match field {
-                    Expr::VariableName { typ, name, .. } => {
-                        let new_name = format!("{fname}.{name}");
-                        let new_expr = Expr::Variable {
-                            info: Box::new(Expr::VariableName {
-                                typ,
-                                name: new_name,
-                                reassign: false,
-                                field_data: (true, is_ptr),
-                            }),
-                            value: Box::new(Expr::None),
-                        };
-                        if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
-                            vars[self.current_scope].push(new_expr);
-                        }
-                    },
-                    _ => (),
+        match self.find_structure(&user_def) {
+            Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } => {
+                for field in struct_fields {
+                    match field {
+                        Expr::VariableName { typ, name, .. } => {
+                            let new_name = format!("{fname}.{name}");
+                            let new_expr = Expr::Variable {
+                                info: Box::new(Expr::VariableName {
+                                    typ,
+                                    name: new_name,
+                                    reassign: false,
+                                    field_data: (true, is_ptr),
+                                }),
+                                value: Box::new(Expr::None),
+                            };
+                            if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
+                                vars[self.current_scope].push(new_expr);
+                            }
+                        },
+                        _ => (),
+                    }
                 }
-            }
+            },
+            _ => {
+                self.comp_err("unexpected expression during field propagation");
+                exit(1);
+            },
         }
     }
 
-    fn create_define_var(&mut self, kw: Keyword, ident: Token) -> Expr {
+    fn create_define_var(&mut self, kw: Keyword, ident: Token, generics: Vec<Token>) -> Expr {
         let expr: Expr;
         let fname: String;
+        let mut pass_typs: Vec<String> = Vec::new();
+
+        for gen in generics {
+            match gen {
+                Token::Lsquare => (),
+                Token::Rsquare => (),
+                Token::Int(typs) => {
+                    let mut name_buf = String::new();
+                    for (i, ch) in typs.chars().enumerate() {
+                        if ch == ' ' || ch == '\n' || i == typs.len()-1 {
+                            if i == typs.len() - 1 {
+                                name_buf.push(ch);
+                            }
+                            let keyword_rs = self.keyword_map.get(&name_buf);
+                            match keyword_rs {
+                                Some(keyword) => {
+                                    let _ = self.keyword_to_type(keyword.clone());
+                                    pass_typs.push(name_buf.clone());
+                                },
+                                None => {
+                                    self.comp_err(&format!("expected type, got {name_buf}"));
+                                    exit(1);
+                                },
+                            }
+
+                            name_buf.clear();
+                        } else {
+                            name_buf.push(ch);
+                        }
+                    }
+                },
+                unexpected => {
+                    self.comp_err(&format!("unexpected token {unexpected:?}. expecting `typedef[__type__] varname;`"));
+                    exit(1);
+                },
+            }
+        }
 
         match ident {
             Token::Ident(word) => {
@@ -2349,8 +2503,12 @@ impl ExprWeights {
                 let found_expr = self.find_ident(word.clone());
                 match found_expr {
                     Expr::None => {
-                        let typ = self.keyword_to_type(kw.clone());
+                        let mut typ = self.keyword_to_type(kw.clone());
                         fname = word.clone();
+
+                        if let Types::TypeDef { ref mut generics, .. } = typ {
+                            *generics = pass_typs;
+                        }
                         expr = Expr::VariableName { typ, name: word, reassign: false, field_data: (false, false) };
                     },
                     _ => {
@@ -2370,11 +2528,11 @@ impl ExprWeights {
             Keyword::Char | Keyword::Usize | Keyword::Bool => (),
             Keyword::Generic(_) => (),
             Keyword::Pointer(.., last) => {
-                if let Types::TypeDef(user_def) = last {
+                if let Types::TypeDef { type_name: user_def, .. } = last {
                     self.propagate_struct_fields(fname, user_def.to_string(), true);
                 }
             },
-            Keyword::TypeDef(ref user_def) => {
+            Keyword::TypeDef { type_name: ref user_def, .. } => {
                 self.propagate_struct_fields(fname, user_def.to_string(), false);
             },
             _ => {

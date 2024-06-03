@@ -31,7 +31,10 @@ pub enum Types {
     // Dynam(Box<Types>),
     Void,
 
-    TypeDef(String),
+    TypeDef {
+        type_name: String,
+        generics: Vec<String>,
+    },
     None,
 }
 
@@ -70,7 +73,10 @@ pub enum Keyword {
     Address,
 
     Struct,
-    TypeDef(String),
+    TypeDef {
+        type_name: String,
+        generics: Vec<String>,
+    },
     None,
 }
 

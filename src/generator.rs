@@ -14,6 +14,9 @@ pub struct Gen {
     line_num: u32,
     out_file: String,
     libc_map: HashMap<String, bool>,
+    definition_map: HashMap<String, usize>,
+
+    generated_structs: Vec<String>,
 
     in_macro_func: bool,
     curl_rc: i32,
@@ -44,6 +47,8 @@ impl Gen {
             ("string".to_string(), true),
         ]);
 
+        let definition_map = HashMap::new();
+
         return Gen {
             imports: String::new(),
             comp_imports: String::new(),
@@ -52,7 +57,9 @@ impl Gen {
             out_file,
             line_num: 0,
             libc_map,
+            definition_map,
             indent: 0,
+            generated_structs: Vec::new(),
             in_macro_func: false,
             curl_rc: 0,
             lang,
@@ -76,8 +83,8 @@ impl Gen {
     fn type_to_name<'a>(&'a mut self, typ: &'a str) -> &str {
         match typ {
             "i32" => "int",
-            "u8" => "unsigned char",
-            "i8" => "signed char",
+            // "u8" => "u8",
+            // "i8" => "signed char",
             "usize" => {
                 if !self.imports.contains("#include <stddef.h>\n") {
                     self.imports.push_str("#include <stddef.h>\n");
@@ -94,11 +101,49 @@ impl Gen {
         }
     }
 
+    fn generate_new_struct(&mut self, fullname: String) {
+        let mut found = false;
+        for gen_struct in &self.generated_structs {
+            if gen_struct == &fullname {
+                found = true;
+            }
+        }
+
+        let mut parts: Vec<&str> = fullname.split("_").collect();
+        let name = parts.remove(0);
+
+        let mut gen_code = format!("{name}(");
+        for (i, part) in parts.iter().enumerate() {
+            if i == 0 {
+                gen_code.push_str(part);
+            } else {
+                gen_code.push_str(&format!(", {part}"));
+            }
+        }
+        gen_code.push_str(");\n");
+
+        if found {
+            return;
+        }
+
+        let index_op = self.definition_map.get(name);
+        let index = match index_op {
+            Some(i) => i.to_owned(),
+            None => {
+                self.comp_err("failed to handle generating struct at compile time.");
+                exit(1);
+            },
+        };
+
+        self.code.insert_str(index, &gen_code);
+        self.generated_structs.push(fullname);
+    }
+
     fn handle_typ(&mut self, typ: Types) -> (String, String) {
         match typ {
             Types::I32 => (String::from("int"), String::new()),
-            Types::U8 => (String::from("unsigned char"), String::new()),
-            Types::I8 => (String::from("signed char"), String::new()),
+            Types::U8 => (String::from("u8"), String::new()),
+            Types::I8 => (String::from("i8"), String::new()),
             Types::Char => (String::from("char"), String::new()),
             Types::Usize => {
                 if !self.imports.contains("#include <stddef.h>\n") {
@@ -112,7 +157,15 @@ impl Gen {
                 }
                 (String::from("bool"), String::new())
             },
-            Types::TypeDef(user_def) => return (format!("{user_def}"), String::new()),
+            Types::TypeDef { type_name: user_def, generics } => {
+                let mut typ = format!("{user_def}");
+
+                for generic in generics {
+                    // let subtype = handle
+                    typ.push_str(&format!("_{generic}"));
+                }
+                return (typ, String::new())
+            },
             Types::Void => return (String::from("void"), String::new()),
             Types::Arr { typ: arr_typ, length } => {
                 let newstr_typ = self.handle_typ(*arr_typ);
@@ -147,6 +200,17 @@ impl Gen {
                 let new_name = self.handle_deref_struct(varname.clone());
                 if let Types::ArrIndex { index_at, .. } = typ {
                     return format!("{new_name}[{index_at}]")
+                }
+
+                if let Types::TypeDef { type_name, generics } = typ {
+                    if !generics.is_empty() {
+                        let mut fullname = format!("{type_name}");
+                        for generic in generics {
+                            fullname.push_str(&format!("_{generic}"));
+                        }
+
+                        self.generate_new_struct(fullname);
+                    }
                 }
 
                 if reassign == false {
@@ -441,6 +505,11 @@ impl Gen {
     }
 
     pub fn generate(&mut self, expressions: Vec<(Expr, String, u32)>) {
+        let mut struct_generics = Vec::new();
+        self.code.push_str("typedef unsigned char u8;\n");
+        self.code.push_str("typedef signed char i8;\n");
+        self.code.push_str("typedef int i32;\n");
+
         for (_index, info) in expressions.into_iter().enumerate() {
             let expr = info.0;
             self.in_file = info.1;
@@ -496,7 +565,60 @@ impl Gen {
                 },
                 Expr::EndStruct(name) => {
                     self.code.push_str(&format!("}}{name};\n"));
-                }
+                },
+                Expr::MacroStructDef { struct_name, struct_fields } => {
+                    self.in_macro_func = true;
+
+                    let mut def_code = String::new();
+                    match *struct_name {
+                        Expr::MacroStructName { name, generics } => {
+                            def_code.push_str(&format!("#define {name}("));
+                            for (i, generic) in generics.iter().enumerate() {
+                                match generic {
+                                    Expr::Variable { info, .. } => {
+                                        match *info.clone() {
+                                            Expr::VariableName { name, .. } => {
+                                                struct_generics.push(name.clone());
+                                                if i == 0 {
+                                                    def_code.push_str(&format!("{name}"));
+                                                } else {
+                                                    def_code.push_str(&format!(", {name}"));
+                                                }
+                                            },
+                                            _ => (),
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            }
+                            def_code.push_str(&format!(")\\\n"));
+                            def_code.push_str("typedef struct {\\\n");
+                        },
+                        _ => (),
+                    }
+
+                    let mut fields = String::new();
+                    for field in struct_fields {
+                        let varname = self.handle_varname(field);
+                        fields.push_str(&format!("    {varname};\\\n"));
+                    }
+
+                    // don't need to put \n at the end, end struct covers that
+                    self.code.push_str(&format!("{def_code}{fields}"));
+                },
+                Expr::MacroEndStruct(name) => {
+                    self.code.push_str(&format!("}} {name}"));
+                    let mut useable_name = format!("{name}");
+                    for generic in &struct_generics {
+                        self.code.push_str(&format!("_##{generic}"));
+                        useable_name.push_str(&format!("_{generic}"));
+                    }
+
+                    self.code.push_str(";\n");
+                    self.definition_map.entry(name).or_insert(self.code.len());
+                    struct_generics.clear();
+                    self.in_macro_func = false;
+                },
                 Expr::Func { typ, params, name } => {
                     self.indent += 1;
                     let mut func_code = String::new();
