@@ -161,8 +161,11 @@ impl Gen {
                 let mut typ = format!("{user_def}");
 
                 for generic in generics {
-                    // let subtype = handle
-                    typ.push_str(&format!("_{generic}"));
+                    if self.in_macro_func {
+                        typ.push_str(&format!("_##{generic}"));
+                    } else {
+                        typ.push_str(&format!("_{generic}"));
+                    }
                 }
                 return (typ, String::new())
             },
@@ -209,7 +212,9 @@ impl Gen {
                             fullname.push_str(&format!("_{generic}"));
                         }
 
-                        self.generate_new_struct(fullname);
+                        if !self.in_macro_func {
+                            self.generate_new_struct(fullname);
+                        }
                     }
                 }
 

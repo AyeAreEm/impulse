@@ -5,14 +5,15 @@ struct[T] vector: {
    $T y;
 }
 
-_(typeid T) show_size: {
-    @c [printf("size: %zu", sizeof(T));];
+vector(typeid T $T x_pos $T y_pos) vector_new: {
+    vector[T] new;
+    new.x: x_pos;
+    new.y: y_pos;
+    return new;
 }
 
 _() main: {
-    vector[u8] pos;
-    pos.x: 10;
-    pos.y: 100;
+    vector[int] pos: vector_new(int 10 15);
 
-    @c [printf("pos x: %d, pos y: %d", pos.x, pos.y);];
+    @c [printf("x: %d, y: %d\n", pos.x, pos.y);];
 }

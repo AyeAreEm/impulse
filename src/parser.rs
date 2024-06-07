@@ -981,7 +981,7 @@ impl ExprWeights {
                                 None => Keyword::None,
                             };
 
-                            if let Expr::StructDef { .. } = self.find_structure(ident) {
+                            if let Expr::StructDef { .. } | Expr::MacroStructDef { .. } = self.find_structure(ident) {
                                 keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: vec![] };
                             }
 
@@ -1626,6 +1626,45 @@ impl ExprWeights {
                         match self.find_structure(ident) {
                             Expr::StructDef { .. } => {
                                 keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: vec![] }
+                            },
+                            Expr::MacroStructDef { .. } => {
+                                let mut pass_typs = Vec::new();
+                                if let Token::Int(typs) = &var_info[2] {
+                                    let mut name_buf = String::new();
+                                    for (i, ch) in typs.chars().enumerate() {
+                                        if ch == ' ' || ch == '\n' || i == typs.len()-1 {
+                                            if i == typs.len() - 1 {
+                                                name_buf.push(ch);
+                                            }
+                                            let keyword_rs = self.keyword_map.get(&name_buf);
+                                            match keyword_rs {
+                                                Some(keyword) => {
+                                                    let _ = self.keyword_to_type(keyword.clone());
+                                                    pass_typs.push(name_buf.clone());
+                                                },
+                                                None => {
+                                                    let found_var = self.find_variable(&name_buf);
+                                                    if let Expr::VariableName { typ, .. } = found_var {
+                                                        if let Types::TypeId = typ {
+                                                            pass_typs.push(name_buf.clone());
+                                                            continue;
+                                                        }
+                                                    }
+                                                    self.comp_err(&format!("expected type, got {name_buf}"));
+                                                    exit(1);
+                                                },
+                                            }
+
+                                            name_buf.clear();
+                                        } else {
+                                            name_buf.push(ch);
+                                        }
+                                    }
+                                } else {
+                                    self.comp_err(&format!("expected type for generic struct"));
+                                    exit(1);
+                                }
+                                keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: pass_typs }
                             },
                             _ => (),
                         };
@@ -2459,6 +2498,13 @@ impl ExprWeights {
                                     pass_typs.push(name_buf.clone());
                                 },
                                 None => {
+                                    let found_var = self.find_variable(&name_buf);
+                                    if let Expr::VariableName { typ, .. } = found_var {
+                                        if let Types::TypeId = typ {
+                                            pass_typs.push(name_buf.clone());
+                                            continue;
+                                        }
+                                    }
                                     self.comp_err(&format!("expected type, got {name_buf}"));
                                     exit(1);
                                 },
