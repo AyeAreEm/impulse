@@ -82,7 +82,7 @@ impl Gen {
 
     fn type_to_name<'a>(&'a mut self, typ: &'a str) -> &str {
         match typ {
-            "i32" => "int",
+            // "i32" => "int",
             // "u8" => "u8",
             // "i8" => "signed char",
             "usize" => {
@@ -141,10 +141,11 @@ impl Gen {
 
     fn handle_typ(&mut self, typ: Types) -> (String, String) {
         match typ {
-            Types::I32 => (String::from("int"), String::new()),
+            Types::I32 => (String::from("i32"), String::new()),
             Types::U8 => (String::from("u8"), String::new()),
             Types::I8 => (String::from("i8"), String::new()),
             Types::Char => (String::from("char"), String::new()),
+            Types::Int => (String::from("int"), String::new()),
             Types::Usize => {
                 if !self.imports.contains("#include <stddef.h>\n") {
                     self.imports.push_str("#include <stddef.h>\n");
@@ -511,9 +512,10 @@ impl Gen {
 
     pub fn generate(&mut self, expressions: Vec<(Expr, String, u32)>) {
         let mut struct_generics = Vec::new();
-        self.code.push_str("typedef unsigned char u8;\n");
-        self.code.push_str("typedef signed char i8;\n");
-        self.code.push_str("typedef int i32;\n");
+        self.code.push_str("#include <stdint.h>\n");
+        self.code.push_str("typedef uint8_t u8;\n");
+        self.code.push_str("typedef int8_t i8;\n");
+        self.code.push_str("typedef int32_t i32;\n");
 
         for (_index, info) in expressions.into_iter().enumerate() {
             let expr = info.0;

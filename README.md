@@ -96,6 +96,8 @@ sizeof -> returns the size in bytes of a type
 default struct values -> so that there isn't a need for a constructor as its baked into the struct
 functions in structs -> basically methods
 
+group -> group of acceptable types. `group number: |u8 i8 i32 int usize|`
+
 standard library:
 windows gui -> either natively or a mapping to raylib
 hashmaps -> hashmap / hash table / etc. maybe make it fairly efficient and fast

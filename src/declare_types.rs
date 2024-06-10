@@ -12,6 +12,8 @@ pub enum Types {
     Char,
 
     Usize,
+    Int,
+
     Bool,
     TypeId,
     Generic(String),
@@ -47,6 +49,8 @@ pub enum Keyword {
     Char,
 
     Usize,
+    Int,
+
     Bool,
     TypeId,
     Generic(String),

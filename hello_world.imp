@@ -1,19 +1,29 @@
 @import "stdio.h";
 
 struct[T] vector: {
-   $T x;
-   $T y;
+    $T x;
+    $T y;
 }
 
-vector(typeid T $T x_pos $T y_pos) vector_new: {
+vector(typeid T $T x_pos $T y_pos) vector_xy: {
     vector[T] new;
     new.x: x_pos;
     new.y: y_pos;
     return new;
 }
 
-_() main: {
-    vector[int] pos: vector_new(int 10 15);
+vector(typeid T ^vector[T] one vector[T] two) vector_add: {
+    one.x: [one.x + two.x];
+    one.y: [one.y + two.y];
+}
 
-    @c [printf("x: %d, y: %d\n", pos.x, pos.y);];
+_() main: {
+    vector[int] one: vector_xy(int 10 15);
+    vector[int] two: vector_xy(int 20 15);
+
+    ^vector[int] one_ptr: &one;
+
+    vector_add(int one_ptr two);
+
+    @c [printf("x: %d, y: %d\n", one.x, one.y);];
 }
