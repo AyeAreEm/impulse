@@ -25,30 +25,41 @@ This way with my own language with detailed docs and one day examples, I think I
 ## Syntax
 -- Note: Take a look at the `hello_world.imp` file to see recently added features in action --<br>
 
-A big inspiration fo Impulse's syntax is Odin and Jai with some C. Simplistic minimalism as I would call it.
-The main jist of Impulsive is if you're declaring, it goes `<TYPE> <NAME>: <VALUE>`. If you're reading it's `<NAME><TYPE?>: <VALUE>`
+A big inspiration fo Impulse's syntax is C with some Odin and Jai. Simplistic minimalism as I would call it.
+The main jist of Impulse is if you're declaring, it goes `<TYPE> <NAME>: <VALUE>`. If you're reading it's `<NAME><TYPE?>: <VALUE>`
 <br>
 For example,
 ```
-_(string word) talk: {
-    print(word);
+@import "stdio.h";
+
+struct vector: {
+    i32 x;
+    i32 y;
 }
 
 _() main: {
-    talk("hello world");
-}
-```
-or
-```
-_() main: {
-    @array int nums: |10 20 30|;
-    int new_num: 10;
+    vector pos;
+    pos.x: 34;
+    pos.y: 35;
 
-    nums[0]: [nums[0] * new_num];
-    nums[1]: [nums[1] * new_num];
-    nums[2]: [nums[2] * new_num];
+    if ([pos.x + pos.y] = 69) {
+        @c [printf("haha funny number");];
+    }
 
-    print(nums[1]);
+    loop (i < pos.x) [+] {
+        @c [printf("%d\n", i);];
+    }
+
+    vector new_pos;
+    new_pos.x: 400;
+    new_pos.y: 20;
+
+    ^vector pos_ptr: &pos;
+    pos_ptr.x: 10;
+    pos_ptr.y: 15;
+
+    ^int x: &pos_ptr.x;
+    x^: 20;
 }
 ```
 
@@ -66,6 +77,23 @@ Open a terminal:<br>
 `$ cd impulse`<br>
 `$ git clone https://github.com/AyeAreEm/impulse.git`<br>
 `$ impulse`
+
+### Quick Start
+Create `hello.imp`<br>
+```
+# inside hello.imp
+@import "stdio.h";
+
+_() main: {
+    @c [printf("hello world");];
+}
+
+```
+To generate the .exe, run `impulse -b hello.imp hello`<br>
+To generate .exe and .c, run `impulse -b -c hello.imp hello`<br>
+To generate just .c, run `impulse -c hello.imp hello` (this will generate hello.c)<br><br>
+
+And there you go, your first hello world in impulse... sorta, I know right now you need to use C embedding but eventually this won't be the case 
 
 ### Known Errors
 Error when doing math on two functions, only the `-` appears. not sure if the `return` is helping cause this error or it's just something with integer literals and function calls.

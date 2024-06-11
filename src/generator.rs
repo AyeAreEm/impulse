@@ -13,6 +13,10 @@ pub struct Gen {
     in_file: String,
     line_num: u32,
     out_file: String,
+    compile: bool,
+    keep_gen: bool,
+    lang: Lang,
+
     libc_map: HashMap<String, bool>,
     definition_map: HashMap<String, usize>,
 
@@ -20,8 +24,6 @@ pub struct Gen {
 
     in_macro_func: bool,
     curl_rc: i32,
-
-    lang: Lang,
 }
 
 // fn rand_varname() -> String {
@@ -38,7 +40,7 @@ pub struct Gen {
 // }
 
 impl Gen {
-    pub fn new(in_file: String, out_file: String, lang: Lang) -> Gen {
+    pub fn new(in_file: String, out_file: String, compile: bool, keep_gen: bool, lang: Lang) -> Gen {
         let libc_map = HashMap::from([
             ("stdio".to_string(), true),
             ("stdlib".to_string(), true),
@@ -55,6 +57,9 @@ impl Gen {
             code: String::new(),
             in_file,
             out_file,
+            compile,
+            keep_gen,
+            lang,
             line_num: 0,
             libc_map,
             definition_map,
@@ -62,7 +67,6 @@ impl Gen {
             generated_structs: Vec::new(),
             in_macro_func: false,
             curl_rc: 0,
-            lang,
         }
     }
 
@@ -510,7 +514,7 @@ impl Gen {
         loop_code
     }
 
-    pub fn generate(&mut self, expressions: Vec<(Expr, String, u32)>) {
+    fn generate_c(&mut self, expressions: Vec<(Expr, String, u32)>) {
         let mut struct_generics = Vec::new();
         self.code.push_str("#include <stdint.h>\n");
         self.code.push_str("typedef uint8_t u8;\n");
@@ -773,21 +777,59 @@ impl Gen {
                 }
             }
         }
+    }
 
-        let c_code = format!("{}{}", self.imports, self.code);
-        match fs::write("./output.c", c_code) {
-            Ok(_) => (),
-            Err(err) => {
-                self.comp_err(&format!("{err}"));
-                exit(1);
-            }
+    fn generate_cpp(&mut self, _expressions: Vec<(Expr, String, u32)>) {
+        println!("lmao not ready");
+        exit(1);
+    }
+
+    pub fn generate(&mut self, expressions: Vec<(Expr, String, u32)>) {
+        match self.lang {
+            Lang::C => {
+                self.generate_c(expressions);
+
+                let c_code = format!("{}{}", self.imports, self.code);
+                if self.compile {
+                    match fs::write("./output.c", c_code) {
+                        Ok(_) => (),
+                        Err(err) => {
+                            self.comp_err(&format!("{err}"));
+                            exit(1);
+                        }
+                    }
+
+                    let com = format!("gcc output.c {}-o {}", self.comp_imports, self.out_file);
+                    println!("{com}");
+                    Command::new("cmd")
+                        .args(["/C", &com])
+                        .output()
+                        .unwrap();
+                } else {
+                    match fs::write(&format!("./{}.c", self.out_file), c_code) {
+                        Ok(_) => (),
+                        Err(err) => {
+                            self.comp_err(&format!("{err}"));
+                            exit(1);
+                        }
+                    }
+
+                    let com = format!("gcc {}.c {}-o {}", self.out_file, self.comp_imports, self.out_file);
+                    println!("{com}");
+                }
+
+                // this can only happen after build so there's no problem if the file isn't output.c 
+                if !self.keep_gen {
+                    match fs::remove_file("output.c") {
+                        Ok(_) => (),
+                        Err(_) => {
+                            println!("\x1b[91merror\x1b[0m: error handling code generation.");
+                            exit(1)
+                        },
+                    }
+                }
+            },
+            Lang::Cpp => self.generate_cpp(expressions),
         }
-
-        let com = format!("gcc output.c {}-o {}", self.comp_imports, self.out_file);
-        println!("{com}");
-        Command::new("cmd")
-            .args(["/C", &com])
-            .output()
-            .unwrap();
     }
 }

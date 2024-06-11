@@ -1,6 +1,6 @@
 pub enum Lang {
     C,
-    JS,
+    Cpp,
 }
 
 #[derive(Debug, Clone)]

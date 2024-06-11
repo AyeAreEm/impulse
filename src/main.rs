@@ -10,12 +10,12 @@ mod parser;
 mod generator;
 mod declare_types;
 
-fn build(filename: &String, out_filename: &String, keep_c: bool) {
+fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool, lang: Lang) {
     let file_res = fs::read_to_string(filename);
     let content = match file_res {
         Ok(content) => content,
         Err(_) => {
-            println!("\x1b[91merror\x1b[0m: unable to read file");
+            println!("\x1b[91merror\x1b[0m: unable to read file: {filename}");
             exit(1)
         },
     };
@@ -28,26 +28,20 @@ fn build(filename: &String, out_filename: &String, keep_c: bool) {
         println!("{:?}", expr.0);
     }
 
-    let mut gen = Gen::new(filename.to_string(), out_filename.clone(), Lang::C);
+    let mut gen = Gen::new(filename.to_string(), out_filename.clone(), compile, keep_gen, lang);
     gen.generate(expressions);
-
-    if !keep_c {
-        match fs::remove_file("output.c") {
-            Ok(_) => (),
-            Err(_) => {
-                println!("\x1b[91merror\x1b[0m: error handling code generation.");
-                exit(1)
-            },
-        }
-    }
 }
 
 fn usage_c() {
-    println!("| -c: generate c file | impulse -b FILE.imp OUTPUT_NAME |");
+    println!("| -c: generate c file | impulse -c FILE.imp OUTPUT_NAME |");
+}
+
+fn usage_cpp() {
+    println!("| -cpp: generate c++ file | impulse -cpp FILE.imp OUTPUT_NAME |");
 }
 
 fn usage_build() {
-    println!("| -b: build | impulse -b FILE.imp OUTPUT_NAME |");
+    println!("| -b [-c / -cpp]: generate c or c++ file then build | impulse -b FILE.imp OUTPUT_NAME |");
 }
 
 fn usage() {
@@ -59,9 +53,10 @@ fn usage() {
     println!();
     println!("COMMANDS:");
     println!("| -h: help | impulse -h |");
-    println!("| -r: run | impulse -b FILE.imp OUTPUT_NAME |");
+    println!("| -r: run | impulse -r FILE.imp OUTPUT_NAME |");
     usage_build();
     usage_c();
+    usage_cpp();
     println!();
     println!("-----------------------------------------------------");
     println!();
@@ -80,27 +75,41 @@ fn incorrect_usage(args: &Vec<String>, usage_type: fn()) {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 1 {
+    if args.len() < 2 {
         usage();
         println!("\x1b[91merror\x1b[0m: invalid usage");
         exit(1)
     }
 
-    if &args[1] == "-h" {
-        usage();
-    } else if &args[1] == "-b" {
-        incorrect_usage(&args, usage_build);
-        build(&args[2], &args[3], false);
-    } else if &args[1] == "-c" {
-        incorrect_usage(&args, usage_c);
-        build(&args[2], &args[3], true);
-    } else if &args[1] == "-js" {
-        println!("js step")
-    } else if &args[1] == "-r" {
-        println!("run step")
-    } else {
-        usage();
-        println!("\x1b[91merror\x1b[0m: unknown command, \x1b[93m{}\x1b[0m", &args[1]);
-        exit(1)
+    match args[1].as_str() {
+        "-b" => {
+            if args[2] == "-c" {
+                incorrect_usage(&args, usage_build);
+                build(&args[3], &args[4], true, true, Lang::C);
+            } else if args[2] == "-cpp" {
+                incorrect_usage(&args, usage_build);
+                build(&args[3], &args[4], true, true, Lang::Cpp);
+            } else {
+                incorrect_usage(&args, usage_build);
+                build(&args[2], &args[3], true, false, Lang::C);
+            }
+        },
+        "-c" => {
+            incorrect_usage(&args, usage_c);
+            build(&args[2], &args[3], false, true, Lang::C);
+        },
+        "-cpp" => {
+            incorrect_usage(&args, usage_cpp);
+            build(&args[2], &args[3], false, true, Lang::Cpp);
+        },
+        "-r" => {
+            println!("run step")
+        },
+        "-h"  => usage(),
+        _ => {
+            usage();
+            println!("\x1b[91merror\x1b[0m: unknown command, \x1b[93m{}\x1b[0m", &args[1]);
+            exit(1)
+        }
     }
 }
