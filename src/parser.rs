@@ -2599,7 +2599,6 @@ impl ExprWeights {
     }
 
     fn create_define_var(&mut self, kw: Keyword, ident: Token, generics: Vec<Token>) -> Expr {
-        println!("kw: {kw:?}, ident: {ident:?}, generics: {generics:?}");
         let expr: Expr;
         let fname: String;
         let mut pass_typs: Vec<String> = Vec::new();

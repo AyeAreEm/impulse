@@ -108,7 +108,27 @@ impl Gen {
     fn update_definitions(&mut self, mut line_num: usize) {
         for (_, value) in self.definition_map.iter_mut() {
             if value > &mut line_num {
-                *value += 1;
+                let mut pos = 0;
+                let mut count = 0;
+                for i in value.clone()..self.code.len() {
+                    match self.code.chars().nth(i) {
+                        Some(ch) => {
+                            if ch == '\n' {
+                                pos = i;
+                                count += 1;
+
+                                if count == 2 {
+                                    break;
+                                }
+                            }
+                        },
+                        None => {
+                            self.comp_err("failed to generate generics");
+                            exit(1);
+                        }
+                    }
+                }
+                *value = pos + 1;
             }
         }
     }
@@ -838,7 +858,7 @@ impl Gen {
                     match fs::remove_file("output.c") {
                         Ok(_) => (),
                         Err(_) => {
-                            println!("\x1b[91merror\x1b[0m: error handling code generation.");
+                            self.comp_err("error handling code generation");
                             exit(1)
                         },
                     }

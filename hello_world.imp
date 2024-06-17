@@ -8,6 +8,7 @@ struct[T] result: {
 
 result(typeid T result[T] res) result_unwrap: {
     if (res.error) {
+        @c [printf("error: failed to unwrap");];
         @c [exit(1);];
     }
 
@@ -61,7 +62,7 @@ _() main: {
     result[int] zeroth_res;
     dyn[int] nums: dyn_new(int);
     dyn_push(int nums 10);
-    zeroth_res: dyn_at(int nums 0);
+    zeroth_res: dyn_at(int nums 2);
 
     int zeroth: result_unwrap(int zeroth_res);
     @c [printf("%d\n", zeroth);];
