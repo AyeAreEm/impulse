@@ -105,6 +105,14 @@ impl Gen {
         }
     }
 
+    fn update_definitions(&mut self, mut line_num: usize) {
+        for (_, value) in self.definition_map.iter_mut() {
+            if value > &mut line_num {
+                *value += 1;
+            }
+        }
+    }
+
     fn generate_new_struct(&mut self, fullname: String) {
         let mut found = false;
         for gen_struct in &self.generated_structs {
@@ -140,6 +148,7 @@ impl Gen {
         };
 
         self.code.insert_str(index, &gen_code);
+        self.update_definitions(index);
         self.generated_structs.push(fullname);
     }
 
@@ -473,7 +482,12 @@ impl Gen {
         let condition_str = self.handle_boolean_condition(&conditions);
         branch_code.push_str(&condition_str);
 
-        branch_code.push_str(") {\n");
+        self.curl_rc += 1;
+        if self.in_macro_func {
+            branch_code.push_str(") {\\\n");
+        } else {
+            branch_code.push_str(") {\n");
+        }
         branch_code
     }
 
@@ -510,6 +524,7 @@ impl Gen {
             _ => (),
         }
 
+        self.curl_rc += 1;
         loop_code.push_str(") {\n");
         loop_code
     }
@@ -757,7 +772,7 @@ impl Gen {
                             self.in_macro_func = false;
                             self.code.push_str("})\n");
                         } else {
-                            self.code.push_str("}\n");
+                            self.code.push_str("}\\\n");
                         }
                     } else {
                         self.code.push_str("}\n");

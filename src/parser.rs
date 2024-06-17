@@ -249,7 +249,7 @@ impl ExprWeights {
             if self.in_scope && self.current_scope == 0 {
                 self.in_scope = false;
             } else if self.in_scope && self.current_scope > 0 {
-                // self.in_scope = false; This might slight be broken
+                self.in_scope = false;
                 vars[self.current_scope].pop();
                 self.current_scope -= 1;
             } else {
@@ -1612,6 +1612,7 @@ impl ExprWeights {
         }
 
         let typ = self.keyword_to_type(keyword);
+        println!("length: {length}");
         Expr::VariableName {
             typ: Types::Arr {
                 typ: Box::new(typ),
@@ -1815,7 +1816,10 @@ impl ExprWeights {
                                 return self.handle_array_macro(intlit, var_info[5..].to_vec());
                             } else {
                                 // TODO_TYPECHECK: RMBER TO CHECK THE ACTUAL LENGTH IN TYPE CHECKER
-                                return self.handle_array_macro(&String::from("-1"), var_info[2..].to_vec());
+                                // forgot about this. wtf man, I didn't need to handle this in the
+                                // type checker???
+                                // btw it was previously "&String::from("-1")" like BRUH
+                                return self.handle_array_macro(&String::from(""), var_info[2..].to_vec());
                             }
                         },
                         unexpected => {
@@ -2277,11 +2281,15 @@ impl ExprWeights {
                                 else if create_generic {
                                     if let Expr::VariableName { typ, name, .. } = found_ident {
                                         if let Types::TypeId = typ {
-                                            let keyword = Keyword::Generic(name);
+                                            let mut keyword = Keyword::Generic(name);
 
                                             if i + 1 == value.len() {
                                                 self.comp_err(&format!("expected identifier after keyword {keyword:?}, got nothing"));
                                                 exit(1);
+                                            }
+
+                                            if pointer_counter > 0 {
+                                                (keyword, _) = self.create_keyword_pointer(self.keyword_to_type(keyword), pointer_counter);
                                             }
 
                                             if self.in_struct_def {
