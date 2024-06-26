@@ -174,11 +174,44 @@ impl Gen {
 
     fn handle_typ(&mut self, typ: Types) -> (String, String) {
         match typ {
-            Types::I32 => (String::from("i32"), String::new()),
-            Types::U8 => (String::from("u8"), String::new()),
-            Types::I8 => (String::from("i8"), String::new()),
+            Types::U32 => {
+                if !self.imports.contains("typedef uint32_t u32;\n") {
+                    self.imports.push_str("typedef uint32_t u32;\n");
+                }
+                (String::from("u32"), String::new())
+            },
+            Types::I32 => {
+                if !self.imports.contains("typedef int32_t i32;\n") {
+                    self.imports.push_str("typedef int32_t i32;\n");
+                }
+                (String::from("i32"), String::new())
+            },
+            Types::U8 => {
+                if !self.imports.contains("typedef uint8_t u8;\n") {
+                    self.imports.push_str("typedef uint8_t u8;\n");
+                }
+                (String::from("u8"), String::new())
+            },
+            Types::I8 => {
+                if !self.imports.contains("typedef int8_t i8;\n") {
+                    self.imports.push_str("typedef int8_t i8;\n");
+                }
+                (String::from("i8"), String::new())
+            },
             Types::Char => (String::from("char"), String::new()),
             Types::Int => (String::from("int"), String::new()),
+            Types::F32 => {
+                if !self.imports.contains("typedef float f32;\n") {
+                    self.imports.push_str("typedef float f32;\n");
+                }
+                (String::from("f32"), String::new())
+            },
+            Types::F64 => {
+                if !self.imports.contains("typedef double f64;\n") {
+                    self.imports.push_str("typedef double f64;\n");
+                }
+                (String::from("f64"), String::new())
+            },
             Types::Usize => {
                 if !self.imports.contains("#include <stddef.h>\n") {
                     self.imports.push_str("#include <stddef.h>\n");
@@ -552,9 +585,6 @@ impl Gen {
     fn generate_c(&mut self, expressions: Vec<(Expr, String, u32)>) {
         let mut struct_generics = Vec::new();
         self.code.push_str("#include <stdint.h>\n");
-        self.code.push_str("typedef uint8_t u8;\n");
-        self.code.push_str("typedef int8_t i8;\n");
-        self.code.push_str("typedef int32_t i32;\n");
 
         for (_index, info) in expressions.into_iter().enumerate() {
             let expr = info.0;

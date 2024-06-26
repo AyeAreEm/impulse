@@ -5,6 +5,7 @@ pub enum Lang {
 
 #[derive(Debug, Clone)]
 pub enum Types {
+    U32,
     I32,
 
     U8,
@@ -13,6 +14,9 @@ pub enum Types {
 
     Usize,
     Int,
+
+    F32,
+    F64,
 
     Bool,
     TypeId,
@@ -42,6 +46,7 @@ pub enum Types {
 
 #[derive(Debug, Clone)]
 pub enum Keyword {
+    U32,
     I32,
 
     U8,
@@ -50,6 +55,9 @@ pub enum Keyword {
 
     Usize,
     Int,
+
+    F32,
+    F64,
 
     Bool,
     TypeId,

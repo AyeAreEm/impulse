@@ -108,7 +108,6 @@ if (foo(num) = 0) {}
 
 ### Ideas
 ```
-u32 -> 32 bit usigned integer (with support for other lengths of bits)
 f64 -> 64 bit float (with support for 32 bit)
 
 for -> different than loop. it's like `for fruit in fruits {}` but it'd be `for (fruits) [fruit] {}`

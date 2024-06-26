@@ -127,6 +127,7 @@ impl ExprWeights {
             // ("print".to_string(), Keyword::Print),
             // ("readin".to_string(), Keyword::ReadIn),
 
+            ("u32".to_string(), Keyword::U32),
             ("i32".to_string(), Keyword::I32),
             ("int".to_string(), Keyword::Int),
 
@@ -135,6 +136,9 @@ impl ExprWeights {
             ("char".to_string(), Keyword::Char),
 
             ("usize".to_string(), Keyword::Usize),
+
+            ("f32".to_string(), Keyword::F32),
+            ("f64".to_string(), Keyword::F64),
 
             ("bool".to_string(), Keyword::Bool),
 
@@ -209,12 +213,15 @@ impl ExprWeights {
 
     fn keyword_to_type(&self, kw: Keyword) -> Types {
         match kw {
+            Keyword::U32 => Types::U32,
             Keyword::I32 => Types::I32,
             Keyword::U8 => Types::U8,
             Keyword::I8 => Types::I8,
             Keyword::Char => Types::Char,
             Keyword::Usize => Types::Usize,
             Keyword::Int => Types::Int,
+            Keyword::F32 => Types::F32,
+            Keyword::F64 => Types::F64,
             Keyword::Bool => Types::Bool,
             Keyword::TypeId => Types::TypeId,
             Keyword::Generic(typ) => Types::Generic(typ),
@@ -368,7 +375,7 @@ impl ExprWeights {
                 Token::Mod => clean.push('%'),
                 Token::Ident(ident) => {
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<i32>();
+                    let ident_num = ident.parse::<f64>();
                     let is_num = match ident_num {
                         Ok(_) => true,
                         Err(_) => false,
@@ -803,7 +810,7 @@ impl ExprWeights {
                 Token::False => expr_params.push(Expr::False),
                 Token::Ident(ident) => {
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<i32>();
+                    let ident_num = ident.parse::<f64>();
                     let is_num = match ident_num {
                         Ok(_) => true,
                         Err(_) => false,
@@ -1026,7 +1033,7 @@ impl ExprWeights {
                         params.push(token.clone());
                     } else {
                         // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                        let ident_num = ident.parse::<i32>();
+                        let ident_num = ident.parse::<f64>();
                         match ident_num {
                             Ok(_) => {
                                 self.comp_err(&format!("can't use a number as an identifier. try `name{ident}`?"));
@@ -1377,7 +1384,7 @@ impl ExprWeights {
                     }
 
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<i32>();
+                    let ident_num = ident.parse::<f64>();
                     let is_num = match ident_num {
                         Ok(_) => true,
                         Err(_) => false,
@@ -2085,7 +2092,7 @@ impl ExprWeights {
                     }
 
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<i32>();
+                    let ident_num = ident.parse::<f64>();
                     match ident_num {
                         Ok(_) => {
                             expr_params.push(Expr::IntLit(ident.to_owned()));
@@ -2373,7 +2380,7 @@ impl ExprWeights {
                     }
 
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<i32>();
+                    let ident_num = ident.parse::<f64>();
                     let is_num = match ident_num {
                         Ok(_) => true,
                         Err(_) => false,
@@ -2395,7 +2402,7 @@ impl ExprWeights {
                             }
                         }
                         Expr::None => {
-                            self.comp_err(&format!("unknown identifier: {}", ident));
+                            self.comp_err(&format!("this unknown identifier: {}", ident));
                             exit(1);
                         },
                         _ => buffer.push(expr),
@@ -2649,7 +2656,7 @@ impl ExprWeights {
         match ident {
             Token::Ident(word) => {
                 // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                let ident_num = word.parse::<i32>();
+                let ident_num = word.parse::<f64>();
                 let is_num = match ident_num {
                     Ok(_) => true,
                     Err(_) => false,
@@ -2693,7 +2700,7 @@ impl ExprWeights {
         }
 
         match kw {
-            Keyword::I32 | Keyword::I8 | Keyword::U8 |
+            Keyword::I32 | Keyword::I8 | Keyword::U8 | Keyword::U32 | Keyword::F32 | Keyword::F64 |
             Keyword::Char | Keyword::Usize | Keyword::Bool => (),
             Keyword::Generic(_) => (),
             Keyword::Pointer(.., last) => {

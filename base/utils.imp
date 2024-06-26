@@ -1,0 +1,13 @@
+struct[T] option: {
+    $T value;
+    bool none;
+}
+
+option(typeid T option[T] opt) option_unwrap: {
+    if (opt.none) {
+        @c [printf("error: failed to unwrap");];
+        @c [exit(1);];
+    }
+
+    return opt.value;
+}

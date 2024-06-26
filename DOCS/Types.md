@@ -7,6 +7,7 @@ _ -> void
 u8 -> 8 bit unsigned integer
 i8 -> 8 bit signed integer
 char -> 8 bit integer to interop with C (OS dependant if signed or unsigned)
+u32 -> 32 bit unsigned integer
 i32 -> 32 bit signed integer
 int -> OS dependant sized signed integer, same as C
 usize -> OS dependant sized unsigned integer, big enough for the OS's pointer type

@@ -25,7 +25,7 @@ int(^_ ptr1 ^_ ptr2 usize n) mem_compare: {
     @c [ return memcmp(ptr1, ptr2, n);];
 }
 
-_(^_ block) free_mem: {
+_(^_ block) dealloc: {
     @c [
         free(block);
     ];
