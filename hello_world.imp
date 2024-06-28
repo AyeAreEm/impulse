@@ -1,5 +1,10 @@
-@import "stdio.h";
+struct[T K] tuple: {
+    $T one;
+    $K two;
+}
 
 _() main: {
-    f64 num: 10.5;
+    tuple[u8 i8] test;
+    test.one: 255;
+    test.two: 127;
 }
