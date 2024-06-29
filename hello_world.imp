@@ -1,17 +1,27 @@
-@import "stdio.h";
+struct[T] vector: {
+    $T x;
+    $T y;
+}
 
-struct[T K] tuple: {
-    $T one;
-    $K two;
+struct[T] p_vector: {
+    ^$T x;
+    ^$T y;
+}
+
+struct[T] option: {
+    $T value;
+    bool none;
+}
+
+struct[T] dyn_arr: {
+    ^$T data;
+    usize len;
+    usize cap;
 }
 
 _() main: {
-    tuple[u8 i8] test;
-    test.one: 256;
-    test.two: 128;
-
-    @c [
-        printf("one: %d\n", test.one);
-        printf("two: %d\n", test.two);
-    ];
+    vector[int] pos;
+    p_vector[int] p_pos;
+    option[int] elem;
+    dyn_arr[int] arr;
 }

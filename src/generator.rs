@@ -46,6 +46,7 @@ impl Gen {
             ("stdlib".to_string(), true),
             ("stdbool".to_string(), true),
             ("stddef".to_string(), true),
+            ("stdint".to_string(), true),
             ("string".to_string(), true),
         ]);
 
@@ -84,67 +85,29 @@ impl Gen {
         }
     }
 
-    fn type_to_name<'a>(&'a mut self, typ: &'a str) -> &str {
-        match typ {
-            // "i32" => "int",
-            // "u8" => "u8",
-            // "i8" => "signed char",
-            "usize" => {
-                if !self.imports.contains("#include <stddef.h>\n") {
-                    self.imports.push_str("#include <stddef.h>\n");
-                }
-                return "size_t"
-            },
-            "bool" => {
-                if !self.imports.contains("#include <stdbool.h>\n") {
-                    self.imports.push_str("#include <stdbool.h>\n");
-                }
-                return "bool"
-            },
-            same => same,
-        }
-    }
-
-    fn update_definitions(&mut self, mut line_num: usize) {
+    fn update_struct_definitions(&mut self, mut line_num: usize, offset: usize) {
         for (_, value) in self.definition_map.iter_mut() {
             if value > &mut line_num {
-                let mut pos = 0;
-                let mut count = 0;
-                for i in value.clone()..self.code.len() {
-                    match self.code.chars().nth(i) {
-                        Some(ch) => {
-                            if ch == '\n' {
-                                pos = i;
-                                count += 1;
-
-                                if count == 2 {
-                                    break;
-                                }
-                            }
-                        },
-                        None => {
-                            self.comp_err("failed to generate generics");
-                            exit(1);
-                        }
-                    }
-                }
-                *value = pos + 1;
+                *value += offset;
             }
         }
     }
 
-    fn generate_new_struct(&mut self, fullname: String) {
+    fn generate_new_struct(&mut self, fullname: String, og_name: &String) {
         let mut found = false;
         for gen_struct in &self.generated_structs {
-            if gen_struct == &fullname {
+            if gen_struct == &format!("{og_name}_{fullname}") {
                 found = true;
             }
         }
 
-        let mut parts: Vec<&str> = fullname.split("_").collect();
-        let name = parts.remove(0);
+        if found {
+            return;
+        }
 
-        let mut gen_code = format!("{name}(");
+        let parts: Vec<&str> = fullname.split("_").collect();
+
+        let mut gen_code = format!("{og_name}(");
         for (i, part) in parts.iter().enumerate() {
             if i == 0 {
                 gen_code.push_str(part);
@@ -154,22 +117,18 @@ impl Gen {
         }
         gen_code.push_str(");\n");
 
-        if found {
-            return;
-        }
-
-        let index_op = self.definition_map.get(name);
+        let index_op = self.definition_map.get(og_name);
         let index = match index_op {
             Some(i) => i.to_owned(),
             None => {
-                self.comp_err("failed to handle generating struct at compile time.");
+                self.comp_err(&format!("failed to handle generating struct `{og_name}` at compile time."));
                 exit(1);
             },
         };
 
         self.code.insert_str(index, &gen_code);
-        self.update_definitions(index);
-        self.generated_structs.push(fullname);
+        self.update_struct_definitions(index, gen_code.len());
+        self.generated_structs.push(format!("{og_name}_{fullname}"));
     }
 
     fn handle_typ(&mut self, typ: Types) -> (String, String) {
@@ -252,13 +211,17 @@ impl Gen {
 
                 if let Types::TypeDef { type_name, generics } = typ {
                     if !generics.is_empty() {
-                        let mut fullname = format!("{type_name}");
-                        for generic in generics {
-                            fullname.push_str(&format!("_{generic}"));
+                        let mut fullname = String::new();
+                        for (i, generic) in generics.iter().enumerate() {
+                            if i == 0 {
+                                fullname.push_str(&format!("{generic}"));
+                            } else {
+                                fullname.push_str(&format!("_{generic}"));
+                            }
                         }
 
                         if !self.in_macro_func {
-                            self.generate_new_struct(fullname);
+                            self.generate_new_struct(fullname, type_name);
                         }
                     }
                 }
@@ -301,16 +264,11 @@ impl Gen {
                                 funccall_code.push_str(&format!(", {intlit}"))
                             }
                         },
-                        Expr::VariableName { name, typ, .. } => {
-                            let mut clean_name = name.clone();
-                            if let Types::TypeId = typ {
-                                clean_name = self.type_to_name(&clean_name).to_string();
-                            }
-
+                        Expr::VariableName { name, .. } => {
                             if i == 0 {
-                                funccall_code.push_str(&clean_name)
+                                funccall_code.push_str(&name)
                             } else {
-                                funccall_code.push_str(&format!(", {}", clean_name))
+                                funccall_code.push_str(&format!(", {}", name))
                             }
                         },
                         Expr::FuncCall { .. } => {
@@ -562,13 +520,16 @@ impl Gen {
 
     fn generate_c(&mut self, expressions: Vec<(Expr, String, u32)>) {
         let mut struct_generics = Vec::new();
-        self.code.push_str("#include <stdint.h>\n");
+        self.imports.push_str("#include <stddef.h>\n");
+        self.imports.push_str("#include <stdint.h>\n");
+        self.imports.push_str("#include <stdbool.h>\n");
         self.code.push_str("typedef uint8_t u8;\n");
         self.code.push_str("typedef int8_t i8;\n");
         self.code.push_str("typedef uint32_t u32;\n");
         self.code.push_str("typedef int32_t i32;\n");
         self.code.push_str("typedef float f32;\n");
         self.code.push_str("typedef double f64;\n");
+        self.code.push_str("typedef size_t usize;\n");
 
         for (_index, info) in expressions.into_iter().enumerate() {
             let expr = info.0;
