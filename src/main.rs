@@ -12,13 +12,16 @@ mod declare_types;
 
 fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool, lang: Lang) {
     let file_res = fs::read_to_string(filename);
-    let content = match file_res {
+    let mut content = match file_res {
         Ok(content) => content,
         Err(_) => {
             println!("\x1b[91merror\x1b[0m: unable to read file: {filename}");
             exit(1)
         },
     };
+    if !content.contains("@import \"base/utils.imp\";\n") {
+        content.insert_str(0, "@import \"base/utils.imp\";\n");
+    }
 
     let tokens = tokeniser(content);
 

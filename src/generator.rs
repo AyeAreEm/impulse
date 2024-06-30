@@ -228,6 +228,10 @@ impl Gen {
 
                 if reassign == false {
                     let str_typ = self.handle_typ(typ.clone());
+                    if !str_typ.1.is_empty() {
+                        self.generate_new_struct(format!("{}", str_typ.0), &String::from("array"));
+                        return format!("array_{} {new_name} = {{.data = ({}{})Y", str_typ.0, str_typ.0, str_typ.1)
+                    }
                     return format!("{} {new_name}{}", str_typ.0, str_typ.1)
                 } else {
                     return format!("{new_name}")
@@ -324,9 +328,9 @@ impl Gen {
 
     }
 
-    fn handle_arraylit(&mut self, arrlit: Vec<Expr>) -> String {
+    fn handle_arraylit(&mut self, arrlit: Vec<Expr>, length: String) -> String {
         let mut arrlit_code = String::new();
-        arrlit_code.push('{');
+        arrlit_code.push_str("{");
 
         for (i, elem) in arrlit.iter().enumerate() {
             let literal = self.handle_value(elem.clone());
@@ -338,7 +342,11 @@ impl Gen {
             }
         }
 
-        arrlit_code.push('}');
+        if length.is_empty() {
+            arrlit_code.push_str(&format!("}}, .len = {}}}", arrlit.len()));
+        } else {
+            arrlit_code.push_str(&format!("}}, .len = {}}}", length));
+        }
         arrlit_code
     }
 
@@ -387,7 +395,7 @@ impl Gen {
                 }
             },
             Expr::FuncCall { .. } => return self.handle_funccall(value.clone()),
-            Expr::ArrayLit(arrlit) => return self.handle_arraylit(arrlit),
+            // Expr::ArrayLit(arrlit) => return self.handle_arraylit(arrlit),
             Expr::Address(atoval) =>{
                 let sub_val = self.handle_value(*atoval);
                 return format!("&{sub_val}")
@@ -699,7 +707,27 @@ impl Gen {
                 Expr::Variable { info, value } => {
                     self.add_spaces(self.indent);
 
-                    let varname = self.handle_varname(*info);
+                    let mut varname = self.handle_varname(*info.clone());
+                    if varname.chars().last().unwrap() == 'Y' {
+                        varname.pop();
+                        match (*value.clone(), *info) {
+                            (Expr::ArrayLit(arrlit), Expr::VariableName { typ, .. }) => {
+                                if let Types::Arr { length, .. } = typ {
+                                    let var_val = self.handle_arraylit(arrlit, length);
+                                    if self.in_macro_func {
+                                        self.code.push_str(&format!("{varname}{var_val};\\\n"));
+                                    } else {
+                                        self.code.push_str(&format!("{varname}{var_val};\n"));
+                                    }
+                                }
+                            }
+                            _ => {
+                                self.comp_err("unable to handle array macro");
+                                exit(1);
+                            },
+                        }
+                        continue;
+                    }
                     let var_val = self.handle_value(*value);
                     
                     if self.in_macro_func {
@@ -768,11 +796,14 @@ impl Gen {
                     if self.curl_rc > 0 {
                         self.curl_rc -= 1;
 
+                        // WATCH THIS CAREFULLY, MIGHT BREAK
                         if self.curl_rc == 0 && self.in_macro_func {
                             self.in_macro_func = false;
                             self.code.push_str("})\n");
-                        } else {
+                        } else if self.in_macro_func {
                             self.code.push_str("}\\\n");
+                        } else if self.curl_rc == 0 {
+                            self.code.push_str("}\n");
                         }
                     } else {
                         self.code.push_str("}\n");

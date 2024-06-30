@@ -1,27 +1,12 @@
-struct[T] vector: {
-    $T x;
-    $T y;
-}
-
-struct[T] p_vector: {
-    ^$T x;
-    ^$T y;
-}
-
-struct[T] option: {
-    $T value;
-    bool none;
-}
-
-struct[T] dyn_arr: {
-    ^$T data;
-    usize len;
-    usize cap;
-}
+@import "stdio.h";
 
 _() main: {
-    vector[int] pos;
-    p_vector[int] p_pos;
-    option[int] elem;
-    dyn_arr[int] arr;
+    @array int evens: |2 4 6 8 10|;
+    
+    loop (i < evens.len) [+] {
+        int current: evens.data[i];
+        evens.data[i]: [current - 2];
+    }
+
+    @c [printf("%d\n", evens.data[4]);];
 }

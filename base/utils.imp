@@ -11,3 +11,8 @@ option(typeid T option[T] opt) option_unwrap: {
 
     return opt.value;
 }
+
+struct[T] array: {
+    ^$T data;
+    usize len;
+}

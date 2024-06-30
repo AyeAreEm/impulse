@@ -877,7 +877,7 @@ impl ExprWeights {
                         Expr::None => {
                             if is_loop && expr_params.is_empty() {
                                 let new_varname = Expr::VariableName {
-                                    typ: Types::I32,
+                                    typ: Types::Usize,
                                     name: ident.to_owned(),
                                     reassign: true,
                                     field_data: (false, false),
@@ -1618,8 +1618,9 @@ impl ExprWeights {
             }
         }
 
+
         let typ = self.keyword_to_type(keyword);
-        println!("length: {length}");
+        self.propagate_struct_fields(name.clone(), String::from("array"), false);
         Expr::VariableName {
             typ: Types::Arr {
                 typ: Box::new(typ),
