@@ -802,7 +802,7 @@ impl Gen {
                             self.code.push_str("})\n");
                         } else if self.in_macro_func {
                             self.code.push_str("}\\\n");
-                        } else if self.curl_rc == 0 {
+                        } else {
                             self.code.push_str("}\n");
                         }
                     } else {

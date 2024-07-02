@@ -1553,8 +1553,10 @@ impl ExprWeights {
 
         let tokens = tokeniser(content);
         let mut parse = ExprWeights::new(tokens, path);
+        // REMEMBER TO DO ADD THIS IF YOU NEED INFO TO CARRY OVER FROM OTHER FILES
         parse.functions = self.functions.clone();
         parse.imports = self.imports.clone();
+        parse.structures = self.structures.clone();
         let mut expressions = parse.parser();
 
         if self.imports.len() != parse.imports.len() {
@@ -1567,8 +1569,10 @@ impl ExprWeights {
             self.functions.append(&mut new);
         }
 
-        // might need to do the same thing to structures as done with imports and functions
-        self.structures.append(&mut parse.structures);
+        if self.structures.len() != parse.structures.len() {
+            let mut new = parse.structures[self.structures.len()..].to_vec();
+            self.structures.append(&mut new);
+        }
         self.program.append(&mut expressions);
         return Expr::None
     }
@@ -1719,6 +1723,18 @@ impl ExprWeights {
                                                             pass_typs.push(name_buf.clone());
                                                             continue;
                                                         }
+                                                    }
+                                                    
+                                                    let found_typ = self.find_structure(&name_buf);
+                                                    if let Expr::StructDef { struct_name, .. } |
+                                                        Expr::MacroStructDef { struct_name, .. } = found_typ {
+                                                            if let Expr::StructName(name) = *struct_name {
+                                                                pass_typs.push(name);
+                                                                continue;
+                                                            } else if let Expr::MacroStructName { .. } = *struct_name {
+                                                                self.comp_err("generic struct with type of a generic struct not supported yet");
+                                                                exit(1);
+                                                            }
                                                     }
                                                     self.comp_err(&format!("expected type, got {name_buf}"));
                                                     exit(1);
@@ -2373,7 +2389,7 @@ impl ExprWeights {
                                         self.expr_stack.push(expr);
                                         return Expr::None
                                     }
-                                    self.comp_err(&format!("unknown identifier: {ident}"));
+                                    self.comp_err(&format!("this unknown identifier: {ident}"));
                                     exit(1);
                                 }
                             },
@@ -2636,7 +2652,19 @@ impl ExprWeights {
                                             continue;
                                         }
                                     }
-                                    self.comp_err(&format!("expected type, got {name_buf}"));
+
+                                    let found_typ = self.find_structure(&name_buf);
+                                    if let Expr::StructDef { struct_name, .. } |
+                                        Expr::MacroStructDef { struct_name, .. } = found_typ {
+                                            if let Expr::StructName(name) = *struct_name {
+                                                pass_typs.push(name);
+                                                continue;
+                                            } else if let Expr::MacroStructName { .. } = *struct_name {
+                                                self.comp_err("generic struct with type of a generic struct not supported yet");
+                                                exit(1);
+                                            }
+                                    }
+                                    self.comp_err(&format!("this expected type, got {name_buf}"));
                                     exit(1);
                                 },
                             }

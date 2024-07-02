@@ -1,12 +1,11 @@
 @import "stdio.h";
 
 _() main: {
-    @array int evens: |2 4 6 8 10|;
-    
-    loop (i < evens.len) [+] {
-        int current: evens.data[i];
-        evens.data[i]: [current - 2];
+    loop (i < 5) [+] {
+        loop (j < 5) [+] {
+            if (i = 4 and j = 2) {
+                break;
+            }
+        }
     }
-
-    @c [printf("%d\n", evens.data[4]);];
 }
