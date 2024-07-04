@@ -2389,7 +2389,7 @@ impl ExprWeights {
                                         self.expr_stack.push(expr);
                                         return Expr::None
                                     }
-                                    self.comp_err(&format!("this unknown identifier: {ident}"));
+                                    self.comp_err(&format!("unknown identifier: {ident}"));
                                     exit(1);
                                 }
                             },
@@ -2419,7 +2419,7 @@ impl ExprWeights {
                             }
                         }
                         Expr::None => {
-                            self.comp_err(&format!("this unknown identifier: {}", ident));
+                            self.comp_err(&format!("unknown identifier: {}", ident));
                             exit(1);
                         },
                         _ => buffer.push(expr),

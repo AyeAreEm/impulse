@@ -310,6 +310,15 @@ impl Gen {
                                 funccall_code.push_str(", false");
                             }
                         },
+                        Expr::StructDef { struct_name, .. } => {
+                            if let Expr::StructName(name) = *struct_name.clone() {
+                                if i == 0 {
+                                    funccall_code.push_str(&format!("{name}"));
+                                } else {
+                                    funccall_code.push_str(&format!(", {name}"));
+                                }
+                            }
+                        },
                         unimpl => {
                             self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                             exit(1);
@@ -697,7 +706,25 @@ impl Gen {
                 Expr::VariableName { typ, name, reassign, field_data } => {
                     self.add_spaces(self.indent);
 
-                    let varname = self.handle_varname(Expr::VariableName { typ, name, reassign, field_data });
+                    let mut varname = self.handle_varname(Expr::VariableName { typ, name, reassign, field_data });
+                    if varname.chars().last().unwrap() == 'Y' {
+                        varname.pop();
+                        match varname.find('{') {
+                            Some(index) => {
+                                varname.truncate(index-1);
+                                if self.in_macro_func {
+                                    self.code.push_str(&format!("{varname} {{0}};\\\n"));
+                                } else {
+                                    self.code.push_str(&format!("{varname} {{0}};\n"));
+                                }
+                            },
+                            None => {
+                                self.comp_err("failed to generate array");
+                                exit(1);
+                            }
+                        }
+                        continue;
+                    }
                     if self.in_macro_func {
                         self.code.push_str(&format!("{varname} = {{0}};\\\n"));
                     } else {

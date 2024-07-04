@@ -1,11 +1,6 @@
 @import "stdio.h";
+@import "base/string.imp";
 
 _() main: {
-    loop (i < 5) [+] {
-        loop (j < 5) [+] {
-            if (i = 4 and j = 2) {
-                break;
-            }
-        }
-    }
+    @array[10] int num;
 }

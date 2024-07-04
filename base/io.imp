@@ -5,18 +5,10 @@ char() c_getchar: {
     @c [return getchar();];
 }
 
-string() read_in: {
-    string content: str_new();
-    bool is_newline: false;
-    char ch: c_getchar();
-
-    @c [is_newline = ch == '\n';];
-    loop (!is_newline) {
-        str_push(&content ch);
-
-        ch: c_getchar();
-        @c [is_newline = ch == '\n';];
+_(string str) str_println: {
+    loop (i < str.len) [+] {
+        @c [printf("%c", str.data[i]);];
     }
 
-    return content;
+    @c [printf("\n");];
 }
