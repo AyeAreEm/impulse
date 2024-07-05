@@ -38,6 +38,11 @@ pub enum Expr {
         condition: Vec<Expr>,
         modifier: Box<Expr>, // Expr = IntLit
     },
+    For {
+        for_this: Box<Expr>,
+        in_this: Box<Expr>,
+        iterator: String,
+    },
 
     Equal,
     SmallerThan,
@@ -152,6 +157,7 @@ impl ExprWeights {
             ("and".to_string(), Keyword::And),
 
             ("loop".to_string(), Keyword::Loop),
+            ("for".to_string(), Keyword::For),
 
             ("return".to_string(), Keyword::Return),
             ("break".to_string(), Keyword::Break),
@@ -247,6 +253,24 @@ impl ExprWeights {
             match new_var {
                 Expr::None => (),
                 _ => vars[self.current_scope].push(new_var),
+            }
+        }
+    }
+
+    fn new_scope_vars(&mut self, new_vars: Vec<Expr>) {
+        self.in_scope = true;
+
+        if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
+            let mut old_scope = vars[self.current_scope].clone();
+            self.current_scope += 1;
+            vars.push(vec![]);
+            vars[self.current_scope].append(&mut old_scope);
+
+            for var in new_vars {
+                match var {
+                    Expr::None => (),
+                    _ => vars[self.current_scope].push(var),
+                }
             }
         }
     }
@@ -974,6 +998,102 @@ impl ExprWeights {
         }
     }
 
+    fn create_for(&mut self, params: Vec<Token>, modifier: String) {
+        let in_this = self.boolean_conditions(&params, false);
+        let in_this_typ = match &in_this.0[0] {
+            Expr::VariableName { typ, .. } => typ.clone(),
+            unexpected => {
+                self.comp_err(&format!("{unexpected:?} unsupport in for loops currently"));
+                exit(1);
+            }
+        };
+
+        if params.len() > 1 {
+            self.comp_err("expected only one expression to loop through");
+            exit(1);
+        }
+
+        if modifier.is_empty() {
+            self.comp_err("expected new variable names e.g. `[elem]` or `[elem i]`");
+            exit(1);
+        }
+
+        let mut expr = Expr::None;
+        let mut side_effects = Vec::new();
+
+        let new_varnames: Vec<&str> = modifier.split(' ').collect();
+        if new_varnames.len() > 2 {
+            self.comp_err(&format!("expected at most two variables to extract in for loop, got {}", new_varnames.len()));
+            exit(1);
+        }
+
+        let found_var = self.find_variable(&modifier);
+        match found_var {
+            Expr::VariableName { .. } => {
+                if new_varnames.len() == 2 {
+                    expr = Expr::For { 
+                        for_this: Box::new(found_var.clone()),
+                        in_this: Box::new(in_this.0[0].clone()),
+                        iterator: new_varnames[1].to_string()
+                    };
+                    side_effects.push(Expr::Variable {
+                        info: Box::new(Expr::VariableName {
+                            typ: Types::Usize,
+                            name: new_varnames[1].to_string(),
+                            reassign: (false),
+                            field_data: (false, false),
+                        }),
+                        value: Box::new(Expr::IntLit(String::from("0")))
+                    });
+                } else {
+                    expr = Expr::For { 
+                        for_this: Box::new(found_var.clone()),
+                        in_this: Box::new(in_this.0[0].clone()),
+                        iterator: String::new()
+                    };
+                }
+            },
+            Expr::None => {
+                let new_var = Expr::VariableName {
+                    typ: in_this_typ,
+                    name: new_varnames[0].to_string(),
+                    reassign: false,
+                    field_data: (false, false)
+                };
+
+                if new_varnames.len() == 2 {
+                    expr = Expr::For {
+                        for_this: Box::new(new_var.clone()),
+                        in_this: Box::new(in_this.0[0].clone()),
+                        iterator: new_varnames[1].to_string()
+                    };
+                    side_effects.push(Expr::Variable { info: Box::new(new_var), value: Box::new(Expr::None) });
+                    side_effects.push(Expr::Variable {
+                        info: Box::new(Expr::VariableName {
+                            typ: Types::Usize,
+                            name: new_varnames[1].to_string(),
+                            reassign: (false),
+                            field_data: (false, false),
+                        }),
+                        value: Box::new(Expr::IntLit(String::from("0")))
+                    });
+                } else {
+                    expr = Expr::For { 
+                        for_this: Box::new(new_var.clone()),
+                        in_this: Box::new(in_this.0[0].clone()),
+                        iterator: String::new()
+                    };
+                    side_effects.push(Expr::Variable { info: Box::new(new_var), value: Box::new(Expr::None) });
+                }
+            },
+            _ => (),
+        }
+
+        self.program_push(expr);
+        self.token_stack.clear();
+        self.new_scope_vars(side_effects);
+    }
+
     fn handle_lcurl(&mut self) {
         let mut typ: Types = Types::None;
         let mut name = String::new();
@@ -990,6 +1110,8 @@ impl ExprWeights {
 
         let mut create_loop = false;
         let mut loop_modifier = String::new();
+
+        let mut create_for = false;
 
         let mut create_struct = false;
         let mut create_generic = false;
@@ -1055,6 +1177,7 @@ impl ExprWeights {
 
                             match keyword {
                                 Keyword::If | Keyword::OrIf | Keyword::Else => create_branch = true,
+                                Keyword::For => create_for = true,
                                 Keyword::Loop => create_loop = true,
                                 Keyword::Struct => create_struct = true,
                                 _ => {
@@ -1144,6 +1267,8 @@ impl ExprWeights {
                     if create_loop {
                         loop_modifier = symbols.to_owned();
                         break;
+                    } else if create_for {
+                        loop_modifier = symbols.to_owned();
                     } else if in_bracks {
                         params.push(token.clone());
                     } else if create_struct {
@@ -1160,6 +1285,16 @@ impl ExprWeights {
                     exit(1);
                 },
             }
+        }
+
+        if create_for {
+            if self.in_struct_def {
+                self.comp_err("can't use loops inside structs");
+                exit(1);
+            }
+
+            self.create_for(params, loop_modifier);
+            return
         }
 
         if create_loop {
@@ -2161,9 +2296,18 @@ impl ExprWeights {
                     brack_rc -= 1;
                     if brack_rc == 0 {
                         expr_params.push(self.create_func_call(&has_func, func_params.clone()));
+                        func_params.clear();
                         in_func_params = false;
                     }
-                }
+                },
+                Token::Quote => (),
+                Token::Str(word) => {
+                    if in_func_params {
+                        func_params.push(param.clone());
+                        continue;
+                    }
+                    expr_params.push(Expr::StrLit { content: word.to_owned(), is_cstr: true });
+                },
                 unexpected => {
                     self.comp_err(&format!("unexpected token: {unexpected:?}"));
                     exit(1);

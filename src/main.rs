@@ -19,8 +19,30 @@ fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool
             exit(1)
         },
     };
-    if !content.contains("@import \"base/utils.imp\";\n") {
-        content.insert_str(0, "@import \"base/utils.imp\";\n");
+
+    if !content.contains("@import \"base/utils.imp\";") {
+        let last_occur = content.rfind("@import");
+        if let Some(index) = last_occur {
+            let mut pos = 0;
+            for i in index..content.len() {
+                match content.chars().nth(i) {
+                    Some(ch) => {
+                        if ch == '\n' {
+                            pos = i + 1;
+                            break;
+                        }
+                    },
+                    None => {
+                        println!("\x1b[91merror\x1b[0m: file might be empty");
+                        exit(1);
+                    },
+                }
+            }
+
+            content.insert_str(pos, "@import \"base/utils.imp\";");
+        } else {
+            content.insert_str(0, "@import \"base/utils.imp\";");
+        }
     }
 
     let tokens = tokeniser(content);

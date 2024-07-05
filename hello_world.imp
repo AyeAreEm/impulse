@@ -1,6 +1,9 @@
-@import "stdio.h";
-@import "base/string.imp";
+@import "base/io.imp";
 
 _() main: {
-    @array[10] int num;
+    @array string fruits: |str_from("apple") str_from("cherry") str_from("banana")|;
+
+    for (fruits) [fruit] {
+        str_println(fruit);
+    }
 }

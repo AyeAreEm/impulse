@@ -77,6 +77,7 @@ pub enum Keyword {
     Else,
 
     Loop,
+    For,
 
     Or,
     And,

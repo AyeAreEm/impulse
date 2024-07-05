@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs, process::{exit, Command}};
 use crate::declare_types::*;
 use crate::parser::*;
-// use rand::Rng;
+use rand::Rng;
 
 pub struct Gen {
     imports: String,
@@ -26,18 +26,18 @@ pub struct Gen {
     curl_rc: i32,
 }
 
-// fn rand_varname() -> String {
-//     let alphabet = String::from("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-//     let mut varname = String::new();
-//     let mut rng = rand::thread_rng();
-//
-//     for _ in 0..6 {
-//         let r = rng.gen_range(0..alphabet.len());
-//         varname.push(alphabet.chars().nth(r).unwrap());
-//     }
-//
-//     varname
-// }
+fn rand_varname() -> String {
+    let alphabet = String::from("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    let mut varname = String::new();
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..6 {
+        let r = rng.gen_range(0..alphabet.len());
+        varname.push(alphabet.chars().nth(r).unwrap());
+    }
+
+    varname
+}
 
 impl Gen {
     pub fn new(in_file: String, out_file: String, compile: bool, keep_gen: bool, lang: Lang) -> Gen {
@@ -535,6 +535,43 @@ impl Gen {
         loop_code
     }
 
+    fn handle_for(&mut self,  in_this: Box<Expr>, iterator: String) -> (String, String, String) {
+        let mut for_code = String::new();
+        let arr_name;
+        let length: String = match *in_this {
+            Expr::VariableName { typ, name, .. } => {
+                if let Types::Arr { .. } = typ {
+                    arr_name = name.clone();
+                    format!("{name}.len")
+                } else if let Types::TypeDef { type_name, .. } = typ {
+                    if type_name == String::from("dyn") || type_name == String::from("string")  {
+                        arr_name = name.clone();
+                        format!("{name}.len")
+                    } else {
+                        self.comp_err(&format!("unable to handle {name} in for loop as it's of type {type_name:?}"));
+                        exit(1);
+                    }
+                } else {
+                    self.comp_err(&format!("unable to handle {name} in for loop as it's of type {typ:?}"));
+                    exit(1);
+                }
+            },
+            unexpected => {
+                self.comp_err(&format!("{unexpected:?} is not implemented yet"));
+                exit(1);
+            }
+        };
+
+        if iterator.is_empty() {
+            let randname = rand_varname();
+            for_code.push_str(&format!("for (size_t {randname} = 0; {randname} < {length}; {randname}++) {{\n"));
+            (for_code, arr_name, randname)
+        } else {
+            for_code.push_str(&format!("for (size_t {iterator} = 0; {iterator} < {length}; {iterator}++) {{\n"));
+            (for_code, arr_name, iterator)
+        }
+    }
+
     fn generate_c(&mut self, expressions: Vec<(Expr, String, u32)>) {
         let mut struct_generics = Vec::new();
         self.imports.push_str("#include <stddef.h>\n");
@@ -706,16 +743,18 @@ impl Gen {
                 Expr::VariableName { typ, name, reassign, field_data } => {
                     self.add_spaces(self.indent);
 
-                    let mut varname = self.handle_varname(Expr::VariableName { typ, name, reassign, field_data });
+                    let mut varname = self.handle_varname(Expr::VariableName { typ: typ.clone(), name, reassign, field_data });
                     if varname.chars().last().unwrap() == 'Y' {
                         varname.pop();
                         match varname.find('{') {
                             Some(index) => {
                                 varname.truncate(index-1);
-                                if self.in_macro_func {
-                                    self.code.push_str(&format!("{varname} {{0}};\\\n"));
-                                } else {
-                                    self.code.push_str(&format!("{varname} {{0}};\n"));
+                                if let Types::Arr { length, .. } = typ {
+                                    if self.in_macro_func {
+                                        self.code.push_str(&format!("{varname} {{.len = {length}}};\\\n"));
+                                    } else {
+                                        self.code.push_str(&format!("{varname} {{.len = {length}}};\n"));
+                                    }
                                 }
                             },
                             None => {
@@ -800,7 +839,29 @@ impl Gen {
 
                     let loop_code = self.handle_loop(condition, *modifier);
                     self.code.push_str(&loop_code);
-                }
+                },
+                Expr::For { for_this, in_this, iterator } => {
+                    self.add_spaces(self.indent);
+                    self.indent += 1;
+
+                    let for_this_extract = match *for_this {
+                        Expr::VariableName { typ, name, .. } => {
+                            // this might break something
+                            (self.handle_typ(typ).0, name)
+                        },
+                        unexpected => {
+                            self.comp_err(&format!("{unexpected:?} is not implemented yet for for loops"));
+                            exit(1);
+                        },
+                    };
+
+                    let for_code = self.handle_for(in_this, iterator);
+                    self.code.push_str(&for_code.0);
+                    self.add_spaces(self.indent);
+
+                    let var = format!("{} {} = {}.data[{}];\n", for_this_extract.0, for_this_extract.1, for_code.1, for_code.2);
+                    self.code.push_str(&var);
+                },
                 Expr::Return(value) => {
                     self.add_spaces(self.indent);
                     
