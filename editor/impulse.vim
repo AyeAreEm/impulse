@@ -14,7 +14,7 @@ syntax match impulseSymbols /\v[|$+%-;:=<>!&^()[\]{}*\/]/
 syntax keyword impulseAndOr and or
 syntax keyword impulseKeywords break continue return
 syntax keyword impulseBranches if orif else
-syntax keyword impulseLoops loop
+syntax keyword impulseLoops loop for
 syntax keyword impulseDataStruct struct
 syntax keyword impulseTypeNames int i32 u32 i8 u8 f32 f64 _ char bool usize
 syntax keyword impulseTrueFalse true false

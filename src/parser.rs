@@ -107,7 +107,7 @@ pub struct ExprWeights {
     macros_map: HashMap<String, Macros>,
 
     pub functions: Vec<Expr>,
-    structures: Vec<Expr>,
+    pub structures: Vec<Expr>,
     func_to_vars: HashMap<String, Vec<Vec<Expr>>>,
 
     current_func: String,

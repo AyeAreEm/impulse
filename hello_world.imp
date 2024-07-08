@@ -1,9 +1,26 @@
-@import "base/io.imp";
+@import "stdio.h";
+@import "base/string.imp";
+@import "base/dynamic.imp";
 
 _() main: {
-    @array string fruits: |str_from("apple") str_from("cherry") str_from("banana")|;
+    @array int nums: |1 2 3 4 5|;
+    for (nums) [num i] {
+        @c [printf("num: %d, index: %d\n", num, i);];
+    }
 
-    for (fruits) [fruit] {
-        str_println(fruit);
+    dyn[int] nums_dyn: dyn_new(int);
+    dyn_push(int nums_dyn 1);
+    dyn_push(int nums_dyn 2);
+    dyn_push(int nums_dyn 3);
+    dyn_push(int nums_dyn 4);
+    dyn_push(int nums_dyn 5);
+
+    for (nums_dyn) [num i] {
+        @c [printf("%d\n", num);];
+    }
+
+    string str: str_from("hello world");
+    for (str) [ch] {
+        @c [printf("%c\n", ch);];
     }
 }

@@ -21,6 +21,7 @@ pub struct Gen {
     definition_map: HashMap<String, usize>,
 
     generated_structs: Vec<String>,
+    structure_defs: Vec<Expr>,
 
     in_macro_func: bool,
     curl_rc: i32,
@@ -40,7 +41,7 @@ fn rand_varname() -> String {
 }
 
 impl Gen {
-    pub fn new(in_file: String, out_file: String, compile: bool, keep_gen: bool, lang: Lang) -> Gen {
+    pub fn new(in_file: String, out_file: String, structures: Vec<Expr>, compile: bool, keep_gen: bool, lang: Lang) -> Gen {
         let libc_map = HashMap::from([
             ("stdio".to_string(), true),
             ("stdlib".to_string(), true),
@@ -66,6 +67,7 @@ impl Gen {
             definition_map,
             indent: 0,
             generated_structs: Vec::new(),
+            structure_defs: structures,
             in_macro_func: false,
             curl_rc: 0,
         }
@@ -844,20 +846,33 @@ impl Gen {
                     self.add_spaces(self.indent);
                     self.indent += 1;
 
+                    let for_code = self.handle_for(in_this, iterator);
+                    self.code.push_str(&for_code.0);
+                    self.add_spaces(self.indent);
+
                     let for_this_extract = match *for_this {
                         Expr::VariableName { typ, name, .. } => {
-                            // this might break something
-                            (self.handle_typ(typ).0, name)
+                            if let Types::Arr { .. } = typ {
+                                (self.handle_typ(typ).0, name)
+                            } else if let Types::TypeDef { type_name, .. } = typ {
+                                if type_name == String::from("dyn") {
+                                    (format!("typeof({}.data[0])", for_code.1), name)
+                                } else if type_name == String::from("string") {
+                                    (String::from("char"), name)
+                                } else {
+                                    self.comp_err(&format!("{type_name} is not supported with for loops currently"));
+                                    exit(1);
+                                }
+                            } else {
+                                self.comp_err(&format!("{typ:?} is not supported with for loops currently"));
+                                exit(1);
+                            }
                         },
                         unexpected => {
                             self.comp_err(&format!("{unexpected:?} is not implemented yet for for loops"));
                             exit(1);
                         },
                     };
-
-                    let for_code = self.handle_for(in_this, iterator);
-                    self.code.push_str(&for_code.0);
-                    self.add_spaces(self.indent);
 
                     let var = format!("{} {} = {}.data[{}];\n", for_this_extract.0, for_this_extract.1, for_code.1, for_code.2);
                     self.code.push_str(&var);
