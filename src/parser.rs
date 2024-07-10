@@ -1000,10 +1000,34 @@ impl ExprWeights {
 
     fn create_for(&mut self, params: Vec<Token>, modifier: String) {
         let in_this = self.boolean_conditions(&params, false);
-        let in_this_typ = match &in_this.0[0] {
-            Expr::VariableName { typ, .. } => typ.clone(),
+        let for_this_typ = match &in_this.0[0] {
+            Expr::VariableName { typ, .. } => {
+                if let Types::Arr { typ: subtyp, .. } = typ {
+                    *subtyp.clone()
+                } else if let Types::TypeDef { type_name, generics } = typ {
+                    if type_name == &String::from("dyn") {
+                        let keyword_res = self.keyword_map.get(&generics[0]);
+                        let subtyp = match keyword_res {
+                            Some(kw) => {
+                                self.keyword_to_type(kw.clone())
+                            },
+                            // CAN BREAK
+                            None => Types::TypeDef { type_name: generics[0].clone(), generics: vec![] },
+                        };
+                        subtyp
+                    } else if type_name == &String::from("string") {
+                        Types::Char
+                    } else {
+                        self.comp_err(&format!("{type_name} unsupported in for loops currently"));
+                        exit(1);
+                    }
+                } else {
+                    self.comp_err(&format!("{typ:?} unsupported in for loops currently"));
+                    exit(1);
+                }
+            },
             unexpected => {
-                self.comp_err(&format!("{unexpected:?} unsupport in for loops currently"));
+                self.comp_err(&format!("{unexpected:?} unsupported in for loops currently"));
                 exit(1);
             }
         };
@@ -1027,7 +1051,7 @@ impl ExprWeights {
             exit(1);
         }
 
-        let found_var = self.find_variable(&modifier);
+        let found_var = self.find_variable(&new_varnames[0].to_owned());
         match found_var {
             Expr::VariableName { .. } => {
                 if new_varnames.len() == 2 {
@@ -1055,7 +1079,7 @@ impl ExprWeights {
             },
             Expr::None => {
                 let new_var = Expr::VariableName {
-                    typ: in_this_typ,
+                    typ: for_this_typ,
                     name: new_varnames[0].to_string(),
                     reassign: false,
                     field_data: (false, false)

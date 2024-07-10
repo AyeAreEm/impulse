@@ -3,24 +3,15 @@
 @import "base/dynamic.imp";
 
 _() main: {
-    @array int nums: |1 2 3 4 5|;
-    for (nums) [num i] {
-        @c [printf("num: %d, index: %d\n", num, i);];
-    }
+    dyn[string] fruits: dyn_new(string);
+    dyn_push(string fruits str_from("apple"));
+    dyn_push(string fruits str_from("cherry"));
+    dyn_push(string fruits str_from("banana"));
 
-    dyn[int] nums_dyn: dyn_new(int);
-    dyn_push(int nums_dyn 1);
-    dyn_push(int nums_dyn 2);
-    dyn_push(int nums_dyn 3);
-    dyn_push(int nums_dyn 4);
-    dyn_push(int nums_dyn 5);
-
-    for (nums_dyn) [num i] {
-        @c [printf("%d\n", num);];
-    }
-
-    string str: str_from("hello world");
-    for (str) [ch] {
-        @c [printf("%c\n", ch);];
+    for (fruits) [fruit] {
+        for (fruit) [ch] {
+            @c [printf("%c", ch);];
+        }
+        @c [printf("\n");];
     }
 }

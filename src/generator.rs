@@ -852,20 +852,10 @@ impl Gen {
 
                     let for_this_extract = match *for_this {
                         Expr::VariableName { typ, name, .. } => {
-                            if let Types::Arr { .. } = typ {
-                                (self.handle_typ(typ).0, name)
-                            } else if let Types::TypeDef { type_name, .. } = typ {
-                                if type_name == String::from("dyn") {
-                                    (format!("typeof({}.data[0])", for_code.1), name)
-                                } else if type_name == String::from("string") {
-                                    (String::from("char"), name)
-                                } else {
-                                    self.comp_err(&format!("{type_name} is not supported with for loops currently"));
-                                    exit(1);
-                                }
+                            if let Types::None = typ {
+                                (format!("typeof({}.data[0])", for_code.1), name)
                             } else {
-                                self.comp_err(&format!("{typ:?} is not supported with for loops currently"));
-                                exit(1);
+                                (self.handle_typ(typ).0, name)
                             }
                         },
                         unexpected => {
