@@ -13,4 +13,6 @@
 
 ## <a href="./CInterop.md">C Interop / Embedding</a>
 
+## <a href="./Loops.md">Loops</a>
+
 ## <a href="./Generics.md">Generics</a>

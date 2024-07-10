@@ -19,4 +19,23 @@ typeid -> type (to pass a type as a value, goes in hand mainly with generics)
 @array[10] (type) -> an array of type with optional length (optional if initalised with values), e.g. @array int
 ```
 
+## Note about arrays
+`@array` is a bit of a weird compiler hack<br>
+In the standard lib, there's a struct definition
+```
+struct[T] array: {
+    ^$T data;
+    usize len;
+}
+```
+before arrays in Impulse were the same as in C, just a pointer. I want arrays in Impulse to also carry the length as well
+so something like
+```
+@array int nums: |1 2 3 4 5|;
+```
+transcompiles as (not that this does not work in C++)
+```
+array_int nums = {.data = (int[]){1, 2, 3, 4, 5}, .len = 5};
+```
+
 <a href="./Variables.md">Next -> Variables</a>

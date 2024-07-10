@@ -18,4 +18,4 @@ _() main: {
 
 This also works with header files not from the C standard library, just make sure you have the C file as well.
 
-<a href="./Generics.md">Next -> Generics</a>
+<a href="./Loops.md">Loops</a>
