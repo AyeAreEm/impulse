@@ -21,7 +21,6 @@ pub struct Gen {
     definition_map: HashMap<String, usize>,
 
     generated_structs: Vec<String>,
-    structure_defs: Vec<Expr>,
 
     in_macro_func: bool,
     curl_rc: i32,
@@ -41,7 +40,7 @@ fn rand_varname() -> String {
 }
 
 impl Gen {
-    pub fn new(in_file: String, out_file: String, structures: Vec<Expr>, compile: bool, keep_gen: bool, lang: Lang) -> Gen {
+    pub fn new(in_file: String, out_file: String, compile: bool, keep_gen: bool, lang: Lang) -> Gen {
         let libc_map = HashMap::from([
             ("stdio".to_string(), true),
             ("stdlib".to_string(), true),
@@ -67,7 +66,6 @@ impl Gen {
             definition_map,
             indent: 0,
             generated_structs: Vec::new(),
-            structure_defs: structures,
             in_macro_func: false,
             curl_rc: 0,
         }

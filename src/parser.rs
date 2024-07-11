@@ -107,7 +107,7 @@ pub struct ExprWeights {
     macros_map: HashMap<String, Macros>,
 
     pub functions: Vec<Expr>,
-    pub structures: Vec<Expr>,
+    structures: Vec<Expr>,
     func_to_vars: HashMap<String, Vec<Vec<Expr>>>,
 
     current_func: String,
@@ -999,7 +999,26 @@ impl ExprWeights {
     }
 
     fn create_for(&mut self, params: Vec<Token>, modifier: String) {
+        if params.len() > 1 {
+            self.comp_err("expected only one expression to loop through");
+            exit(1);
+        }
+
+        if modifier.is_empty() {
+            self.comp_err("expected new variable names e.g. `[elem]` or `[elem i]`");
+            exit(1);
+        }
+
+        let new_varnames: Vec<&str> = modifier.split(' ').collect();
+        if new_varnames.len() > 2 {
+            self.comp_err(&format!("expected at most two variables to extract in for loop, got {}", new_varnames.len()));
+            exit(1);
+        }
+
+        let mut expr = Expr::None;
+        let mut side_effects = Vec::new();
         let in_this = self.boolean_conditions(&params, false);
+
         let for_this_typ = match &in_this.0[0] {
             Expr::VariableName { typ, .. } => {
                 if let Types::Arr { typ: subtyp, .. } = typ {
@@ -1012,7 +1031,10 @@ impl ExprWeights {
                                 self.keyword_to_type(kw.clone())
                             },
                             // CAN BREAK
-                            None => Types::TypeDef { type_name: generics[0].clone(), generics: vec![] },
+                            None => {
+                                self.propagate_struct_fields(new_varnames[0].to_owned(), generics[0].clone(), false);
+                                Types::TypeDef { type_name: generics[0].clone(), generics: vec![] }
+                            },
                         };
                         subtyp
                     } else if type_name == &String::from("string") {
@@ -1031,25 +1053,6 @@ impl ExprWeights {
                 exit(1);
             }
         };
-
-        if params.len() > 1 {
-            self.comp_err("expected only one expression to loop through");
-            exit(1);
-        }
-
-        if modifier.is_empty() {
-            self.comp_err("expected new variable names e.g. `[elem]` or `[elem i]`");
-            exit(1);
-        }
-
-        let mut expr = Expr::None;
-        let mut side_effects = Vec::new();
-
-        let new_varnames: Vec<&str> = modifier.split(' ').collect();
-        if new_varnames.len() > 2 {
-            self.comp_err(&format!("expected at most two variables to extract in for loop, got {}", new_varnames.len()));
-            exit(1);
-        }
 
         let found_var = self.find_variable(&new_varnames[0].to_owned());
         match found_var {

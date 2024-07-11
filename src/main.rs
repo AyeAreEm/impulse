@@ -53,7 +53,7 @@ fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool
         println!("{:?}", expr.0);
     }
 
-    let mut gen = Gen::new(filename.to_string(), out_filename.clone(), parse.structures, compile, keep_gen, lang);
+    let mut gen = Gen::new(filename.to_string(), out_filename.clone(), compile, keep_gen, lang);
     gen.generate(expressions);
 }
 

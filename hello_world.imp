@@ -1,17 +1,15 @@
-@import "stdio.h";
-@import "base/string.imp";
+@import "base/io.imp";
 @import "base/dynamic.imp";
 
 _() main: {
-    dyn[string] fruits: dyn_new(string);
-    dyn_push(string fruits str_from("apple"));
-    dyn_push(string fruits str_from("cherry"));
-    dyn_push(string fruits str_from("banana"));
+    dyn[string] greets: dyn_new(string);
 
-    for (fruits) [fruit] {
-        for (fruit) [ch] {
-            @c [printf("%c", ch);];
-        }
-        @c [printf("\n");];
+    dyn_push(string greets str_from("hello world"));
+    dyn_push(string greets str_from("hi there"));
+
+    for (greets) [greet] {
+        str_println(greet);
+        dealloc(greet.data);
     }
+    dealloc(greets.data);
 }

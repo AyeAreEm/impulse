@@ -106,6 +106,11 @@ Can't call function inside conditions
 if (foo(num) = 0) {}
 ```
 
+Passing array at index to function parameter
+```
+foo(bar.data[0]);
+```
+
 ### Ideas
 ```
 print -> print something with the type it is
