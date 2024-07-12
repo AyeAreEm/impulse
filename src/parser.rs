@@ -21,6 +21,7 @@ pub enum Expr {
         typ: Types,
         name: String,
         reassign: bool,
+        constant: bool,
         field_data: (bool, bool), // is_field, is_pointer
     },
     Variable {
@@ -598,13 +599,14 @@ impl ExprWeights {
                             if let Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } = self.find_structure(&user_def) {
                                 for field in struct_fields {
                                     match field {
-                                        Expr::VariableName { typ: vartyp, name: varname, .. } => {
+                                        Expr::VariableName { typ: vartyp, name: varname, constant, .. } => {
                                             let new_name = format!("{ident}.{varname}");
                                             let new_expr = Expr::Variable {
                                                 info: Box::new(Expr::VariableName {
                                                     typ: vartyp,
                                                     name: new_name,
                                                     reassign: false,
+                                                    constant,
                                                     field_data: (true, false),
                                                 }),
                                                 value: Box::new(Expr::None),
@@ -621,13 +623,14 @@ impl ExprWeights {
                                 if let Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } = self.find_structure(&user_def) {
                                     for field in struct_fields {
                                         match field {
-                                            Expr::VariableName { typ: vartyp, name: varname, .. } => {
+                                            Expr::VariableName { typ: vartyp, name: varname, constant, .. } => {
                                                 let new_name = format!("{ident}.{varname}");
                                                 let new_expr = Expr::Variable {
                                                     info: Box::new(Expr::VariableName {
                                                         typ: Types::Pointer(Box::new(vartyp)),
                                                         name: new_name,
                                                         reassign: false,
+                                                        constant,
                                                         field_data: (true, true),
                                                     }),
                                                     value: Box::new(Expr::None),
@@ -648,6 +651,7 @@ impl ExprWeights {
                             typ,
                             name: ident.to_owned(),
                             reassign: false,
+                            constant: false,
                             field_data: (false, false),
                         };
 
@@ -754,6 +758,7 @@ impl ExprWeights {
                                 typ: Types::TypeId,
                                 name: name_buf.clone(),
                                 reassign: false,
+                                constant: false,
                                 field_data: (false, false),
                             }),
                             value: Box::new(Expr::None)
@@ -878,7 +883,7 @@ impl ExprWeights {
                                 exit(1);
                             }
                         },
-                        Expr::VariableName { typ, name, reassign, field_data } => {
+                        Expr::VariableName { typ, name, reassign, constant, field_data } => {
                             if i != params.len()-1 {
                                 if let Token::Int(index) = &params[i+1] {
                                     had_index = true;
@@ -889,13 +894,14 @@ impl ExprWeights {
                                         },
                                         name,
                                         reassign,
+                                        constant,
                                         field_data
                                     });
                                 } else {
-                                    expr_params.push(Expr::VariableName { typ, name, reassign, field_data });
+                                    expr_params.push(Expr::VariableName { typ, name, reassign, constant, field_data });
                                 }
                             } else {
-                                expr_params.push(Expr::VariableName { typ, name, reassign, field_data });
+                                expr_params.push(Expr::VariableName { typ, name, reassign, constant, field_data });
                             }
                         },
                         Expr::None => {
@@ -904,6 +910,7 @@ impl ExprWeights {
                                     typ: Types::Usize,
                                     name: ident.to_owned(),
                                     reassign: true,
+                                    constant: false,
                                     field_data: (false, false),
                                 };
 
@@ -1056,7 +1063,10 @@ impl ExprWeights {
 
         let found_var = self.find_variable(&new_varnames[0].to_owned());
         match found_var {
-            Expr::VariableName { .. } => {
+            Expr::VariableName { constant, .. } => {
+                if !constant {
+                    self.comp_err(&format!("variable {} is constant. can't be used in for loop", new_varnames[0]));
+                }
                 if new_varnames.len() == 2 {
                     expr = Expr::For { 
                         for_this: Box::new(found_var.clone()),
@@ -1067,7 +1077,8 @@ impl ExprWeights {
                         info: Box::new(Expr::VariableName {
                             typ: Types::Usize,
                             name: new_varnames[1].to_string(),
-                            reassign: (false),
+                            reassign: false,
+                            constant: false,
                             field_data: (false, false),
                         }),
                         value: Box::new(Expr::IntLit(String::from("0")))
@@ -1085,6 +1096,7 @@ impl ExprWeights {
                     typ: for_this_typ,
                     name: new_varnames[0].to_string(),
                     reassign: false,
+                    constant: false,
                     field_data: (false, false)
                 };
 
@@ -1099,7 +1111,8 @@ impl ExprWeights {
                         info: Box::new(Expr::VariableName {
                             typ: Types::Usize,
                             name: new_varnames[1].to_string(),
-                            reassign: (false),
+                            reassign: false,
+                            constant: false,
                             field_data: (false, false),
                         }),
                         value: Box::new(Expr::IntLit(String::from("0")))
@@ -1563,7 +1576,7 @@ impl ExprWeights {
                         match keyword_rs {
                             Some(keyword) => {
                                 let _ = self.keyword_to_type(keyword.clone());
-                                expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.clone(), reassign: false, field_data: (false, false) })
+                                expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.clone(), reassign: false, constant: false, field_data: (false, false) })
                             },
                             None => {
                                 self.comp_err(&format!("unknown identifier: {}", ident));
@@ -1574,10 +1587,10 @@ impl ExprWeights {
                         nested_func = expr;
                     } else if let Expr::MacroFunc { .. } = expr {
                         nested_func = expr;
-                    } else if let Expr::VariableName {ref typ, reassign, field_data, ..} = expr {
+                    } else if let Expr::VariableName {ref typ, reassign, constant, field_data, ..} = expr {
                         if field_data.0 && field_data.1 {
                             let new_name = ident.replace(".", "->");
-                            expr_params.push(Expr::VariableName { typ: typ.clone(), name: new_name, reassign: reassign.clone(), field_data })
+                            expr_params.push(Expr::VariableName { typ: typ.clone(), name: new_name, reassign: reassign.clone(), constant, field_data })
                         } else {
                             expr_params.push(expr.clone());
                         }
@@ -1745,6 +1758,20 @@ impl ExprWeights {
             exit(1);
         }
 
+        let mut colon_counter = 0;
+        let mut is_constant = false;
+        for token in &tokens {
+            match token {
+                Token::Colon => {
+                    colon_counter += 1;
+                    if colon_counter == 2 {
+                        is_constant = true;
+                    }
+                }
+                _ => (),
+            }
+        }
+
         let keyword: Keyword;
         match &tokens[0] {
             Token::Ident(ident) => {
@@ -1794,6 +1821,7 @@ impl ExprWeights {
             },
             name,
             reassign: false,
+            constant: is_constant,
             field_data: (false, false),
         }
     }
@@ -1851,7 +1879,7 @@ impl ExprWeights {
         }
     }
 
-    fn handle_left_assign(&mut self, var_info: Vec<Token>) -> Expr {
+    fn handle_left_assign(&mut self, var_info: Vec<Token>, is_constant: bool) -> Expr {
         let mut keyword = Keyword::None;
         match &var_info[0] {
             Token::Ident(ident) => {
@@ -1923,7 +1951,15 @@ impl ExprWeights {
                                     self.comp_err(&format!("undeclared identifier: {ident}"));
                                     exit(1);
                                 },
-                                Expr::VariableName { typ, name, field_data, .. } => {
+                                Expr::VariableName { typ, name, constant, field_data, .. } => {
+                                    if constant {
+                                        self.comp_err(&format!("var {name} is constant. can't be reassigned"));
+                                        exit(1);
+                                    } else if is_constant {
+                                        self.comp_err(&format!("var {name} is mutable. constants need value during declaration"));
+                                        exit(1);
+                                    }
+
                                     if var_info.len() > 1 {
                                         if let Token::Caret = &var_info[1] {
                                             let mut deref = Expr::DerefPointer(Box::new(
@@ -1931,6 +1967,7 @@ impl ExprWeights {
                                                     typ,
                                                     name,
                                                     reassign: true,
+                                                    constant: false,
                                                     field_data 
                                                 }
                                             ));
@@ -1962,6 +1999,7 @@ impl ExprWeights {
                                                 },
                                                 name: name.to_owned(),
                                                 reassign: true, 
+                                                constant: false,
                                                 field_data
                                             }
                                         } else {
@@ -1970,7 +2008,7 @@ impl ExprWeights {
                                         }
                                     }
 
-                                    return Expr::VariableName { typ: typ.clone(), name: name.to_owned(), reassign: true, field_data }
+                                    return Expr::VariableName { typ: typ.clone(), name: name.to_owned(), reassign: true, constant: false, field_data }
                                 }
                                 expr => {
                                     return expr
@@ -2183,7 +2221,7 @@ impl ExprWeights {
 
                 let typ = self.keyword_to_type(keyword.clone());
                 if let Token::Ident(varname) = &var_info[2] {
-                    return Expr::VariableName { typ, name: varname.to_owned(), reassign: false, field_data: (false, false) }
+                    return Expr::VariableName { typ, name: varname.to_owned(), reassign: false, constant: false, field_data: (false, false) }
                 }
             },
             _ => {
@@ -2234,11 +2272,18 @@ impl ExprWeights {
             }
 
             let typ = self.keyword_to_type(keyword.clone());
-            return Expr::VariableName { typ, name: name.to_owned(), reassign: false, field_data: (false, false)};
-        } else if let Expr::VariableName { typ, name, field_data, .. } = found_expr {
+            return Expr::VariableName { typ, name: name.to_owned(), reassign: false, constant: is_constant, field_data: (false, false)};
+        } else if let Expr::VariableName { typ, name, constant, field_data, .. } = found_expr {
+            if constant || is_constant {
+                self.comp_err(&format!("var {name} is constant. can't be reassigned"));
+                exit(1);
+            } else if is_constant {
+                self.comp_err(&format!("var {name} is mutable. constants need value during declaration"));
+                exit(1);
+            }
             match keyword {
                 Keyword::None => {
-                    return Expr::VariableName { typ, name, reassign: true, field_data};
+                    return Expr::VariableName { typ, name, reassign: true, constant: false, field_data};
                 },
                 _ => {
                     self.comp_err(&format!("variable {:?} already declared", name));
@@ -2364,11 +2409,13 @@ impl ExprWeights {
         let mut brack_rc = 0;
         let mut pipe_rc = 0;
         let mut pointer_counter = 0;
+        let mut colon_counter = 0;
         let mut found_macro = false;
         let mut found_amper = false;
 
         let mut returning = false;
         let mut create_generic = false;
+        let mut is_constant = false;
 
         for (i, token) in value.iter().enumerate() {
             // handle right bracket occurences
@@ -2404,6 +2451,12 @@ impl ExprWeights {
                 },
                 Token::Caret => {
                     pointer_counter += 1;
+                },
+                Token::Colon => {
+                    colon_counter += 1;
+                    if colon_counter == 2 {
+                        is_constant = true;
+                    }
                 },
                 _ => {
                     if brack_rc > 0 {
@@ -2581,14 +2634,14 @@ impl ExprWeights {
 
                     let expr = self.find_ident(ident.to_string());
                     match expr {
-                        Expr::VariableName { ref typ, ref name, reassign, field_data } => {
+                        Expr::VariableName { ref typ, ref name, reassign, constant: _, field_data } => {
                             if field_data.0 && field_data.1 {
                                 let new_name = name.replace(".", "->");
-                                buffer.push(Expr::VariableName { typ: typ.clone(), name: new_name, reassign, field_data })
+                                buffer.push(Expr::VariableName { typ: typ.clone(), name: new_name, reassign, constant: is_constant, field_data })
                             } else {
-                                buffer.push(expr)
+                                buffer.push(Expr::VariableName { typ: typ.clone(), name: name.to_owned(), reassign, constant: is_constant, field_data })
                             }
-                        }
+                        },
                         Expr::None => {
                             self.comp_err(&format!("unknown identifier: {}", ident));
                             exit(1);
@@ -2690,7 +2743,7 @@ impl ExprWeights {
         if buffer.len() > 1 {
             match &buffer[0] {
                 Expr::Address(varname) => {
-                    if let Expr::VariableName { typ, name, .. } = *varname.clone() {
+                    if let Expr::VariableName { typ, name, constant, .. } = *varname.clone() {
                         if let Types::Arr { .. } = typ {
                         } else if let Types::Pointer { .. } = typ {
                         } else {
@@ -2706,6 +2759,7 @@ impl ExprWeights {
                                 },
                                 name: name.to_owned(),
                                 reassign: false,
+                                constant,
                                 field_data: (false, false)
                             }));
                             if returning {
@@ -2719,7 +2773,7 @@ impl ExprWeights {
                         }
                     }
                 }
-                Expr::VariableName { typ, name, .. } => {
+                Expr::VariableName { typ, name, constant,  .. } => {
                     if let Types::Arr { .. } = typ {
                     } else if let Types::Pointer { .. } = typ {
                     } else {
@@ -2735,6 +2789,7 @@ impl ExprWeights {
                             },
                             name: name.to_owned(),
                             reassign: false,
+                            constant: constant.to_owned(),
                             field_data: (false, false),
                         };
                         if returning {
@@ -2774,6 +2829,7 @@ impl ExprWeights {
                                     typ,
                                     name: new_name,
                                     reassign: false,
+                                    constant: false, // CAN BREAK
                                     field_data: (true, is_ptr),
                                 }),
                                 value: Box::new(Expr::None),
@@ -2885,7 +2941,7 @@ impl ExprWeights {
                         if let Types::TypeDef { ref mut generics, .. } = typ {
                             *generics = pass_typs;
                         }
-                        expr = Expr::VariableName { typ, name: word, reassign: false, field_data: (false, false) };
+                        expr = Expr::VariableName { typ, name: word, reassign: false, constant: false, field_data: (false, false) };
                     },
                     _ => {
                         self.comp_err(&format!("identifier {:?} already declared", word));
@@ -2901,7 +2957,7 @@ impl ExprWeights {
 
         match kw {
             Keyword::I32 | Keyword::I8 | Keyword::U8 | Keyword::U32 | Keyword::F32 | Keyword::F64 |
-            Keyword::Char | Keyword::Usize | Keyword::Bool => (),
+            Keyword::Char | Keyword::Usize | Keyword::Bool | Keyword::Int => (),
             Keyword::Generic(_) => (),
             Keyword::Pointer(.., last) => {
                 if let Types::TypeDef { type_name: user_def, .. } = last {
@@ -2912,7 +2968,7 @@ impl ExprWeights {
                 self.propagate_struct_fields(fname, user_def.to_string(), false);
             },
             _ => {
-                self.comp_err(&format!("unexpected keyword: {kw:?}"));
+                self.comp_err(&format!("this unexpected keyword: {kw:?}"));
                 exit(1);
             },
         }
@@ -2920,13 +2976,13 @@ impl ExprWeights {
         expr
     }
 
-    fn create_variable(&mut self, left: Vec<Token>, right: Vec<Token>) {
+    fn create_variable(&mut self, left: Vec<Token>, right: Vec<Token>, is_constant: bool) {
         if !self.in_func {
             self.comp_err(&format!("cannot create variable outside of a scope. variable: {:?}", left));
             exit(1);
         }
 
-        let left_expr = self.handle_left_assign(left);
+        let left_expr = self.handle_left_assign(left, is_constant);
         let right_expr = self.handle_right_assign(right, true);
 
         // if let Expr::VariableName { typ, name, reassign, field_data } = left_expr {
@@ -2946,14 +3002,20 @@ impl ExprWeights {
         let mut left = Vec::new();
         let mut right = Vec::new();
         let mut seen_colon = 0;
+        let mut is_constant = false;
 
         for (_i, token) in self.token_stack.iter().enumerate() {
             match token {
-                Token::Colon => seen_colon += 1,
+                Token::Colon => {
+                    seen_colon += 1;
+                    if seen_colon == 2 {
+                        is_constant = true;
+                    }
+                },
                 _ => {
                     if seen_colon == 0 {
                         left.push(token.clone());
-                    } else if seen_colon == 1 {
+                    } else if seen_colon == 1 || seen_colon == 2 {
                         right.push(token.clone());
                     } else {
                         self.comp_err("unexpected assignment operator `:`");
@@ -2968,7 +3030,7 @@ impl ExprWeights {
                 self.comp_err("can't initalise members inside a struct");
                 exit(1);
             }
-            self.create_variable(left, right);
+            self.create_variable(left, right, is_constant);
             return
         }
 

@@ -1,15 +1,7 @@
-@import "base/io.imp";
-@import "base/dynamic.imp";
+_ main(): {
+    int x :: 10;
+    x: 5; # error
 
-_() main: {
-    dyn[string] greets: dyn_new(string);
-
-    dyn_push(string greets str_from("hello world"));
-    dyn_push(string greets str_from("hi there"));
-
-    for (greets) [greet] {
-        str_println(greet);
-        dealloc(greet.data);
-    }
-    dealloc(greets.data);
+    int x;
+    x :: 10; # error
 }

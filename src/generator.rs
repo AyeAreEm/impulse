@@ -203,10 +203,17 @@ impl Gen {
 
     fn handle_varname(&mut self, varname: Expr) -> String {
         match varname {
-            Expr::VariableName { ref typ, reassign, .. } => {
+            Expr::VariableName { ref typ, reassign, constant, .. } => {
+                let mut vardec = if constant && !reassign {
+                    String::from("const ")
+                } else {
+                    String::new()
+                };
+
                 let new_name = self.handle_deref_struct(varname.clone());
                 if let Types::ArrIndex { index_at, .. } = typ {
-                    return format!("{new_name}[{index_at}]")
+                    vardec.push_str(&format!("{new_name}[{index_at}]"));
+                    return vardec
                 }
 
                 if let Types::TypeDef { type_name, generics } = typ {
@@ -230,11 +237,15 @@ impl Gen {
                     let str_typ = self.handle_typ(typ.clone());
                     if !str_typ.1.is_empty() {
                         self.generate_new_struct(format!("{}", str_typ.0), &String::from("array"));
-                        return format!("array_{} {new_name} = {{.data = ({}{})Y", str_typ.0, str_typ.0, str_typ.1)
+                        vardec.push_str(&format!("array_{} {new_name} = {{.data = ({}{})Y", str_typ.0, str_typ.0, str_typ.1));
+                        return vardec
                     }
-                    return format!("{} {new_name}{}", str_typ.0, str_typ.1)
+
+                    vardec.push_str(&format!("{} {new_name}{}", str_typ.0, str_typ.1));
+                    return vardec
                 } else {
-                    return format!("{new_name}")
+                    vardec.push_str(&format!("{new_name}"));
+                    return vardec
                 }
             },
             Expr::DerefPointer(value) => {
@@ -740,10 +751,10 @@ impl Gen {
                     func_code.push_str(") ({\\\n");
                     self.code.push_str(&func_code);
                 },
-                Expr::VariableName { typ, name, reassign, field_data } => {
+                Expr::VariableName { typ, name, reassign, constant, field_data } => {
                     self.add_spaces(self.indent);
 
-                    let mut varname = self.handle_varname(Expr::VariableName { typ: typ.clone(), name, reassign, field_data });
+                    let mut varname = self.handle_varname(Expr::VariableName { typ: typ.clone(), name, reassign, constant, field_data });
                     if varname.chars().last().unwrap() == 'Y' {
                         varname.pop();
                         match varname.find('{') {
