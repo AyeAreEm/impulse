@@ -1,9 +1,9 @@
-struct[T] option: {
+struct[T] option :: {
     $T value;
     bool none;
 }
 
-option(typeid T option[T] opt) option_unwrap: {
+option(typeid T option[T] opt) option_unwrap :: {
     if (opt.none) {
         @c [printf("error: failed to unwrap");];
         @c [exit(1);];
@@ -12,7 +12,7 @@ option(typeid T option[T] opt) option_unwrap: {
     return opt.value;
 }
 
-struct[T] array: {
+struct[T] array :: {
     ^$T data;
     usize len;
 }

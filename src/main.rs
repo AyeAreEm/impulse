@@ -1,4 +1,8 @@
+use std::io::Write;
 use std::{env, fs, process::exit};
+
+use fs_extra::copy_items;
+use fs_extra::dir;
 
 use crate::tokeniser::*;
 use crate::parser::*;
@@ -9,6 +13,36 @@ mod tokeniser;
 mod parser;
 mod generator;
 mod declare_types;
+
+fn initalise(dir: &String) {
+    let path_to_base = format!("{}/base", env::current_dir().unwrap().as_os_str().to_str().unwrap().to_string());
+
+    let options = dir::CopyOptions::new();
+
+    match copy_items(&vec![path_to_base], dir, &options) {
+        Ok(_) => (),
+        Err(e) => match e.kind {
+            fs_extra::error::ErrorKind::AlreadyExists => (),
+            _ => {
+                println!("{e:?}");
+                println!("\x1b[91merror\x1b[0m: unable to copy base standard library during initalising");
+                exit(1);
+            }
+        }
+    }
+
+    let file_res = fs::File::create(format!("{dir}/c_flags.txt"));
+    match file_res {
+        Ok(mut file) => {
+            let _ = file.write_all(b"-O3");
+        },
+        Err(e) => {
+            println!("{e:?}");
+            println!("\x1b[91merror\x1b[0m: unable to create c_flags config file");
+            exit(1);
+        },
+    }
+}
 
 fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool, lang: Lang) {
     let file_res = fs::read_to_string(filename);
@@ -69,6 +103,10 @@ fn usage_build() {
     println!("| -b [-c / -cpp]: generate c or c++ file then build | impulse -b FILE.imp OUTPUT_NAME |");
 }
 
+fn usage_init() {
+    println!("| -init [__path__]: initalise new impulse project | impulse -init . |");
+}
+
 fn usage() {
     println!("USAGE:");
     println!("impulse <COMMAND> [file.imp] <OUTPUT_NAME>");
@@ -78,6 +116,7 @@ fn usage() {
     println!();
     println!("COMMANDS:");
     println!("| -h: help | impulse -h |");
+    usage_init();
     println!("| -r: run | impulse -r FILE.imp OUTPUT_NAME |");
     usage_build();
     usage_c();
@@ -107,6 +146,10 @@ fn main() {
     }
 
     match args[1].as_str() {
+        "-init" => {
+            // incorrect_usage(&args, usage_init);
+            initalise(&args[2]);
+        },
         "-b" => {
             if args[2] == "-c" {
                 incorrect_usage(&args, usage_build);

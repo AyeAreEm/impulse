@@ -1,13 +1,13 @@
 @import "base/memory.imp";
 @import "base/utils.imp";
 
-struct[T] dyn: {
+struct[T] dyn :: {
     ^$T data;
     usize len;
     usize cap;
 }
 
-dyn(typeid T) dyn_new: {
+dyn(typeid T) dyn_new :: {
     dyn[T] new;
     new.len: 0;
     new.cap: 32;
@@ -16,7 +16,7 @@ dyn(typeid T) dyn_new: {
     return new;
 }
 
-option(typeid T dyn[T] arr usize index) dyn_at: {
+option(typeid T dyn[T] arr usize index) dyn_at :: {
     option[T] ret;
     ret.none: false;
 
@@ -29,7 +29,7 @@ option(typeid T dyn[T] arr usize index) dyn_at: {
     return ret;
 }
 
-_(typeid T dyn[T] arr $T elem) dyn_push: {
+_(typeid T dyn[T] arr $T elem) dyn_push :: {
     if ([arr.len + 1] >= arr.cap) {
         arr.cap: [arr.cap + [arr.len + 1] * 2];
         @c [arr.data = re_alloc(arr.data, arr.cap * sizeof(T));];
@@ -39,7 +39,7 @@ _(typeid T dyn[T] arr $T elem) dyn_push: {
     arr.len: [arr.len + 1];
 }
 
-_(typeid T dyn[T] arr) dyn_clear: {
+_(typeid T dyn[T] arr) dyn_clear :: {
     dealloc(arr.data);
     arr: dyn_new(T);
 }

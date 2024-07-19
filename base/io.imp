@@ -1,11 +1,29 @@
 @import "base/string.imp";
 @import "stdio.h";
 
-char() c_getchar: {
+char() c_getchar :: {
     @c [return getchar();];
 }
 
-_(string str) str_println: {
+string readin() :: {
+    string word: str_new();
+    bool newline_counter: 0;
+
+    loop (newline != 2) {
+        char ch: c_getchar();
+        @c [
+            if (ch == '\n') {
+                newline_counter++;
+                continue;
+            }
+        ];
+        str_push(word ch);
+    }
+
+    return word;
+}
+
+_(string str) str_println :: {
     loop (i < str.len) [+] {
         @c [printf("%c", str.data[i]);];
     }
