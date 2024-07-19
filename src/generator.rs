@@ -933,6 +933,12 @@ impl Gen {
     }
 
     pub fn generate(&mut self, expressions: Vec<(Expr, String, u32)>) {
+        let c_flags_res = fs::read_to_string("c_flags.txt");
+        let c_flags = match c_flags_res {
+            Ok(file) => file,
+            Err(_) => String::new(),
+        };
+
         match self.lang {
             Lang::C => {
                 self.generate_c(expressions);
@@ -947,7 +953,7 @@ impl Gen {
                         }
                     }
 
-                    let com = format!("gcc output.c {}-o {}", self.comp_imports, self.out_file);
+                    let com = format!("gcc output.c {}-o {} {}", self.comp_imports, self.out_file, c_flags);
                     println!("{com}");
                     Command::new("cmd")
                         .args(["/C", &com])
@@ -962,7 +968,7 @@ impl Gen {
                         }
                     }
 
-                    let com = format!("gcc {}.c {}-o {}", self.out_file, self.comp_imports, self.out_file);
+                    let com = format!("gcc {}.c {}-o {} {}", self.out_file, self.comp_imports, self.out_file, c_flags);
                     println!("{com}");
                 }
 

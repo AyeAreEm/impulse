@@ -1,7 +1,9 @@
-_ main(): {
-    int x :: 10;
-    x: 5; # error
+_ main() :: {
+    # funcs and struct need :: now since they are constant
 
-    int x;
-    x :: 10; # error
+    int x: 10;
+    if (x = 10) {
+        loop (i < x) [+] {}
+    } orif (x = 9) {}
+    # fixed bug, it would say that "x" on line 7 was undefined. now works
 }

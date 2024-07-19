@@ -281,14 +281,19 @@ impl ExprWeights {
             if self.in_scope && self.current_scope == 0 {
                 self.in_scope = false;
             } else if self.in_scope && self.current_scope > 0 {
-                self.in_scope = false;
                 vars[self.current_scope].pop();
                 self.current_scope -= 1;
+
+                if self.current_scope == 0 {
+                    self.in_scope = false;
+                }
             } else {
                 self.in_func = false;
                 vars[self.current_scope].pop();
             }
         }
+        println!("in scope: {}, current scope: {}", self.in_scope, self.current_scope);
+        println!("func vars: {:?}", self.func_to_vars);
 
         if !self.in_func {
             self.func_to_vars.remove(&self.current_func);
@@ -1376,7 +1381,7 @@ impl ExprWeights {
                 exit(1);
             }
 
-            if seen_colon != 1 {
+            if seen_colon != 2 {
                 self.comp_err(&format!("expected assigment operator `:`. did you mean `struct {name}: {{`?"));
                 exit(1);
             } else {
@@ -1385,7 +1390,7 @@ impl ExprWeights {
             }
         }
 
-        if seen_colon == 1 {
+        if seen_colon == 2 {
             if self.in_struct_def {
                 self.comp_err("can't use create a function inside structs");
                 exit(1);
@@ -1393,7 +1398,7 @@ impl ExprWeights {
 
             self.create_func(typ.clone(), params.clone(), name.clone());
             return
-        } else if seen_colon > 1 {
+        } else if seen_colon > 2 {
             self.comp_err("unexpected assignment operator `:`");
             exit(1);
         }
