@@ -5,28 +5,30 @@ char() c_getchar :: {
     @c [return getchar();];
 }
 
-string readin() :: {
+string input() :: {
     string word: str_new();
-    bool newline_counter: 0;
+    bool newline: false;
 
-    loop (newline != 2) {
+    loop (!newline) {
         char ch: c_getchar();
         @c [
             if (ch == '\n') {
-                newline_counter++;
-                continue;
+                break;
             }
         ];
-        str_push(word ch);
+        str_push(&word ch);
     }
 
     return word;
 }
 
-_(string str) str_println :: {
+_(string str) str_print :: {
     loop (i < str.len) [+] {
         @c [printf("%c", str.data[i]);];
     }
+}
 
+_(string str) str_println :: {
+    str_print(str);
     @c [printf("\n");];
 }

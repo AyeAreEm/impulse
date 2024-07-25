@@ -1,9 +1,64 @@
-_ main() :: {
-    # funcs and struct need :: now since they are constant
+@import "stdio.h";
+@import "base/io.imp";
+@import "base/dynamic.imp";
 
-    int x: 10;
-    if (x = 10) {
-        loop (i < x) [+] {}
-    } orif (x = 9) {}
-    # fixed bug, it would say that "x" on line 7 was undefined. now works
+# not sure why the regular input() function doesn't work. it works usually
+string readin() :: {
+    string word: str_new();
+    u8 newline_counter: 0;
+
+    loop (newline_counter < 2) {
+        char ch: c_getchar();
+        @c [
+            if (ch == '\n') {
+                newline_counter++;
+                continue;
+            }
+        ];
+        str_push(&word ch);
+    }
+
+    return word;
+}
+
+_ main() :: {
+    bool quit: false;
+    dyn[string] todos: dyn_new(string);
+
+    loop (!quit) {
+        usize input_num;
+        @c [
+            printf("1. show todos\n");
+            printf("2. add todo\n");
+            printf("3. delete todo\n");
+            printf("4. quit\n");
+            scanf_s("%zu", &input_num);
+        ];
+
+        if (input_num = 1) {
+            for (todos) [todo i] {
+                @c [
+                    printf("\n");
+                    printf("%zu: ", i+1);
+                ];
+                str_println(todo);
+                @c [printf("\n");];
+            }
+        } orif (input_num = 2) {
+            @c [printf("enter todo: ");];
+            string todo: readin();
+            dyn_push(string todos todo);
+        } orif (input_num = 3) {
+            @c [
+                printf("enter todo number: ");
+                scanf_s("%zu", &input_num);
+            ];
+            input_num: [input_num - 1];
+            dyn_remove(string todos input_num);
+        } orif (input_num = 4) {
+            break;
+        } else {
+            @c [printf("that is not an option");];
+        }
+    }
 }

@@ -32,7 +32,7 @@ string() str_new :: {
     return new;
 }
 
-_(string str usize modifier) str_resize :: {
+_(^string str usize modifier) str_resize :: {
     usize increase: [[str.len + modifier] * 2];
     str.cap: [str.cap + increase];
 
@@ -45,7 +45,7 @@ string(^char str) str_from :: {
     usize cstr_len: c_strlen(str);
 
     if (cstr_len > new.cap) {
-        str_resize(new cstr_len);
+        str_resize(&new cstr_len);
     }
 
     new.len: cstr_len;
@@ -53,14 +53,14 @@ string(^char str) str_from :: {
     return new;
 }
 
-_ (string str char ch) str_push :: {
+_ (^string str char ch) str_push :: {
     usize new_len: [str.len + 1];
 
-    if (new_len > str.cap) {
+    if (new_len >= str.cap) {
         str_resize(str 0);
     }
 
-    str.data[new_len]: ch;
+    str.data[str.len]: ch;
     str.len: new_len;
 }
 
