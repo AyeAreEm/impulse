@@ -955,10 +955,17 @@ impl Gen {
 
                     let com = format!("gcc output.c {}-o {} {}", self.comp_imports, self.out_file, c_flags);
                     println!("{com}");
-                    Command::new("cmd")
-                        .args(["/C", &com])
-                        .output()
-                        .unwrap();
+                    if cfg!(target_os = "windows") {
+                        Command::new("cmd")
+                            .args(["/C", &com])
+                            .output()
+                            .unwrap();
+                    } else {
+                        Command::new("sh")
+                            .args(["-c", &com])
+                            .output()
+                            .unwrap();
+                    }
                 } else {
                     match fs::write(&format!("./{}.c", self.out_file), c_code) {
                         Ok(_) => (),
