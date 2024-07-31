@@ -18,11 +18,11 @@ int(^char dest int byte_size ^char src) cstr_copy :: {
     @c [return strcpy_s(dest, byte_size, src);];
 }
 
-string() str_new :: {
+string str.new() :: {
     string new;
     new.len: 0;
     new.cap: 50;
-    new.data: alloc(new.cap 1);
+    new.data: mem.alloc(char new.cap);
     @c [
         if (new.data == NULL) {
             exit(1);
@@ -32,20 +32,20 @@ string() str_new :: {
     return new;
 }
 
-_(^string str usize modifier) str_resize :: {
+_ str.resize(^string str usize modifier) :: {
     usize increase: [[str.len + modifier] * 2];
     str.cap: [str.cap + increase];
 
     int new_size: [str.cap + 1];
-    str.data: re_alloc(str.data new_size);
+    str.data: mem.re_alloc(str.data new_size);
 }
 
-string(^char str) str_from :: {
-    string new: str_new();
+string str.from(^char str) :: {
+    string new: str.new();
     usize cstr_len: c_strlen(str);
 
     if (cstr_len > new.cap) {
-        str_resize(&new cstr_len);
+        str.resize(&new cstr_len);
     }
 
     new.len: cstr_len;
@@ -53,18 +53,18 @@ string(^char str) str_from :: {
     return new;
 }
 
-_ (^string str char ch) str_push :: {
+_ str.push(^string str char ch)  :: {
     usize new_len: [str.len + 1];
 
     if (new_len >= str.cap) {
-        str_resize(str 0);
+        str.resize(str 0);
     }
 
     str.data[str.len]: ch;
     str.len: new_len;
 }
 
-bool(string str1 string str2) str_compare :: {
+bool str.compare(string str1 string str2) :: {
     if (str1.len != str2.len) {
         return false;
     }

@@ -1,18 +1,14 @@
-@import "stdio.h";
-
-struct[T K] tuple :: {
-    $T x;
-    $K y;
-}
-
-tuple new_tuple(typeid T typeid K $T x_pos $T y_pos) :: {
-    tuple[T K] new;
-    new.x: x_pos;
-    new.y: y_pos;
-    return new;
-}
+@import "base/io.imp";
+@import "base/dynamic.imp";
 
 _ main() :: {
-    tuple[int char] nums: new_tuple(int char 10 128);
-    @c[printf("x: %d, y: %d", nums.x, nums.y);];
+    dyn[string] words: dyn.new(string);
+    dyn.push(string words str.from("hello world"));
+    dyn.push(string words str.from("bye globe"));
+    for (words) [word] {
+        io.println(word);
+        mem.dealloc(word.data);
+    }
+
+    mem.dealloc(words.data);
 }

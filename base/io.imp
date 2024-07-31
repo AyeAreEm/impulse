@@ -5,8 +5,8 @@ char() c_getchar :: {
     @c [return getchar();];
 }
 
-string input() :: {
-    string word: str_new();
+string io.input() :: {
+    string word: str.new();
     bool newline: false;
 
     loop (!newline) {
@@ -16,19 +16,19 @@ string input() :: {
                 break;
             }
         ];
-        str_push(&word ch);
+        str.push(&word ch);
     }
 
     return word;
 }
 
-_(string str) str_print :: {
+_(string str) io.print :: {
     loop (i < str.len) [+] {
         @c [printf("%c", str.data[i]);];
     }
 }
 
-_(string str) str_println :: {
-    str_print(str);
+_(string str) io.println :: {
+    io.print(str);
     @c [printf("\n");];
 }

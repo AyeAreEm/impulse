@@ -22,6 +22,7 @@ syntax keyword impulseTypeid typeid
 
 syntax match impulseFuncCallName "\<\w\+\>\ze\s*("
 syntax match impulseMacros "@\(import\|c\|array\)"
+syntax match impulseIdent '\w\+\ze\.\w*('
 
 syntax region impulseComment start="#.*" end="$"
 syntax match impulseString /"\v[^"]*"/
@@ -43,5 +44,6 @@ highlight link impulseTrueFalse Function
 highlight link impulseSymbols Operator
 highlight link impulseAndOr Operator
 highlight link impulseTypeid Define
+highlight link impulseIdent Statement
 
 let b:current_syntax = "impulse"

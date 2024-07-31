@@ -292,8 +292,6 @@ impl ExprWeights {
                 vars[self.current_scope].pop();
             }
         }
-        println!("in scope: {}, current scope: {}", self.in_scope, self.current_scope);
-        println!("func vars: {:?}", self.func_to_vars);
 
         if !self.in_func {
             self.func_to_vars.remove(&self.current_func);
@@ -714,7 +712,18 @@ impl ExprWeights {
         self.func_to_vars.entry(name.clone()).or_insert(vec![expr_param]);
         self.in_func = true;
 
-        self.program_push(expr);
+        let sanitised_expr = match expr {
+            Expr::Func { ref typ, ref params, ref name } => {
+                let san_name = name.replace(".", "_");
+                Expr::Func { typ: typ.clone(), params: params.clone(), name: san_name }
+            },
+            Expr::MacroFunc { ref typ, ref params, ref name } => {
+                let san_name = name.replace(".", "_");
+                Expr::MacroFunc { typ: typ.clone(), params: params.clone(), name: san_name }
+            }
+            _ => unreachable!(),
+        };
+        self.program_push(sanitised_expr);
         self.token_stack.clear();
     }
 
@@ -1694,7 +1703,8 @@ impl ExprWeights {
 
         match expr {
             Expr::Func { name, .. } | Expr::MacroFunc { name, .. } => {
-                return Expr::FuncCall { name:name.to_owned(), gave_params: expr_params }
+                let san_name = name.replace(".", "_");
+                return Expr::FuncCall { name: san_name, gave_params: expr_params }
             },
             _ => {
                 self.comp_err(&format!("expected a function, got {:?}", expr));

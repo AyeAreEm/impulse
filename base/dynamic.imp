@@ -7,16 +7,16 @@ struct[T] dyn :: {
     usize cap;
 }
 
-dyn(typeid T) dyn_new :: {
+dyn dyn.new(typeid T) :: {
     dyn[T] new;
     new.len: 0;
     new.cap: 32;
-    @c [new.data = alloc(new.cap, sizeof(T));];
+    @c [new.data = calloc(new.cap, sizeof(T));];
     @c [if (new.data == NULL) exit(1);];
     return new;
 }
 
-option(typeid T dyn[T] arr usize index) dyn_at :: {
+option dyn.at(typeid T dyn[T] arr usize index) :: {
     option[T] ret;
     ret.none: false;
 
@@ -29,22 +29,22 @@ option(typeid T dyn[T] arr usize index) dyn_at :: {
     return ret;
 }
 
-_(typeid T dyn[T] arr $T elem) dyn_push :: {
+_ dyn.push(typeid T dyn[T] arr $T elem) :: {
     if ([arr.len + 1] >= arr.cap) {
         arr.cap: [arr.cap + [arr.len + 1] * 2];
-        @c [arr.data = re_alloc(arr.data, arr.cap * sizeof(T));];
+        @c [arr.data = realloc(arr.data, arr.cap * sizeof(T));];
     }
 
     arr.data[arr.len]: elem;
     arr.len: [arr.len + 1];
 }
 
-_(typeid T dyn[T] arr) dyn_clear :: {
-    dealloc(arr.data);
-    arr: dyn_new(T);
+_ dyn.clear(typeid T dyn[T] arr) :: {
+    mem.dealloc(arr.data);
+    arr: dyn.new(T);
 }
 
-_ dyn_remove(typeid T dyn[T] arr usize index) :: {
+_ dyn.remove(typeid T dyn[T] arr usize index) :: {
     @c [mem_move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
     arr.len: [arr.len - 1];
 }

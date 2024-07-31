@@ -1,32 +1,30 @@
 @import "stdlib.h";
 @import "string.h";
 
-^_(usize len usize size) alloc :: {
-    @c [ return calloc(len, size); ];
+^_ mem.alloc(typeid T usize len) :: {
+    @c [ calloc(len, sizeof(T)); ];
 }
 
-^_(^_ address usize new_size) re_alloc :: {
+@inline ^_ mem.re_alloc(^_ address usize new_size) :: {
     @c [ return realloc(address, new_size); ];
 }
 
-^_(^_ dest ^_ src usize n) mem_copy :: {
+^_ mem.copy(^_ dest ^_ src usize n) :: {
     @c [ return memcpy(dest, src, n); ];
 }
 
-^_(^_ str int c usize n) mem_set :: {
+^_ mem.set(^_ str int c usize n) :: {
     @c [ return memset(str, c, n); ];
 }
 
-^_(^_ dest ^_ src usize n) mem_move :: {
+^_ mem.move(^_ dest ^_ src usize n) :: {
     @c [ return memmove(dest, src, n); ];
 }
 
-int(^_ ptr1 ^_ ptr2 usize n) mem_compare :: {
+int mem.compare(^_ ptr1 ^_ ptr2 usize n) :: {
     @c [ return memcmp(ptr1, ptr2, n);];
 }
 
-_(^_ block) dealloc :: {
-    @c [
-        free(block);
-    ];
+_ mem.dealloc(^_ block) :: {
+    @c [free(block);];
 }
