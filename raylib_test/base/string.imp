@@ -1,0 +1,79 @@
+@import "base/memory.imp";
+@import "stdio.h";
+
+struct string :: {
+    ^char data;
+    usize cap;
+    usize len;
+}
+
+usize(^char str) c_strlen :: {
+    # maybe just write out the code instead of making a function that calls a function
+    # func calls are more expensive than rewriting
+    @c [ return strlen(str);];
+}
+
+int(^char dest int byte_size ^char src) cstr_copy :: {
+    # doubt i could write safe code that copies strings
+    @c [return strcpy_s(dest, byte_size, src);];
+}
+
+string() str_new :: {
+    string new;
+    new.len: 0;
+    new.cap: 50;
+    new.data: alloc(new.cap 1);
+    @c [
+        if (new.data == NULL) {
+            exit(1);
+        }
+    ];
+
+    return new;
+}
+
+_(^string str usize modifier) str_resize :: {
+    usize increase: [[str.len + modifier] * 2];
+    str.cap: [str.cap + increase];
+
+    int new_size: [str.cap + 1];
+    str.data: re_alloc(str.data new_size);
+}
+
+string(^char str) str_from :: {
+    string new: str_new();
+    usize cstr_len: c_strlen(str);
+
+    if (cstr_len > new.cap) {
+        str_resize(&new cstr_len);
+    }
+
+    new.len: cstr_len;
+    cstr_copy(new.data [new.cap + 1] str);
+    return new;
+}
+
+_ (^string str char ch) str_push :: {
+    usize new_len: [str.len + 1];
+
+    if (new_len >= str.cap) {
+        str_resize(str 0);
+    }
+
+    str.data[str.len]: ch;
+    str.len: new_len;
+}
+
+bool(string str1 string str2) str_compare :: {
+    if (str1.len != str2.len) {
+        return false;
+    }
+
+    loop (i < str1.len) [+] {
+        if (str1.data[i] != str2.data[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}

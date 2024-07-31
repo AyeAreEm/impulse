@@ -1,0 +1,58 @@
+@c [#include "include/raylib.h"];
+
+struct Colour :: {
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
+}
+
+_ init_window(int width int height ^char title) :: {
+    @c [InitWindow(width, height, title);];
+}
+
+_ close_window() :: {
+    @c [CloseWindow();];
+}
+
+bool window_should_close() :: {
+    @c [return WindowShouldClose();];
+}
+
+_ begin_drawing() :: {
+    @c [BeginDrawing();];
+}
+
+_ end_drawing() :: {
+    @c [EndDrawing();];
+}
+
+_ clear_background(Colour colour) :: {
+    @c [ClearBackground(*(Color*)&colour);];
+}
+
+Colour new_colour(u8 r u8 g u8 b u8 a) :: {
+    Colour new;
+    new.r: r;
+    new.g: g;
+    new.b: b;
+    new.a: a;
+    return new;
+}
+
+_ main() :: {
+    Colour red :: new_colour(255 0 0 255);
+
+    init_window(800 600 "hello from impulse");
+
+    bool quit: window_should_close();
+    loop (!quit) {
+        begin_drawing();
+        clear_background(red);
+        end_drawing();
+
+        quit: window_should_close();
+    }
+
+    close_window();
+}

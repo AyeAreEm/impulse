@@ -14,13 +14,13 @@ Rust is not a whip up something quick language. Python is but that's far too slo
 This way with my own language with detailed docs and one day examples, I think I could use impulse to do most things for daily use.
 
 ## Features
-- Non null terminated strings
-- Procedural 
 - Generics
-- Initalise to 0
-- Pointers (odin syntax)
-- Odin / Jai like syntax
-- Decorators (run - run a function immediately after creation)
+- Strings with length
+- Interopability with C
+- Simply syntax
+- Procedural with functional inspiration
+- Decorators (builtin functions)
+- Manual memory management (no garbage collection)
 
 ## Syntax
 -- Note: Take a look at the `hello_world.imp` file to see recently added features in action --<br>

@@ -2,6 +2,7 @@
 
 int(int nth) fib: {
     if (nth = 0 or nth = 1) {return nth;}
+    orif (nth = 2) {return 1;}
     else {
         int next: fib([nth-1]);
         int further: fib([nth-2]);

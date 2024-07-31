@@ -2881,6 +2881,7 @@ impl ExprWeights {
                                     if let Expr::VariableName { typ, .. } = found_var {
                                         if let Types::TypeId = typ {
                                             pass_typs.push(name_buf.clone());
+                                            name_buf.clear();
                                             continue;
                                         }
                                     }
@@ -2890,18 +2891,18 @@ impl ExprWeights {
                                         Expr::MacroStructDef { struct_name, .. } = found_typ {
                                             if let Expr::StructName(name) = *struct_name {
                                                 pass_typs.push(name);
+                                                name_buf.clear();
                                                 continue;
                                             } else if let Expr::MacroStructName { .. } = *struct_name {
                                                 self.comp_err("generic struct with type of a generic struct not supported yet");
                                                 exit(1);
                                             }
+                                    } else {
+                                        self.comp_err(&format!("this expected type, got {name_buf}"));
+                                        exit(1);
                                     }
-                                    self.comp_err(&format!("this expected type, got {name_buf}"));
-                                    exit(1);
                                 },
                             }
-
-                            name_buf.clear();
                         } else {
                             name_buf.push(ch);
                         }

@@ -1,13 +1,10 @@
-# CURRENTLY DOES NOT WORK. YOU CAN USE C EMBEDS TO EMULATE THIS THO
+# currently no in house support for print formatting in impulse
+@import "base/string.imp";
 
 _() main: {
-    print("hello world")
-
-    string greet: "hello world again"
-    print(greet)
-
-    string another_time: "another time"
-    print("hello world " another_time)
+    # working print without formatting in impulse
+    string hello: str_from("hello world");
+    str_println(hello);
 
     # c embed version
     @c [ printf("hello world"); ];
