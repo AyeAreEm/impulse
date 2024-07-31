@@ -1,4 +1,4 @@
 /target
 output.c
-*.exe
-/*.exe
+hello.exe
+/examples/raylib_test/raylib_test.exe
