@@ -751,7 +751,7 @@ impl Gen {
                     }
 
                     if is_inline {
-                        func_code.push_str("static inline ");
+                        func_code.push_str("static inline __attribute__((always_inline)) ");
                     }
 
                     if name == String::from("main") {
