@@ -39,7 +39,7 @@ pub enum Types {
 
     TypeDef {
         type_name: String,
-        generics: Vec<String>,
+        generics: Option<Vec<String>>,
     },
     None,
 }
@@ -86,9 +86,10 @@ pub enum Keyword {
     Address,
 
     Struct,
+    Enum,
     TypeDef {
         type_name: String,
-        generics: Vec<String>,
+        generics: Option<Vec<String>>,
     },
     None,
 }

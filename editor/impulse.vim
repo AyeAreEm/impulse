@@ -15,7 +15,7 @@ syntax keyword impulseAndOr and or
 syntax keyword impulseKeywords break continue return
 syntax keyword impulseBranches if orif else
 syntax keyword impulseLoops loop for
-syntax keyword impulseDataStruct struct
+syntax keyword impulseTypeDefs struct enum
 syntax keyword impulseTypeNames int i32 u32 i8 u8 f32 f64 _ char bool usize
 syntax keyword impulseTrueFalse true false
 syntax keyword impulseTypeid typeid
@@ -32,7 +32,7 @@ syntax match impulseEscapes /\\[nr\"']/
 highlight link impulseKeywords Keyword
 highlight link impulseBranches Conditional
 highlight link impulseLoops Repeat
-highlight link impulseDataStruct Structure
+highlight link impulseTypeDefs Include 
 highlight link impulseMacros Include
 highlight link impulseComment Comment
 highlight link impulseString String

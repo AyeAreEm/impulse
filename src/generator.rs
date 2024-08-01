@@ -153,23 +153,28 @@ impl Gen {
                 }
                 (String::from("bool"), String::new())
             },
-            Types::TypeDef { type_name: user_def, generics } => {
+            Types::TypeDef { type_name: user_def, generics: generics_op } => {
                 let mut typ = format!("{user_def}");
 
-                for (i, generic) in generics.iter().enumerate() {
-                    if self.in_macro_func {
-                        if i == 0 {
-                            typ.push_str(&format!("_##{generic}"));
-                        } else {
-                            typ.push_str(&format!("##{generic}"));
+                match generics_op {
+                    Some(generics) => {
+                        for (i, generic) in generics.iter().enumerate() {
+                            if self.in_macro_func {
+                                if i == 0 {
+                                    typ.push_str(&format!("_##{generic}"));
+                                } else {
+                                    typ.push_str(&format!("##{generic}"));
+                                }
+                            } else {
+                                if i == 0 {
+                                    typ.push_str(&format!("_{generic}"));
+                                } else {
+                                    typ.push_str(&format!("{generic}"));
+                                }
+                            }
                         }
-                    } else {
-                        if i == 0 {
-                            typ.push_str(&format!("_{generic}"));
-                        } else {
-                            typ.push_str(&format!("{generic}"));
-                        }
-                    }
+                    },
+                    None => (),
                 }
                 return (typ, String::new())
             },
@@ -193,7 +198,8 @@ impl Gen {
                 }
 
                 (format!("{typeid}"), String::new())
-            }
+            },
+            Types::None => (String::new(), String::new()),
             unimpl => {
                 self.comp_err(&format!("{unimpl:?} is not implemented yet"));
                 exit(1);
@@ -216,20 +222,25 @@ impl Gen {
                     return vardec
                 }
 
-                if let Types::TypeDef { type_name, generics } = typ {
-                    if !generics.is_empty() {
-                        let mut fullname = String::new();
-                        for (i, generic) in generics.iter().enumerate() {
-                            if i == 0 {
-                                fullname.push_str(&format!("{generic}"));
-                            } else {
-                                fullname.push_str(&format!("_{generic}"));
-                            }
-                        }
+                if let Types::TypeDef { type_name, generics: generics_op } = typ {
+                    match generics_op {
+                        Some(generics) => {
+                            if !generics.is_empty() {
+                                let mut fullname = String::new();
+                                for (i, generic) in generics.iter().enumerate() {
+                                    if i == 0 {
+                                        fullname.push_str(&format!("{generic}"));
+                                    } else {
+                                        fullname.push_str(&format!("_{generic}"));
+                                    }
+                                }
 
-                        if !self.in_macro_func {
-                            self.generate_new_struct(fullname, type_name);
-                        }
+                                if !self.in_macro_func {
+                                    self.generate_new_struct(fullname, type_name);
+                                }
+                            }
+                        },
+                        None => (),
                     }
                 }
 
@@ -373,6 +384,11 @@ impl Gen {
     fn handle_deref_struct(&self, value: Expr) -> String {
         match value {
             Expr::VariableName { typ, name, field_data, .. } => {
+                // we do this cuz it should be a enum at this point
+                if !field_data.0 && name.contains(".") {
+                    return name.replace(".", "_")
+                }
+
                 if let Types::ArrIndex { ref arr_typ, .. } = typ {
                     if field_data.0 && field_data.1 {
                         if let Types::Pointer(_) = **arr_typ {
@@ -630,6 +646,22 @@ impl Gen {
                     }
 
                     self.code.push_str(&format!("{clean_embed}\n"))
+                },
+                Expr::EnumDef { enum_name, enum_fields } => {
+                    let mut def_code = String::new();
+                    match *enum_name {
+                        Expr::EnumName(name) => {
+                            def_code.push_str(&format!("typedef enum {name} {{\n"));
+                        },
+                        _ => (),
+                    }
+
+                    let mut fields = String::new();
+                    for field in enum_fields {
+                        let varname = self.handle_varname(field).replace(".", "_");
+                        fields.push_str(&format!("    {varname},\n"));
+                    }
+                    self.code.push_str(&format!("{def_code}{fields}"));
                 },
                 Expr::StructDef { struct_name, struct_fields } => {
                     let mut def_code = String::new();
