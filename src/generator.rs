@@ -742,9 +742,18 @@ impl Gen {
                     struct_generics.clear();
                     self.in_macro_func = false;
                 },
-                Expr::Func { typ, params, name } => {
+                Expr::Func { typ, params, name, is_inline } => {
                     self.indent += 1;
                     let mut func_code = String::new();
+                    if is_inline && name == String::from("main") {
+                        self.comp_err("can't make main function inline");
+                        exit(1);
+                    }
+
+                    if is_inline {
+                        func_code.push_str("static inline ");
+                    }
+
                     if name == String::from("main") {
                         func_code.push_str("int");
                     } else {

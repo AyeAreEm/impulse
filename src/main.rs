@@ -34,7 +34,7 @@ fn initalise(dir: &String) {
     let file_res = fs::File::create(format!("{dir}/c_flags.txt"));
     match file_res {
         Ok(mut file) => {
-            let _ = file.write_all(b"-O3");
+            let _ = file.write_all(b"-O2");
         },
         Err(e) => {
             println!("{e:?}");

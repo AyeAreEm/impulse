@@ -1,32 +1,10 @@
-enum Day :: {
-    Monday;
-    Tuesday;
-    Wednesday;
-    Thursday;
-    Friday;
-    Saturday;
-    Sunday;
-}
-
-_ Day.show(Day d) :: {
-    if (d = Day.Monday) {
-        @c [printf("monday");];
-    } orif (d = Day.Tuesday) {
-        @c [printf("tuesday");];
-    } orif (d = Day.Wednesday) {
-        @c [printf("wednesday");];
-    } orif (d = Day.Thursday) {
-        @c [printf("thursday");];
-    } orif (d = Day.Friday) {
-        @c [printf("friday");];
-    } orif (d = Day.Saturday) {
-        @c [printf("saturday");];
-    } else {
-        @c [printf("we all know this has to be sunday");];
-    }
+@inline int square(int num) :: {
+    return [num * num];
 }
 
 _ main() :: {
-    Day d: Day.Sunday;
-    Day.show(d);
+    loop (i <= 100) [+] {
+        int num: square(i);
+        @c [printf("%d\n", num);];
+    }
 }

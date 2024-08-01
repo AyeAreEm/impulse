@@ -5,7 +5,7 @@
     @c [ calloc(len, sizeof(T)); ];
 }
 
-@inline ^_ mem.re_alloc(^_ address usize new_size) :: {
+^_ mem.re_alloc(^_ address usize new_size) :: {
     @c [ return realloc(address, new_size); ];
 }
 

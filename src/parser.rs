@@ -7,6 +7,7 @@ pub enum Expr {
         typ: Types,
         params: Vec<Expr>,
         name: String,
+        is_inline: bool,
     },
     MacroFunc {
         typ: Types,
@@ -181,6 +182,7 @@ impl ExprWeights {
             ("c".to_string(), Macros::C),
             ("import".to_string(), Macros::Import),
             ("array".to_string(), Macros::Arr),
+            ("inline".to_string(), Macros::Inline),
             // ("dynam".to_string(), Macros::Dynam),
         ]);
 
@@ -465,10 +467,10 @@ impl ExprWeights {
                                 }
                             }
                         },
-                        Expr::Func { typ, params, name } => {
+                        Expr::Func { typ, params, name, is_inline } => {
                             match typ {
                                 Types::I32 => {
-                                    has_func = Expr::Func { typ, params, name };
+                                    has_func = Expr::Func { typ, params, name, is_inline };
                                 },
                                 _ => {
                                     self.comp_err(&format!("function {name} does not return integer. {typ:?}:{name}"));
@@ -502,7 +504,7 @@ impl ExprWeights {
         return (Keyword::Pointer(tmp, typ), 0)
     }
 
-    fn create_func(&mut self, typ: Types, params: Vec<Token>, name: String) {
+    fn create_func(&mut self, typ: Types, params: Vec<Token>, name: String, is_inline: bool) {
         let mut variables = Vec::new();
         let mut expr_param = Vec::new();
         let mut typeid_names: Vec<String> = Vec::new();
@@ -745,7 +747,7 @@ impl ExprWeights {
         let expr = if is_macro_func {
             Expr::MacroFunc { typ, params: variables, name: name.clone() }
         } else {
-            Expr::Func { typ, params: variables, name: name.clone() }
+            Expr::Func { typ, params: variables, name: name.clone(), is_inline }
         };
         self.functions.push(expr.clone());
         self.current_func = name.clone();
@@ -753,9 +755,9 @@ impl ExprWeights {
         self.in_func = true;
 
         let sanitised_expr = match expr {
-            Expr::Func { ref typ, ref params, ref name } => {
+            Expr::Func { ref typ, ref params, ref name, is_inline } => {
                 let san_name = name.replace(".", "_");
-                Expr::Func { typ: typ.clone(), params: params.clone(), name: san_name }
+                Expr::Func { typ: typ.clone(), params: params.clone(), name: san_name, is_inline }
             },
             Expr::MacroFunc { ref typ, ref params, ref name } => {
                 let san_name = name.replace(".", "_");
@@ -1265,6 +1267,7 @@ impl ExprWeights {
         let mut typ: Types = Types::None;
         let mut name = String::new();
         let mut keyword = Keyword::None;
+        let mut is_inline = false;
 
         let mut brack_rc = 0;
         let mut in_bracks = false;
@@ -1320,6 +1323,12 @@ impl ExprWeights {
                     }
                 },
                 Token::Ident(ident) => {
+                    if is_inline {
+                        if let Token::Macro = self.token_stack[i-1] {
+                            continue;
+                        }
+                    }
+
                     if in_bracks {
                         params.push(token.clone());
                     } else {
@@ -1450,6 +1459,30 @@ impl ExprWeights {
                 },
                 Token::Lsquare => (),
                 Token::Rsquare => (), // these might break stuff idk
+                Token::Macro => {
+                    if self.token_stack.len() < 8 {
+                        self.comp_err(&format!("expected more tokens after macro"));
+                        exit(1);
+                    }
+
+                    match &self.token_stack[i+1] {
+                        Token::Ident(macro_ident) => {
+                            let macro_res = self.macros_map.get(macro_ident);
+                            let mac = match macro_res {
+                                Some(m) => m.clone(),
+                                None => {
+                                    self.comp_err(&format!("expected macro, got {macro_ident}"));
+                                    exit(1);
+                                }
+                            };
+
+                            if let Macros::Inline = mac {
+                                is_inline = true;
+                            }
+                        },
+                        _ => (),
+                    }
+                },
                 unexpected => {
                     self.comp_err(&format!("unexpected token: {unexpected:?}"));
                     exit(1);
@@ -1536,7 +1569,7 @@ impl ExprWeights {
                 exit(1);
             }
 
-            self.create_func(typ.clone(), params.clone(), name.clone());
+            self.create_func(typ.clone(), params.clone(), name.clone(), is_inline);
             return
         } else if seen_colon > 2 {
             self.comp_err("unexpected assignment operator `:`");
@@ -2538,8 +2571,8 @@ impl ExprWeights {
                             self.comp_err(&format!("expected declared identifier, got struct definiton: {ident}"));
                             exit(1);
                         },
-                        Expr::Func { typ, params, name } => {
-                            has_func = Expr::Func { typ, params, name }
+                        Expr::Func { typ, params, name, is_inline } => {
+                            has_func = Expr::Func { typ, params, name, is_inline }
                         },
                         found => {
                             expr_params.push(found);
