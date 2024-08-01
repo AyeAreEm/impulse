@@ -21,7 +21,7 @@ syntax keyword impulseTrueFalse true false
 syntax keyword impulseTypeid typeid
 
 syntax match impulseFuncCallName "\<\w\+\>\ze\s*("
-syntax match impulseMacros "@\(import\|c\|array\)"
+syntax match impulseMacros "@\(import\|c\|array\|inline\)"
 syntax match impulseIdent '\w\+\ze\.\w*('
 
 syntax region impulseComment start="#.*" end="$"
