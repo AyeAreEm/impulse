@@ -1,11 +1,15 @@
+@import "stdio.h";
+@import "stdlib.h";
+
 struct[T] option :: {
     $T value;
     bool none;
 }
 
-option(typeid T option[T] opt) option_unwrap :: {
+option option.unwrap(typeid T option[T] opt) :: {
     if (opt.none) {
-        @c [printf("error: failed to unwrap");];
+        @c [fprintf(stderr, "error: failed to unwrap in %s at line %d\n", __FILE__, __LINE__);];
+        @c [fprintf(stderr, "error: please take a look at the c file for more info\n");];
         @c [exit(1);];
     }
 

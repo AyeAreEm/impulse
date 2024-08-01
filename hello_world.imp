@@ -1,14 +1,6 @@
-@import "base/io.imp";
-@import "base/dynamic.imp";
-
 _ main() :: {
-    dyn[string] words: dyn.new(string);
-    dyn.push(string words str.from("hello world"));
-    dyn.push(string words str.from("bye globe"));
-    for (words) [word] {
-        io.println(word);
-        mem.dealloc(word.data);
-    }
+    option[int] none_option;
+    none_option.none: true;
 
-    mem.dealloc(words.data);
+    int val: option.unwrap(int none_option);
 }

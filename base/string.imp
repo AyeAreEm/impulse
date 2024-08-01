@@ -13,9 +13,9 @@ usize(^char str) c_strlen :: {
     @c [ return strlen(str);];
 }
 
-int(^char dest int byte_size ^char src) cstr_copy :: {
+int(^char dest usize byte_size ^char src) cstr_copy :: {
     # doubt i could write safe code that copies strings
-    @c [return strcpy_s(dest, byte_size, src);];
+    @c [return strncpy_s(dest, byte_size, src);];
 }
 
 string str.new() :: {
