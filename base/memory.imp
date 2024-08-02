@@ -1,30 +1,31 @@
 @import "stdlib.h";
 @import "string.h";
 
+# typeid makes this inlined implicitly
 ^_ mem.alloc(typeid T usize len) :: {
     @c [ calloc(len, sizeof(T)); ];
 }
 
-^_ mem.re_alloc(^_ address usize new_size) :: {
+@inline ^_ mem.re_alloc(^_ address usize new_size) :: {
     @c [ return realloc(address, new_size); ];
 }
 
-^_ mem.copy(^_ dest ^_ src usize n) :: {
+@inline ^_ mem.copy(^_ dest ^_ src usize n) :: {
     @c [ return memcpy(dest, src, n); ];
 }
 
-^_ mem.set(^_ str int c usize n) :: {
+@inline ^_ mem.set(^_ str int c usize n) :: {
     @c [ return memset(str, c, n); ];
 }
 
-^_ mem.move(^_ dest ^_ src usize n) :: {
+@inline ^_ mem.move(^_ dest ^_ src usize n) :: {
     @c [ return memmove(dest, src, n); ];
 }
 
-int mem.compare(^_ ptr1 ^_ ptr2 usize n) :: {
+@inline int mem.compare(^_ ptr1 ^_ ptr2 usize n) :: {
     @c [ return memcmp(ptr1, ptr2, n);];
 }
 
-_ mem.dealloc(^_ block) :: {
+@inline _ mem.dealloc(^_ block) :: {
     @c [free(block);];
 }

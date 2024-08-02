@@ -1,7 +1,7 @@
 @import "base/string.imp";
 @import "stdio.h";
 
-char() c_getchar :: {
+@inline char() c_getchar :: {
     @c [return getchar();];
 }
 

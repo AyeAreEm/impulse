@@ -11,8 +11,10 @@ dyn dyn.new(typeid T) :: {
     dyn[T] new;
     new.len: 0;
     new.cap: 32;
-    @c [new.data = calloc(new.cap, sizeof(T));];
-    @c [if (new.data == NULL) exit(1);];
+    @c [
+        new.data = calloc(new.cap, sizeof(T));
+        if (new.data == NULL) exit(1);
+    ];
     return new;
 }
 

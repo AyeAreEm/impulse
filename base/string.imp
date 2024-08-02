@@ -7,15 +7,15 @@ struct string :: {
     usize len;
 }
 
-usize(^char str) c_strlen :: {
+@inline usize cstr.len(^char str) :: {
     # maybe just write out the code instead of making a function that calls a function
     # func calls are more expensive than rewriting
-    @c [ return strlen(str);];
+    @c [return strlen(str);];
 }
 
-int(^char dest usize byte_size ^char src) cstr_copy :: {
+@inline int cstr.copy(^char dest usize byte_size ^char src) :: {
     # doubt i could write safe code that copies strings
-    @c [return strncpy_s(dest, byte_size, src);];
+    @c [return strcpy_s(dest, byte_size, src);];
 }
 
 string str.new() :: {
@@ -42,14 +42,14 @@ _ str.resize(^string str usize modifier) :: {
 
 string str.from(^char str) :: {
     string new: str.new();
-    usize cstr_len: c_strlen(str);
+    usize cstr_len: cstr.len(str);
 
     if (cstr_len > new.cap) {
         str.resize(&new cstr_len);
     }
 
     new.len: cstr_len;
-    cstr_copy(new.data [new.cap + 1] str);
+    cstr.copy(new.data [new.cap + 1] str);
     return new;
 }
 

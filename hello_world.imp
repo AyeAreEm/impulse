@@ -1,10 +1,11 @@
-@inline int square(int num) :: {
+int square(int num) :: {
     return [num * num];
 }
 
 _ main() :: {
-    loop (i <= 100) [+] {
-        int num: square(i);
-        @c [printf("%d\n", num);];
+    if (square(10) = 100) {
+        @c [printf("i knew it");];
+    } else {
+        @c [printf("oh");];
     }
 }

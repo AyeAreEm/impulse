@@ -454,6 +454,10 @@ impl Gen {
         let mut had_angled = false;
         for condition in conditions {
             match condition {
+                Expr::FuncCall { .. } => {
+                    let func_call_code = self.handle_funccall(condition.clone());
+                    boolean_condition_code.push_str(&format!("{func_call_code}"));
+                },
                 Expr::VariableName { typ, .. } => {
                     let new_name = self.handle_deref_struct(condition.clone());
 
@@ -501,7 +505,10 @@ impl Gen {
                     }
                     boolean_condition_code.push_str("false")
                 },
-                _ => (),
+                unexpected => {
+                    self.comp_err(&format!("unexpected expression {unexpected:?} in branch / boolean condition"));
+                    exit(1);
+                },
             }
         }
 
@@ -634,18 +641,35 @@ impl Gen {
                 },
                 Expr::CEmbed(embed) => {
                     let mut clean_embed = String::new();
+                    let mut added_space = false;
 
                     for (i, ch) in embed.chars().enumerate() {
-                        if ch == '\n' && self.in_macro_func {
-                            clean_embed.push_str("\\\n");
-                        } else if i == embed.len() - 1 && self.in_macro_func {
-                            clean_embed.push_str(&format!("{ch}\\"));
+                        if ch == '\n' {
+                            if self.in_macro_func {
+                                clean_embed.push_str("\\\n");
+                            } else {
+                                clean_embed.push(ch);
+                            }
+
+                            if !added_space {self.add_spaces(self.indent); added_space = true}
+                            self.code.push_str(&clean_embed);
+                            clean_embed.clear();
+                        } else if i == embed.len() - 1 {
+                            if self.in_macro_func {
+                                clean_embed.push_str(&format!("{ch}\\"));
+                            } else {
+                                clean_embed.push(ch);
+                            }
+
+                            if !added_space {self.add_spaces(self.indent); added_space = true}
+                            self.code.push_str(&clean_embed);
+                            clean_embed.clear();
                         } else {
                             clean_embed.push(ch);
                         }
                     }
 
-                    self.code.push_str(&format!("{clean_embed}\n"))
+                    self.code.push('\n')
                 },
                 Expr::EnumDef { enum_name, enum_fields } => {
                     let mut def_code = String::new();

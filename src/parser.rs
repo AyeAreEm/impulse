@@ -756,11 +756,11 @@ impl ExprWeights {
 
         let sanitised_expr = match expr {
             Expr::Func { ref typ, ref params, ref name, is_inline } => {
-                let san_name = name.replace(".", "_");
+                let san_name = name.replace(".", "__");
                 Expr::Func { typ: typ.clone(), params: params.clone(), name: san_name, is_inline }
             },
             Expr::MacroFunc { ref typ, ref params, ref name } => {
-                let san_name = name.replace(".", "_");
+                let san_name = name.replace(".", "__");
                 Expr::MacroFunc { typ: typ.clone(), params: params.clone(), name: san_name }
             }
             _ => unreachable!(),
@@ -946,19 +946,65 @@ impl ExprWeights {
             exit(1);
         }
 
+        let mut func_call = Expr::None;
+        let mut func_just_got = false;
+        let mut func_brack_rc = 0;
+        let mut func_params = Vec::new();
+
         let mut expr_params = Vec::new();
         let mut side_affect = Expr::None;
         let mut had_index = false;
 
         for (i, param) in params.iter().enumerate() {
             match param {
-                Token::Equal => expr_params.push(Expr::Equal),
-                Token::SmallerThan => expr_params.push(Expr::SmallerThan),
-                Token::BiggerThan => expr_params.push(Expr::BiggerThan),
-                Token::Exclaim => expr_params.push(Expr::Exclaim),
-                Token::True => expr_params.push(Expr::True),
-                Token::False => expr_params.push(Expr::False),
+                Token::Equal => {
+                    if func_brack_rc == 0 {
+                        expr_params.push(Expr::Equal)
+                    } else {
+                        func_params.push(param.clone());
+                    }
+                },
+                Token::SmallerThan => {
+                    if func_brack_rc == 0 {
+                        expr_params.push(Expr::SmallerThan)
+                    } else {
+                        func_params.push(param.clone());
+                    }
+                },
+                Token::BiggerThan => {
+                    if func_brack_rc == 0 {
+                        expr_params.push(Expr::BiggerThan)
+                    } else {
+                        func_params.push(param.clone());
+                    }
+                } ,
+                Token::Exclaim => {
+                    if func_brack_rc == 0 {
+                        expr_params.push(Expr::Exclaim)
+                    } else {
+                        func_params.push(param.clone());
+                    }
+                },
+                Token::True => {
+                    if func_brack_rc == 0 {
+                        expr_params.push(Expr::True)
+                    } else {
+                        func_params.push(param.clone());
+                    }
+                },
+                Token::False => {
+                    if func_brack_rc == 0 {
+                        expr_params.push(Expr::False)
+                    } else {
+                        func_params.push(param.clone());
+                    }
+                },
                 Token::Ident(ident) => {
+                    if func_brack_rc != 0 {
+                        func_params.push(param.clone());
+                        continue;
+                    }
+
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let ident_num = ident.parse::<f64>();
                     let is_num = match ident_num {
@@ -995,10 +1041,12 @@ impl ExprWeights {
 
                     let expr = self.find_ident(ident.to_string());
                     match expr {
-                        Expr::Func { name, .. } => {
+                        Expr::Func { ref name, .. } => {
+                            println!("params: {params:?}, len: {}", params.len());
                             if let Token::Lbrack = params[i+1] {
-                                self.comp_err(&format!("function call inside conditions not reimplemented yet"));
-                                exit(1);
+                                func_call = expr;
+                                func_brack_rc += 1;
+                                func_just_got = true;
                             } else {
                                 self.comp_err(&format!("can't compare to function. did you mean to call {name}?. do `{name}()`"));
                                 exit(1);
@@ -1052,11 +1100,33 @@ impl ExprWeights {
                     }
                 },
                 Token::Int(intlit) => {
+                    if func_brack_rc != 0 {
+                        func_params.push(param.clone());
+                        continue;
+                    }
+
                     if had_index {
                         had_index = false;
                         continue;
                     }
                     expr_params.push(self.check_intlit(intlit.to_owned()));
+                },
+                Token::Lbrack => {
+                    if func_just_got {
+                        func_just_got = false;
+                        continue;
+                    }
+                    func_brack_rc += 1;
+                },
+                Token::Rbrack => {
+                    if func_brack_rc > 0 {
+                        func_brack_rc -= 1;
+                        if func_brack_rc == 0 {
+                            expr_params.push(self.create_func_call(&func_call, func_params.clone()));
+                            func_call = Expr::None;
+                            func_params.clear();
+                        }
+                    }
                 },
                 _ => {
                     self.comp_err(&format!("unexpected token in boolean condition: {:?}", param));
@@ -1382,13 +1452,19 @@ impl ExprWeights {
                 Token::Lbrack => {
                     brack_rc += 1;
                     if brack_rc > 0 {
+                        if in_bracks {
+                            params.push(token.clone());
+                        }
                         in_bracks = true;
                     }
+
                 },
                 Token::Rbrack => {
                     brack_rc -= 1;
                     if brack_rc == 0 {
                         in_bracks = false;
+                    } else {
+                        params.push(token.clone());
                     }
                 },
                 Token::Colon => {
@@ -1913,7 +1989,7 @@ impl ExprWeights {
 
         match expr {
             Expr::Func { name, .. } | Expr::MacroFunc { name, .. } => {
-                let san_name = name.replace(".", "_");
+                let san_name = name.replace(".", "__");
                 return Expr::FuncCall { name: san_name, gave_params: expr_params }
             },
             _ => {
