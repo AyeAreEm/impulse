@@ -1,11 +1,11 @@
-int square(int num) :: {
-    return [num * num];
+_ show_nums(@array[int] nums) :: {
+    for (nums) [num] {
+        @c [printf("%d\n", num);];
+    }
 }
 
 _ main() :: {
-    if (square(10) = 100) {
-        @c [printf("i knew it");];
-    } else {
-        @c [printf("oh");];
-    }
+    @array int nums: |1 2 3 4 5|;
+
+    show_nums(nums);
 }

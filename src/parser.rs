@@ -1230,7 +1230,7 @@ impl ExprWeights {
                         },
                     };
 
-                    if type_name == &String::from("dyn") {
+                    if type_name == &String::from("dyn") || type_name == &String::from("array") {
                         let keyword_res = self.keyword_map.get(&generics[0]);
                         let subtyp = match keyword_res {
                             Some(kw) => {

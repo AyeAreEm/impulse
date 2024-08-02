@@ -578,7 +578,7 @@ impl Gen {
                     arr_name = name.clone();
                     format!("{name}.len")
                 } else if let Types::TypeDef { type_name, .. } = typ {
-                    if type_name == String::from("dyn") || type_name == String::from("string")  {
+                    if type_name == String::from("dyn") || type_name == String::from("string") || type_name == String::from("array")  {
                         arr_name = name.clone();
                         format!("{name}.len")
                     } else {
