@@ -1218,7 +1218,7 @@ impl ExprWeights {
         let in_this = self.boolean_conditions(&params, false);
 
         let for_this_typ = match &in_this.0[0] {
-            Expr::VariableName { typ, .. } => {
+            Expr::VariableName { typ, constant, .. } => {
                 if let Types::Arr { typ: subtyp, .. } = typ {
                     *subtyp.clone()
                 } else if let Types::TypeDef { type_name, generics: generics_op } = typ {
@@ -1238,7 +1238,7 @@ impl ExprWeights {
                             },
                             // CAN BREAK
                             None => {
-                                self.propagate_struct_fields(new_varnames[0].to_owned(), generics[0].clone(), false);
+                                self.propagate_struct_fields(new_varnames[0].to_owned(), generics[0].clone(), false, *constant);
                                 Types::TypeDef { type_name: generics[0].clone(), generics: Some(vec![]) }
                             },
                         };
@@ -2114,7 +2114,7 @@ impl ExprWeights {
 
 
         let typ = self.keyword_to_type(keyword);
-        self.propagate_struct_fields(name.clone(), String::from("array"), false);
+        self.propagate_struct_fields(name.clone(), String::from("array"), false, is_constant);
         Expr::VariableName {
             typ: Types::Arr {
                 typ: Box::new(typ),
@@ -2565,11 +2565,11 @@ impl ExprWeights {
         if let Expr::None = found_expr {
             match keyword {
                 Keyword::TypeDef {type_name: ref user_def, ..} => {
-                    self.propagate_struct_fields(name.to_string(), user_def.to_string(), false);
+                    self.propagate_struct_fields(name.to_string(), user_def.to_string(), false, is_constant);
                 },
                 Keyword::Pointer(.., ref last_typ) => {
                     if let Types::TypeDef {type_name: user_def, ..} = last_typ {
-                        self.propagate_struct_fields(name.to_string(), user_def.to_string(), true);
+                        self.propagate_struct_fields(name.to_string(), user_def.to_string(), true, is_constant);
                     }
                 },
                 _ => (),
@@ -3142,7 +3142,7 @@ impl ExprWeights {
         buffer[0].clone()
     }
 
-    fn propagate_struct_fields(&mut self, fname: String, user_def: String, is_ptr: bool) {
+    fn propagate_struct_fields(&mut self, fname: String, user_def: String, is_ptr: bool, is_constant: bool) {
         match self.find_ident(user_def) {
             Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } => {
                 for field in struct_fields {
@@ -3154,7 +3154,7 @@ impl ExprWeights {
                                     typ,
                                     name: new_name,
                                     reassign: false,
-                                    constant: false, // CAN BREAK
+                                    constant: is_constant, // CAN BREAK, testing rn
                                     field_data: (true, is_ptr),
                                 }),
                                 value: Box::new(Expr::None),
@@ -3166,29 +3166,6 @@ impl ExprWeights {
                         _ => (),
                     }
                 }
-            },
-            Expr::EnumDef { .. } => {
-                // COME BACK HERE
-                // for field in enum_fields {
-                //     match field {
-                //         Expr::VariableName { typ, name, .. } => {
-                //             let new_expr = Expr::Variable {
-                //                 info: Box::new(Expr::VariableName {
-                //                     typ,
-                //                     name,
-                //                     reassign: false,
-                //                     constant: false, // CAN BREAK
-                //                     field_data: (true, is_ptr),
-                //                 }),
-                //                 value: Box::new(Expr::None),
-                //             };
-                //             if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
-                //                 vars[self.current_scope].push(new_expr);
-                //             }
-                //         },
-                //         _ => (),
-                //     }
-                // }
             },
             unexpected => {
                 self.comp_err(&format!("unexpected expression {unexpected:?} during field propagation"));
@@ -3311,11 +3288,11 @@ impl ExprWeights {
             Keyword::Generic(_) => (),
             Keyword::Pointer(.., last) => {
                 if let Types::TypeDef { type_name: user_def, .. } = last {
-                    self.propagate_struct_fields(fname, user_def.to_string(), true);
+                    self.propagate_struct_fields(fname, user_def.to_string(), true, false);
                 }
             },
             Keyword::TypeDef { type_name: ref user_def, .. } => {
-                self.propagate_struct_fields(fname, user_def.to_string(), false);
+                self.propagate_struct_fields(fname, user_def.to_string(), false, false);
             },
             _ => {
                 self.comp_err(&format!("unexpected keyword: {kw:?}"));

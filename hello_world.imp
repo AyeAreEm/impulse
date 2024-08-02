@@ -1,11 +1,16 @@
-_ show_nums(@array[int] nums) :: {
-    for (nums) [num] {
-        @c [printf("%d\n", num);];
-    }
+struct vec :: {
+    int x;
+    int y;
+}
+
+vec vec.new(int x int y) :: {
+    vec new;
+    new.x: x;
+    new.y: y;
+    return new;
 }
 
 _ main() :: {
-    @array int nums: |1 2 3 4 5|;
-
-    show_nums(nums);
+    vec pos :: vec.new(10 15);
+    pos.x: 20; # this will error since pos is constant
 }
