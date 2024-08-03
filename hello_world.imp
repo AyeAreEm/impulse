@@ -1,16 +1,27 @@
 struct vec :: {
     int x;
     int y;
-}
 
-vec vec.new(int x int y) :: {
-    vec new;
-    new.x: x;
-    new.y: y;
-    return new;
+    vec new(int x int y) :: {
+        vec vector;
+        vector.x: x;
+        vector.y: y;
+        return vector;
+    }
+
+    _ print(vec coords) :: {
+        @c [printf("x: %d, y: %d\n", coords.x, coords.y);];
+    }
+
+    vec zerod() :: {
+        return vec.new(0 0);
+    }
 }
 
 _ main() :: {
-    vec pos :: vec.new(10 15);
-    pos.x: 20; # this will error since pos is constant
+    vec pos: vec.new(10 15);
+    vec.print(pos);
+
+    pos: vec.zerod();
+    vec.print(pos);
 }

@@ -122,6 +122,7 @@ pub struct ExprWeights {
 
     current_func: String,
     current_scope: usize,
+    previous_func: String,
 
     in_scope: bool,
     in_func: bool,
@@ -203,6 +204,7 @@ impl ExprWeights {
 
             current_func: String::new(),
             current_scope: 0,
+            previous_func: String::new(),
 
             in_scope: false,
             in_func: false,
@@ -1042,7 +1044,6 @@ impl ExprWeights {
                     let expr = self.find_ident(ident.to_string());
                     match expr {
                         Expr::Func { ref name, .. } => {
-                            println!("params: {params:?}, len: {}", params.len());
                             if let Token::Lbrack = params[i+1] {
                                 func_call = expr;
                                 func_brack_rc += 1;
@@ -1434,7 +1435,12 @@ impl ExprWeights {
                                         typ = if create_generic {
                                             // TODO: check if ident is already declared
                                             Types::Generic(ident.to_owned()) // might cause errors idk lmao
-                                        } else {self.keyword_to_type(keyword.clone())};
+                                        } else if self.in_struct_def && self.previous_func.is_empty() {
+                                            Types::TypeDef { type_name: ident.to_owned(), generics: Some(vec![]) }
+                                        } else {
+                                            self.keyword_to_type(keyword.clone())
+                                        };
+
                                         if pointer_counter > 0 {
                                             let tmp_kw = self.create_keyword_pointer(typ, pointer_counter).0;
                                             typ = self.keyword_to_type(tmp_kw);
@@ -1611,7 +1617,7 @@ impl ExprWeights {
 
         if create_struct {
             if self.in_struct_def || self.in_enum_def {
-                self.comp_err("can't use create a struct inside an enum or struct");
+                self.comp_err("can't create a struct inside an enum or struct");
                 exit(1);
             }
 
@@ -1626,7 +1632,7 @@ impl ExprWeights {
 
         if create_enum {
             if self.in_struct_def || self.in_enum_def {
-                self.comp_err("can't use create an enum inside an enum or struct");
+                self.comp_err("can't create an enum inside an enum or struct");
                 exit(1);
             }
 
@@ -1641,7 +1647,21 @@ impl ExprWeights {
 
         if seen_colon == 2 {
             if self.in_struct_def {
-                self.comp_err("can't use create a function inside structs");
+                // struct hasn't been generated yet so even if we made it here, it would make a
+                // function that has the struct inside which is not what we want
+
+                if self.previous_func.is_empty() {
+                    self.previous_func = self.current_func.clone();
+                    // self.prev_scope(); not sure to keep this or not
+                    self.create_struct();
+                    self.in_struct_def = true;
+                }
+
+                let namespaced_name = format!("{}.{name}", self.previous_func);
+                self.create_func(typ.clone(), params.clone(), namespaced_name, is_inline);
+                return
+            } else if self.in_enum_def {
+                self.comp_err("can't create a function inside enums");
                 exit(1);
             }
 
@@ -2740,7 +2760,7 @@ impl ExprWeights {
                         if buffer.len() > 1 {
                             self.comp_err(&format!("unexpected multiple expressions outside of parameters: {:?}", buffer));
                             exit(1);
-                        } else if self.in_struct_def || self.in_enum_def {
+                        } else if (self.in_struct_def && !self.in_func) || self.in_enum_def {
                             self.comp_err(&format!("can't call function {:?} inside struct or enum", buffer[0]));
                             exit(1);
                         } else if returning {
@@ -2819,7 +2839,7 @@ impl ExprWeights {
                                 }
 
                                 // similar syntax between defining var and returning, check which
-                                if self.in_struct_def {
+                                if self.in_struct_def && !self.in_func {
                                     let expr = self.create_define_var(keyword, value[i+1].clone(), vec![]);
                                     self.expr_stack.push(expr);
                                     return Expr::None
@@ -2844,7 +2864,7 @@ impl ExprWeights {
                                                 (keyword, _) = self.create_keyword_pointer(self.keyword_to_type(keyword), pointer_counter);
                                             }
 
-                                            if self.in_struct_def {
+                                            if self.in_struct_def && !self.in_func {
                                                 let expr = if i + 2 < value.len() {
                                                     let slice = value[i+1..value.len()-1].to_vec();
                                                     let last = value.last().unwrap().clone();
@@ -2872,7 +2892,7 @@ impl ExprWeights {
                                         (k, _) = self.create_keyword_pointer(self.keyword_to_type(k), pointer_counter);
                                     }
 
-                                    if self.in_struct_def {
+                                    if self.in_struct_def && !self.in_func {
                                         let expr = self.create_define_var(k, value[i+1].clone(), vec![]);
                                         self.expr_stack.push(expr);
                                         return Expr::None;
@@ -2891,8 +2911,8 @@ impl ExprWeights {
 
                                     let slice = value[i+1..value.len()-1].to_vec();
                                     let last = value.last().unwrap().clone();
-                                    // TODO: figure out how this messes things up
-                                    if self.in_struct_def {
+
+                                    if self.in_struct_def && !self.in_func {
                                         let expr = self.create_define_var(k, value[i+1].clone(), vec![]);
                                         self.expr_stack.push(expr);
                                         return Expr::None;
@@ -2915,6 +2935,7 @@ impl ExprWeights {
 
                                     return self.create_define_var(k, value[i+1].clone(), vec![]);
                                 } else {
+                                    // if in struct it reference it's own name
                                     if self.in_struct_def && !self.current_func.is_empty() && ident == &self.current_func {
                                         let mut k = Keyword::TypeDef {
                                             type_name: format!("struct {}", self.current_func), 
@@ -3057,7 +3078,7 @@ impl ExprWeights {
         }
 
         if returning && buffer.len() <= 1 {
-            if self.in_struct_def {
+            if self.in_struct_def && !self.in_func {
                 self.comp_err(&format!("can't use return inside struct"));
                 exit(1);
             }
@@ -3353,7 +3374,7 @@ impl ExprWeights {
         }
 
         if !right.is_empty() {
-            if self.in_struct_def {
+            if self.in_struct_def && !self.in_func {
                 self.comp_err("can't initalise members inside a struct");
                 exit(1);
             }
@@ -3395,8 +3416,13 @@ impl ExprWeights {
 
                     curl_rc -= 1;
                     self.prev_scope();
-                    if self.in_struct_def {
-                        self.create_struct();
+                    if self.in_struct_def && curl_rc == 0 {
+                        if self.previous_func.is_empty() {
+                            self.create_struct();
+                        } else {
+                            self.previous_func.clear();
+                            self.in_struct_def = false;
+                        }
                     } else if self.in_enum_def {
                         self.create_enum();
                     } else {
