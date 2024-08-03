@@ -1,41 +1,65 @@
-# Types
-Impulse has the basics. we plan to implement more types such as booleans, pointers & addresses, floats, etc
-<br>
-```
-_ -> void
+# Primitives
+## Void
+`_` is void but it's also used as a general symbol to mean "Nothing".
 
-u8 -> 8 bit unsigned integer
-i8 -> 8 bit signed integer
-char -> 8 bit integer to interop with C (OS dependant if signed or unsigned)
-u32 -> 32 bit unsigned integer
-i32 -> 32 bit signed integer
-int -> OS dependant sized signed integer, same as C
-usize -> OS dependant sized unsigned integer, big enough for the OS's pointer type
+## Integers
+### Unsigned
+`u8 u16 u32 u64 usize`<br>
+usize acts the same way as C's `size_t` or Rust's `usize` type
 
-bool -> boolean
-^ -> pointer (also dereference operator when put behind the variable name)
-typeid -> type (to pass a type as a value, goes in hand mainly with generics)
+### Signed
+`i8 i16 i32 i64 int`<br>
+int acts the same way as C's `int` type
 
-@array[10] (type) -> an array of type with optional length (optional if initalised with values), e.g. @array int
-```
+### Os dependant
+`int usize char`<br>
+`char` is either `u8` or `i8`, acts the same as C's `char` type
 
-## Note about arrays
-`@array` is a bit of a weird compiler hack<br>
-In the standard lib, there's a struct definition
-```
-struct[T] array: {
-    ^$T data;
-    usize len;
-}
-```
-before arrays in Impulse were the same as in C, just a pointer. I want arrays in Impulse to also carry the length as well
-so something like
-```
-@array int nums: |1 2 3 4 5|;
-```
-transcompiles as (not that this does not work in C++)
-```
-array_int nums = {.data = (int[]){1, 2, 3, 4, 5}, .len = 5};
-```
+## Floats
+`f32 f64`
 
-<a href="./Variables.md">Next -> Variables</a>
+## Boolean
+`bool | true false`
+
+## Pointers
+`^ | &`<br>
+`&` works exactly like in C<br>
+`^` works like `*` in C but the `^` goes before any type. `^char` or `^int` are pointers to their respective type.<br>
+To dereference, `<name>^`
+
+## Void Pointer
+`^_`, works exactly like C's `void*`
+
+## Typeid
+`typeid T`<br>
+`typeid` is the keyword<br>
+These are used to pass types to functions, used as generics, used in structs (although `typeid` keyword is implicit in structs)
+
+# Types "shipped" with Impulse
+`option result string dyn array`
+
+## Options
+These work similar to Rust's Options.<br>
+`option[int] index;`<br>
+Option has two fields, a generic `value` and a boolean `none`
+
+## Result
+These work similar to Rust's Results.<br>
+`result[int] var;`<br>
+Result has two fields, a generic `value` and a cstr (^char) `error`
+
+## String
+`string word: str.from("hello world");`<br>
+`mem.dealloc(word.data)`<br>
+Memory allocated string that contains a cstr (^char) `data`, a usize `len` and a usize `cap`<br>
+Note: all memory allocated data will be under a `data` field in the standard library
+
+## Dyn
+`dyn[int] nums: dyn.new(int);`<br>
+`mem.dealloc(nums.data);`<br>
+Memory allocated dynamic array that contains a generic pointer `data`, a usize `len` and a usize `cap`
+
+## Array
+`@array[100] int nums: |1 2 3 4 5|;`<br>
+`@array int nums: |1 2 3 4 5|;`<br>
+Array's can also be represented through pointers but this one has a generic pointer `data` and a usize `len`.

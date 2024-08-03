@@ -1,18 +1,5 @@
+@import "base/dynamic.imp";
+
 _ main() :: {
-    i8 a;
-    i16 b;
-    i32 c;
-    i64 d;
-
-    u8 e;
-    u16 f;
-    u32 g;
-    u64 h;
-
-    f32 i;
-    f64 j;
-
-    char k;
-    int l;
-    usize m;
+    dyn[int] nums: dyn.new(int);
 }

@@ -1,43 +1,43 @@
 # Loops
 
-Impulse has two types of loops. `loop` which is similar to a while loop, and `for` which is a for in loop
-
-## Loop (While)
-This is probably the most common way to write this loop
+## Loop
 ```
 loop (i < 10) [+] {
-    # code...
+    # i is type usize here
+    # i is out of scope after the closing bracket
 }
-```
-There's a few things to disect here. `(i < 10)`, the `i` is an implicit variable declaration of type `usize`<br>
-This basically means "while i is smaller than 10", anything in the brackets needs to equate to a `bool`<br>
-Now what's the `[+]`? It's like a shorthand for `i++`, and that means `[-]` works as `i--`. Note that if you use `[-]`,
-you need to declare you're variable beforehand<br><br>
 
-If you don't want to automatically increase or decrease after each loop, you can use `[_]` or just simply don't include the square brackets so it looks like
-```
+int i: 0;
+loop (i < 10) [+] {
+
+}
+
+int j: 10;
+loop (j > 0) [-] {
+
+}
+
 loop (i < 10) {
-    # code...
     i: [i + 2];
 }
 ```
 
+The syntax is `loop (<boolean condition>) <[modifier]> {}`<br>
+The modifier is optional. There are 3 modifiers: `[+]`, `[-]`, `[_]`. The plus and minus increment or decrement by one, the void `[_]` is the same as not giving a modifier
+
+
 ## For
-Impulse for loops look similar to Zig's ones
-Here's an example
+Known as the For In or the For Each loop, similar to Zig's syntax
 ```
-@array int nums: |1 2 3 4 5|;
+@array string fruits: |str.from("apple") str.from("cherry") str.from("banana")|;
 
-for (nums) [num] {
-    @c [printf("%d\n", num);];
+for (fruits) [fruit] {
+    str.println(fruit);
+}
+
+for (fruits) [fruit i] {
+    # i is the current index
 }
 ```
-Inside the brackets is where you put your array. Implicit variable declarations in the square brackets. `note that for loops work for arrays, dynamic arrays and strings`<br>
 
-If you want the current index, simply declare in the square brackets after your element declaration
-```
-for (nums) [num i] {
-    @c [printf("num: %d, index: %d\n", num, i);];
-}
-```
-<a href="./Generics.md">Next -> Generics</a>
+The syntax is `for (<elements>) [<elem> <idx>] {}`, the index is optional. Also note that there are only a few types that the for loop supports: `array`, `dyn`, `string`

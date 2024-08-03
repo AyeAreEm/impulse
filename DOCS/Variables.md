@@ -1,28 +1,29 @@
 # Variables
-I don't like keywords like `let` or `var`, that's why impulse's approach to variables is similar to C. Here's some examples:
+These work similarly to C where it's `<type> <name>: <value>`, also note that `:` is the assignment operator and `=` is the equality operator
 ```
-int x: 10;
-string msg: "Hello";
+int x: [5 + 5];
+string word: str.from("hello");
 bool foo: true;
-@array int arr: |0 1 2|;
+@array[10] int arr: |0 1 2|;
+dyn[int] nums: dyn.new(int);
 
-^int address_num: &x;
-```
-There's a few things to note here. First, the `:` - this is the assigment operator in impulse. And yes, that does mean that the equality operator is `=` and not `==`
-<br>
-Second, no comma's. the compiler understand what you're trying to do, but that does mean you need to be more specific when saying something is one element by wrapping it around `[0 + 1]`. This is `SUBJECT TO CHANGE`
-Next, which is a big part of impulse's design philosophy, the order of the code.
-```
-<TYPE> <NAME> <VALUE>
-```
-This only applies when declaring something, anything in impulse, even functions. There's a catch though, getting / using / re-assigning / pretty much anything besides declaring is written differently. It's unnoticable in most code
-```
-x: 20
-msg: "World"
-foo: false
-arr[0]: 1
-
-address_num^: 10
+^int pointer_to_x: &x;
+x^: 15;
 ```
 
-<a href="./Functions.md">Next -> Functions</a>
+# Constant variable
+`::` is the constant assignment operator, similar to Odin or Jai
+```
+int x :: 10;
+x: 15; # errors
+```
+Note: a little quirk with constants are the same as how they are in C, if you get a pointer to it and then change it's value, it will work, no errors.
+
+
+# Note
+Almost all identifiers can have a `.` in it. This is to emulate methods or fields without a struct if you just need the association.<br>
+Can be useful for pointers as they don't have a length,
+```
+^int nums: mem.alloc(int 10);
+usize nums.len: 10;
+```
