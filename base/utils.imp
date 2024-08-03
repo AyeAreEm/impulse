@@ -4,16 +4,15 @@
 struct[T] option :: {
     $T value;
     bool none;
-}
 
-option option.unwrap(typeid T option[T] opt) :: {
-    if (opt.none) {
-        @c [fprintf(stderr, "error: failed to unwrap in %s at line %d\n", __FILE__, __LINE__);];
-        @c [fprintf(stderr, "error: please take a look at the c file for more info\n");];
-        @c [exit(1);];
+    option unwrap(typeid T option[T] opt) :: {
+        if (opt.none) {
+            @c [fprintf(stderr, "error: failed to unwrap in %s at line %d\n", __FILE__, __LINE__);];
+            @c [fprintf(stderr, "error: please take a look at the c file for more info\n");];
+            @c [exit(1);];
+        }
+        return opt.value;
     }
-
-    return opt.value;
 }
 
 struct[T] array :: {

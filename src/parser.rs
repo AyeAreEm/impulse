@@ -144,13 +144,19 @@ impl ExprWeights {
             // ("print".to_string(), Keyword::Print),
             // ("readin".to_string(), Keyword::ReadIn),
 
+            ("u8".to_string(), Keyword::U8),
+            ("i8".to_string(), Keyword::I8),
+            ("char".to_string(), Keyword::Char),
+
+            ("u16".to_string(), Keyword::U16),
+            ("i16".to_string(), Keyword::I16),
+
             ("u32".to_string(), Keyword::U32),
             ("i32".to_string(), Keyword::I32),
             ("int".to_string(), Keyword::Int),
 
-            ("u8".to_string(), Keyword::U8),
-            ("i8".to_string(), Keyword::I8),
-            ("char".to_string(), Keyword::Char),
+            ("u64".to_string(), Keyword::U64),
+            ("i64".to_string(), Keyword::I64),
 
             ("usize".to_string(), Keyword::Usize),
 
@@ -237,11 +243,15 @@ impl ExprWeights {
 
     fn keyword_to_type(&self, kw: Keyword) -> Types {
         match kw {
-            Keyword::U32 => Types::U32,
-            Keyword::I32 => Types::I32,
             Keyword::U8 => Types::U8,
             Keyword::I8 => Types::I8,
             Keyword::Char => Types::Char,
+            Keyword::U16 => Types::U16,
+            Keyword::I16 => Types::I16,
+            Keyword::U32 => Types::U32,
+            Keyword::I32 => Types::I32,
+            Keyword::U64 => Types::U64,
+            Keyword::I64 => Types::I64,
             Keyword::Usize => Types::Usize,
             Keyword::Int => Types::Int,
             Keyword::F32 => Types::F32,
@@ -448,8 +458,9 @@ impl ExprWeights {
                         Expr::VariableName { typ, name, field_data, .. } => {
                             if field_data.0 && field_data.1 {
                                 match typ {
-                                    Types::I32 | Types::U8 | Types::I8 | Types::Int |
-                                    Types::Usize | Types::Pointer(_) | Types::Generic(_) => {
+                                    Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::Int | Types::U16 | Types::I16 |
+                                    Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
+                                    Types::F32 | Types::F64 => {
                                         let new_name = ident.replace(".", "->");
                                         clean.push_str(&new_name)
                                     } ,
@@ -460,8 +471,9 @@ impl ExprWeights {
                                 }
                             } else {
                                 match typ {
-                                    Types::I32 | Types::U8 | Types::I8 | Types::Int |
-                                    Types::Usize | Types::Pointer(_) | Types::Generic(_) => clean.push_str(&ident),
+                                    Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::Int | Types::U16 | Types::I16 |
+                                    Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
+                                    Types::F32 | Types::F64 => clean.push_str(&ident),
                                     _ => {
                                         self.comp_err(&format!("variable {name} is not an integer. {typ:?}:{name}"));
                                         exit(1);
@@ -1573,7 +1585,7 @@ impl ExprWeights {
         }
 
         if create_for {
-            if self.in_struct_def || self.in_enum_def {
+            if (self.in_struct_def && !self.in_func) || self.in_enum_def {
                 self.comp_err("can't use loops inside structs or enums");
                 exit(1);
             }
@@ -1583,7 +1595,7 @@ impl ExprWeights {
         }
 
         if create_loop {
-            if self.in_struct_def || self.in_enum_def {
+            if (self.in_struct_def && !self.in_func) || self.in_enum_def {
                 self.comp_err("can't use loops inside structs or enums");
                 exit(1);
             }
@@ -1593,7 +1605,7 @@ impl ExprWeights {
         }
 
         if create_branch {
-            if self.in_struct_def || self.in_enum_def {
+            if (self.in_struct_def && !self.in_func) || self.in_enum_def {
                 self.comp_err("can't use branches inside structs or enums");
                 exit(1);
             }
@@ -3303,8 +3315,8 @@ impl ExprWeights {
         }
 
         match kw {
-            Keyword::I32 | Keyword::I8 | Keyword::U8 | Keyword::U32 | Keyword::F32 | Keyword::F64 |
-            Keyword::Char | Keyword::Usize | Keyword::Bool | Keyword::Int => (),
+            Keyword::Char | Keyword::I8 | Keyword::U8 | Keyword::U16 | Keyword::I16 | Keyword::U32 | Keyword::I32 |
+            Keyword::F32 | Keyword::F64 | Keyword::Usize | Keyword::Bool | Keyword::Int | Keyword::I64 | Keyword::U64 => (),
             Keyword::None => (),
             Keyword::Generic(_) => (),
             Keyword::Pointer(.., last) => {

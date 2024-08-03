@@ -135,9 +135,13 @@ impl Gen {
         match typ {
             Types::U8 => (String::from("u8"), String::new()),
             Types::I8 => (String::from("i8"), String::new()),
+            Types::Char => (String::from("char"), String::new()),
+            Types::U16 => (String::from("u16"), String::new()),
+            Types::I16 => (String::from("u16"), String::new()),
             Types::U32 => (String::from("u32"), String::new()),
             Types::I32 => (String::from("i32"), String::new()),
-            Types::Char => (String::from("char"), String::new()),
+            Types::U64 => (String::from("u64"), String::new()),
+            Types::I64 => (String::from("i64"), String::new()),
             Types::Int => (String::from("int"), String::new()),
             Types::F32 => (String::from("f32"), String::new()),
             Types::F64 => (String::from("f64"), String::new()),
@@ -613,8 +617,12 @@ impl Gen {
         self.imports.push_str("#include <stdbool.h>\n");
         self.code.push_str("typedef uint8_t u8;\n");
         self.code.push_str("typedef int8_t i8;\n");
+        self.code.push_str("typedef uint16_t u16;\n");
+        self.code.push_str("typedef int16_t i16;\n");
         self.code.push_str("typedef uint32_t u32;\n");
         self.code.push_str("typedef int32_t i32;\n");
+        self.code.push_str("typedef uint64_t u64;\n");
+        self.code.push_str("typedef int64_t i64;\n");
         self.code.push_str("typedef float f32;\n");
         self.code.push_str("typedef double f64;\n");
         self.code.push_str("typedef size_t usize;\n");

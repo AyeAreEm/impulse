@@ -5,48 +5,48 @@ struct[T] dyn :: {
     ^$T data;
     usize len;
     usize cap;
-}
 
-dyn dyn.new(typeid T) :: {
-    dyn[T] new;
-    new.len: 0;
-    new.cap: 32;
-    @c [
-        new.data = calloc(new.cap, sizeof(T));
-        if (new.data == NULL) exit(1);
-    ];
-    return new;
-}
+    dyn new(typeid T) :: {
+        dyn[T] new;
+        new.len: 0;
+        new.cap: 32;
+        @c [
+            new.data = calloc(new.cap, sizeof(T));
+            if (new.data == NULL) exit(1);
+        ];
+        return new;
+    }
 
-option dyn.at(typeid T dyn[T] arr usize index) :: {
-    option[T] ret;
-    ret.none: false;
+    option at(typeid T dyn[T] arr usize index) :: {
+        option[T] ret;
+        ret.none: false;
 
-    if (index >= arr.len) {
-        ret.none: true;
+        if (index >= arr.len) {
+            ret.none: true;
+            return ret;
+        }
+
+        ret.value: arr.data[index];
         return ret;
     }
 
-    ret.value: arr.data[index];
-    return ret;
-}
+    _ push(typeid T dyn[T] arr $T elem) :: {
+        if ([arr.len + 1] >= arr.cap) {
+            arr.cap: [arr.cap + [arr.len + 1] * 2];
+            @c [arr.data = realloc(arr.data, arr.cap * sizeof(T));];
+        }
 
-_ dyn.push(typeid T dyn[T] arr $T elem) :: {
-    if ([arr.len + 1] >= arr.cap) {
-        arr.cap: [arr.cap + [arr.len + 1] * 2];
-        @c [arr.data = realloc(arr.data, arr.cap * sizeof(T));];
+        arr.data[arr.len]: elem;
+        arr.len: [arr.len + 1];
     }
 
-    arr.data[arr.len]: elem;
-    arr.len: [arr.len + 1];
-}
+    _ clear(typeid T dyn[T] arr) :: {
+        mem.dealloc(arr.data);
+        arr: dyn.new(T);
+    }
 
-_ dyn.clear(typeid T dyn[T] arr) :: {
-    mem.dealloc(arr.data);
-    arr: dyn.new(T);
-}
-
-_ dyn.remove(typeid T dyn[T] arr usize index) :: {
-    @c [mem_move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
-    arr.len: [arr.len - 1];
+    _ remove(typeid T dyn[T] arr usize index) :: {
+        @c [mem_move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
+        arr.len: [arr.len - 1];
+    }
 }

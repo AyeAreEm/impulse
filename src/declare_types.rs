@@ -5,12 +5,18 @@ pub enum Lang {
 
 #[derive(Debug, Clone)]
 pub enum Types {
-    U32,
-    I32,
-
     U8,
     I8,
     Char,
+
+    U16,
+    I16,
+
+    U32,
+    I32,
+
+    U64,
+    I64,
 
     Usize,
     Int,
@@ -46,12 +52,18 @@ pub enum Types {
 
 #[derive(Debug, Clone)]
 pub enum Keyword {
-    U32,
-    I32,
-
     U8,
     I8,
     Char,
+
+    U16,
+    I16,
+
+    U32,
+    I32,
+
+    U64,
+    I64,
 
     Usize,
     Int,
