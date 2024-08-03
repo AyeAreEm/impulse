@@ -5,7 +5,7 @@
 `@import "stdlib.h";`<br>
 `@import "base/dynamic.imp";`
 
-This can be done for both Header files and Impulse files.<br>
+This can be done for both Header files and Impulse files but to call functions from a Header file, you'll need to use a C Embed (you can wrap it in a Impulse function)<br>
 It's good to note that the transpiler will check if the Header file is a libc file and if not, go will put `<name>.c` into the GCC compilation.<br>
 If you only have a header file but no C file, you can use `@c [#include "name.h"]`
 
