@@ -83,6 +83,9 @@ struct string :: {
 
         ^_ end_data: [dest.data + dest.len];
         mem.copy(end_data src src_len);
+
+        dest.len: new_len;
+        @c [dest->data[new_len] = '\0';];
     }
 
     _ push :: (^string dest ^string src) {
@@ -94,6 +97,9 @@ struct string :: {
 
         ^_ end_data: [dest.data + dest.len];
         mem.copy(end_data src.data src.len);
+
+        dest.len: new_len;
+        @c [dest->data[new_len] = '\0';];
     }
 
     bool compare :: (string first string second) {
