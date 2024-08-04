@@ -48,6 +48,10 @@ impl Gen {
             ("stddef".to_string(), true),
             ("stdint".to_string(), true),
             ("string".to_string(), true),
+            ("math.h".to_string(), true),
+            ("stdarg.h".to_string(), true),
+            ("assert.h".to_string(), true),
+            ("errno.h".to_string(), true),
         ]);
 
         let definition_map = HashMap::new();

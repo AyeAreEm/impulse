@@ -1,5 +1,14 @@
-@import "base/dynamic.imp";
+enum Day :: {
+    Monday;
+    Tuesday;
+    Wednesday;
+    Thursday;
+    Friday;
+    Saturday;
+    Sunday;
+}
 
 _ main() :: {
-    dyn[int] nums: dyn.new(int);
+    Day today: Day.Sunday;
+
 }

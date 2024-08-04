@@ -2065,6 +2065,8 @@ impl ExprWeights {
         parse.functions = self.functions.clone();
         parse.imports = self.imports.clone();
         parse.structures = self.structures.clone();
+        parse.enums = self.enums.clone();
+        parse.enums_fields = self.enums_fields.clone();
         let mut expressions = parse.parser();
 
         if self.imports.len() != parse.imports.len() {
@@ -2081,6 +2083,17 @@ impl ExprWeights {
             let mut new = parse.structures[self.structures.len()..].to_vec();
             self.structures.append(&mut new);
         }
+
+        if self.enums.len() != parse.enums.len() {
+            let mut new = parse.enums[self.enums.len()..].to_vec();
+            self.enums.append(&mut new);
+        }
+
+        if self.enums_fields.len() != parse.enums_fields.len() {
+            let mut new = parse.enums_fields[self.enums_fields.len()..].to_vec();
+            self.enums.append(&mut new);
+        }
+
         self.program.append(&mut expressions);
         return Expr::None
     }
@@ -3200,6 +3213,8 @@ impl ExprWeights {
                     }
                 }
             },
+            // Enums will be checked for propagation but they've already been handling
+            Expr::EnumDef { .. } => (),
             unexpected => {
                 self.comp_err(&format!("unexpected expression {unexpected:?} during field propagation"));
                 exit(1);
