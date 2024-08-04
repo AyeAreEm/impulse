@@ -6,18 +6,16 @@ struct[T] dyn :: {
     usize len;
     usize cap;
 
-    dyn new(typeid T) :: {
+    dyn new :: (typeid T) {
         dyn[T] new;
         new.len: 0;
         new.cap: 32;
-        @c [
-            new.data = calloc(new.cap, sizeof(T));
-            if (new.data == NULL) exit(1);
-        ];
+        new.data: mem.alloc(T new.cap);
+        @c [ if (new.data == NULL) exit(1); ];
         return new;
     }
 
-    option at(typeid T dyn[T] arr usize index) :: {
+    option at :: (typeid T dyn[T] arr usize index) {
         option[T] ret;
         ret.none: false;
 
@@ -30,7 +28,7 @@ struct[T] dyn :: {
         return ret;
     }
 
-    _ push(typeid T dyn[T] arr $T elem) :: {
+    _ push :: (typeid T dyn[T] arr $T elem) {
         if ([arr.len + 1] >= arr.cap) {
             arr.cap: [arr.cap + [arr.len + 1] * 2];
             @c [arr.data = realloc(arr.data, arr.cap * sizeof(T));];
@@ -40,12 +38,12 @@ struct[T] dyn :: {
         arr.len: [arr.len + 1];
     }
 
-    _ clear(typeid T dyn[T] arr) :: {
+    _ clear :: (typeid T dyn[T] arr) {
         mem.dealloc(arr.data);
         arr: dyn.new(T);
     }
 
-    _ remove(typeid T dyn[T] arr usize index) :: {
+    _ remove :: (typeid T dyn[T] arr usize index) {
         @c [mem_move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
         arr.len: [arr.len - 1];
     }

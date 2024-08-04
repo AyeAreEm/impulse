@@ -1,12 +1,12 @@
 @import "base/string.imp";
 @import "stdio.h";
 
-@inline char() c_getchar :: {
+@inline char c_getchar :: () {
     @c [return getchar();];
 }
 
-string io.input() :: {
-    string word: str.new();
+string io.input :: () {
+    string word: string.new();
     bool newline: false;
 
     loop (!newline) {
@@ -16,19 +16,19 @@ string io.input() :: {
                 break;
             }
         ];
-        str.push(&word ch);
+        string.push_char(&word ch);
     }
 
     return word;
 }
 
-_(string str) io.print :: {
+_ io.print :: (string str) {
     loop (i < str.len) [+] {
         @c [printf("%c", str.data[i]);];
     }
 }
 
-_(string str) io.println :: {
+_ io.println :: (string str) {
     io.print(str);
     @c [printf("\n");];
 }

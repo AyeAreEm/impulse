@@ -78,16 +78,12 @@ foo(bar.data[0]);
 
 ### Ideas
 ```
-print -> print something with the type it is
-debug -> print something with a specific type
-
 @def -> define a static label for something (e.g. @def CAP: 100; or @def io: @import "stdio.h";)
 
 defer -> perform action right before the end of current scope
 sizeof -> returns the size in bytes of a type
 
 default struct values -> so that there isn't a need for a constructor as its baked into the struct
-functions in structs -> basically methods
 
 group -> group of acceptable types. `group number: |u8 i8 i32 int usize|`
 

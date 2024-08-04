@@ -3,7 +3,7 @@
 ## Hello World... kinda
 I say kinda because right now, we have to use C Embeds (more on C Embeds later), Future support will come
 ```
-_ main() :: {
+_ main :: () {
     @c [printf("hello world");];
 }
 ```
@@ -114,15 +114,15 @@ Please check <a href="./Types.md">Types.md</a> as it goes over all the basic typ
 ## Functions
 These are similar to C with only a few slight differences
 ```
-_ main() :: {
+_ main :: () {
     
 }
 
-string str.from(^char word) :: {
+string str.from :: (^char word) {
     
 }
 
-vec2 vec.new(int x int y) :: {
+vec2 vec.new :: (int x int y) {
 
 }
 ```

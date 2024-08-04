@@ -349,6 +349,15 @@ impl Gen {
                                 }
                             }
                         },
+                        Expr::EnumDef { enum_name, .. } => {
+                            if let Expr::EnumName(name) = *enum_name.clone() {
+                                if i == 0 {
+                                    funccall_code.push_str(&format!("{name}"));
+                                } else {
+                                    funccall_code.push_str(&format!(", {name}"));
+                                }
+                            }
+                        },
                         unimpl => {
                             self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                             exit(1);

@@ -60,7 +60,7 @@ pub enum Expr {
     IntLit(String),
     StrLit {
         content: String,
-        is_cstr: bool,
+        is_cstr: bool, // TODO: REMOVE, ALL STRING LITERALS ARE CSTR BY DEFAULT
     },
 
     Import(String),
@@ -412,9 +412,11 @@ impl ExprWeights {
                                 self.comp_err(&format!("found () without a function name. did you mean to use []?"));
                                 exit(1);
                             },
+                            // TODO: fix these, they aren't pushing to clean
                             Expr::Func { .. } => self.create_func_call(&has_func, params.clone()),
-                            _ => {
-                                self.comp_err(&format!("unexpected expression in integer literal: {:?}", has_func));
+                            Expr::MacroFunc { .. } => self.create_func_call(&has_func, params.clone()),
+                            ref unexpected => {
+                                self.comp_err(&format!("unexpected expression {unexpected:?} in integer literal: {:?}", has_func));
                                 exit(1);
                             },
                         }
@@ -483,7 +485,9 @@ impl ExprWeights {
                         },
                         Expr::Func { typ, params, name, is_inline } => {
                             match typ {
-                                Types::I32 => {
+                                Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::Int | Types::U16 | Types::I16 |
+                                Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
+                                Types::F32 | Types::F64 => {
                                     has_func = Expr::Func { typ, params, name, is_inline };
                                 },
                                 _ => {
@@ -492,6 +496,19 @@ impl ExprWeights {
                                 },
                             }
                         },
+                        Expr::MacroFunc { typ, params, name } => {
+                            match typ {
+                                Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::Int | Types::U16 | Types::I16 |
+                                Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
+                                Types::F32 | Types::F64 => {
+                                    has_func = Expr::MacroFunc { typ, params, name };
+                                },
+                                _ => {
+                                    self.comp_err(&format!("function {name} does not return integer. {typ:?}:{name}"));
+                                    exit(1);
+                                },
+                            }
+                        }
                         _ => {
                             self.comp_err(&format!("unexpected expression in integer literal: {}", ident));
                             exit(1);
@@ -955,11 +972,6 @@ impl ExprWeights {
     }
 
     fn boolean_conditions(&self, params: &Vec<Token>, is_loop: bool) -> (Vec<Expr>, Expr) {
-        if params.is_empty() {
-            self.comp_err(&format!("expected expressions in boolean condition, got nothing"));
-            exit(1);
-        }
-
         let mut func_call = Expr::None;
         let mut func_just_got = false;
         let mut func_brack_rc = 0;
@@ -968,6 +980,10 @@ impl ExprWeights {
         let mut expr_params = Vec::new();
         let mut side_affect = Expr::None;
         let mut had_index = false;
+
+        if params.is_empty() {
+            expr_params.push(Expr::IntLit(String::from(";")));
+        }
 
         for (i, param) in params.iter().enumerate() {
             match param {
@@ -2695,6 +2711,9 @@ impl ExprWeights {
                         Expr::Func { typ, params, name, is_inline } => {
                             has_func = Expr::Func { typ, params, name, is_inline }
                         },
+                        Expr::MacroFunc { typ, params, name } => {
+                            has_func = Expr::MacroFunc { typ, params, name }
+                        }
                         found => {
                             expr_params.push(found);
                         }
@@ -3174,7 +3193,7 @@ impl ExprWeights {
                     }
                 },
                 _ => {
-                    self.comp_err(&format!("couldn't handle expressions: {:?}", buffer));
+                    self.comp_err(&format!("this couldn't handle expressions: {:?}", buffer));
                     exit(1);
                 },
             }

@@ -5,7 +5,7 @@ struct[T] option :: {
     $T value;
     bool none;
 
-    option unwrap(typeid T option[T] opt) :: {
+    option unwrap :: (typeid T option[T] opt) {
         if (opt.none) {
             @c [fprintf(stderr, "error: failed to unwrap in %s at line %d\n", __FILE__, __LINE__);];
             @c [fprintf(stderr, "error: please take a look at the c file for more info\n");];
@@ -18,4 +18,13 @@ struct[T] option :: {
 struct[T] array :: {
     ^$T data;
     usize len;
+}
+
+# typeid already makes this inlined but explicity is nice
+@inline usize size_of :: (typeid T) {
+    @c [sizeof(T);];
+}
+
+@inline _ cast :: (typeid T $T val typeid K) {
+    @c [(K)val;];
 }

@@ -23,6 +23,8 @@ syntax keyword impulseTypeid typeid
 syntax match impulseFuncCallName "\<\w\+\>\ze\s*("
 syntax match impulseMacros "@\(import\|c\|array\|inline\)"
 syntax match impulseIdent '\w\+\ze\.\w*('
+syntax match impulseFuncDef "\v\w+\ze\s*::\s*\("
+syntax match impulseNamespaceFuncDef "\v\w+\ze\s*\.\s*\w+\s*::\s*\("
 
 syntax region impulseComment start="#.*" end="$"
 syntax match impulseString /"\v[^"]*"/
@@ -32,7 +34,8 @@ syntax match impulseEscapes /\\[nr\"']/
 highlight link impulseKeywords Keyword
 highlight link impulseBranches Conditional
 highlight link impulseLoops Repeat
-highlight link impulseTypeDefs Include 
+highlight link impulseTypeDefs Include
+
 highlight link impulseMacros Include
 highlight link impulseComment Comment
 highlight link impulseString String
@@ -40,10 +43,12 @@ highlight link impulseNumber Number
 highlight link impulseTypeNames Type
 highlight link impulseEscapes SpecialChar
 highlight link impulseFuncCallName Function
+highlight link impulseFuncDef Function
 highlight link impulseTrueFalse Function
 highlight link impulseSymbols Operator
 highlight link impulseAndOr Operator
 highlight link impulseTypeid Define
 highlight link impulseIdent Statement
+highlight link impulseNamespaceFuncDef Statement
 
 let b:current_syntax = "impulse"

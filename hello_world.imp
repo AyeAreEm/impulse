@@ -1,14 +1,13 @@
-enum Day :: {
-    Monday;
-    Tuesday;
-    Wednesday;
-    Thursday;
-    Friday;
-    Saturday;
-    Sunday;
-}
+@import "base/io.imp";
 
-_ main() :: {
-    Day today: Day.Sunday;
+_ main :: () {
+    string word: string.from("hello world");
+    char exclaim;
+    @c [exclaim = '!';];
 
+    string.push_char(&word exclaim);
+    string.push_cstr(&word " goodbye.");
+    @c [printf("%s\n", word.data);];
+
+    mem.dealloc(word.data);
 }

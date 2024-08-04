@@ -1,13 +1,13 @@
 # Functions
-Again, these are similar to C as well as similar to defining a variable. `<type> <name>(<type><arg_name>) :: {}`
+These are similar to Jai or Odin, as well as similar to defining a variable. `<type> <name> :: (<type+arg> <type+arg>) :: {}`
 
 ```
-_ main() :: {
+_ main :: () {
     # code
 }
 
 # this is in the standard library
-@inline _ mem.dealloc(^_ block) :: {
+@inline _ mem.dealloc :: (^_ block) {
     @c [free(block);];
 }
 ```
