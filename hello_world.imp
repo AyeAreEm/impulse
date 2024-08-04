@@ -1,20 +1,9 @@
 @import "base/io.imp";
 
+int x: 100;
+
 _ main :: () {
-    # 101
-    string one_hundred: string.from("one");
-    string hundred: string.from("hundred");
-    ^char and_one: "and one";
-    char space;
-    @c [space = ' ';];
+    x: 200;
 
-    string.push_char(&one_hundred space);
-    string.push(&one_hundred &hundred);
-    string.push_char(&one_hundred space);
-    string.push_cstr(&one_hundred and_one);
-
-    @c [printf("%s\n", one_hundred.data);];
-
-    mem.dealloc(hundred.data);
-    mem.dealloc(one_hundred.data);
+    @c [printf("%d", x);];
 }

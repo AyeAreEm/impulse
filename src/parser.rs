@@ -119,6 +119,7 @@ pub struct ExprWeights {
     enums: Vec<Expr>,
     enums_fields: Vec<Expr>, // VarNames
     func_to_vars: HashMap<String, Vec<Vec<Expr>>>,
+    global_vars: Vec<Expr>,
 
     current_func: String,
     current_scope: usize,
@@ -204,6 +205,7 @@ impl ExprWeights {
 
             functions: Vec::new(),
             func_to_vars,
+            global_vars: Vec::new(),
             structures: Vec::new(),
             enums: Vec::new(),
             enums_fields: Vec::new(),
@@ -1704,6 +1706,26 @@ impl ExprWeights {
         self.program_push(Expr::StartBlock);
     }
 
+    fn find_global_variable(&self, ident: &String) -> Expr {
+        for var in &self.global_vars {
+            match var {
+                Expr::Variable { info, .. } => {
+                    match *info.clone() {
+                        Expr::VariableName { name, .. } => {
+                            if &name == ident {
+                                return *info.clone();
+                            }
+                        },
+                        _ => (),
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        Expr::None
+    }
+
     fn find_variable(&self, ident: &String) -> Expr {
         let variables_res = self.func_to_vars.get(&self.current_func);
         let variables = match variables_res {
@@ -1819,6 +1841,12 @@ impl ExprWeights {
         let mut found: Expr;
         found = self.find_variable(&ident);
 
+        if let Expr::None = found {}
+        else {
+            return found
+        }
+
+        found = self.find_global_variable(&ident);
         if let Expr::None = found {}
         else {
             return found
@@ -2311,7 +2339,8 @@ impl ExprWeights {
                         };
 
                         if let Keyword::None = keyword {
-                            match self.find_variable(ident) {
+                            let found_variable = self.find_ident(ident.to_string());
+                            match found_variable {
                                 Expr::None => {
                                     self.comp_err(&format!("undeclared identifier: {ident}"));
                                     exit(1);
@@ -3371,20 +3400,13 @@ impl ExprWeights {
     }
 
     fn create_variable(&mut self, left: Vec<Token>, right: Vec<Token>, is_constant: bool) {
-        if !self.in_func {
-            self.comp_err(&format!("cannot create variable outside of a scope. variable: {:?}", left));
-            exit(1);
-        }
-
         let left_expr = self.handle_left_assign(left, is_constant);
         let right_expr = self.handle_right_assign(right, true);
 
-        // if let Expr::VariableName { typ, name, reassign, field_data } = left_expr {
-        //     // CHECK IF TYPE IS A CSTR OR STRING, THEN CHANGE THE STRLIT IS_CSTR FIELD
-        // }
-
         let expr = Expr::Variable { info: Box::new(left_expr), value: Box::new(right_expr) };
-        if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
+        if !self.in_func {
+            self.global_vars.push(expr.clone());
+        } else if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
             vars[self.current_scope].push(expr.clone());
         }
 

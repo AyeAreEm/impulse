@@ -76,7 +76,7 @@ Passing array at index to function parameter
 foo(bar.data[0]);
 ```
 
-### Ideas
+### Todos / Ideas
 ```
 @def -> define a static label for something (e.g. @def CAP: 100; or @def io: @import "stdio.h";)
 
@@ -86,6 +86,11 @@ sizeof -> returns the size in bytes of a type
 default struct values -> so that there isn't a need for a constructor as its baked into the struct
 
 group -> group of acceptable types. `group number: |u8 i8 i32 int usize|`
+
+character literals: the type exists but no way to really make them without C Embed. there are a few options here
+    - traditional literal: 'a' 'A' ' '
+    - Jai style char literals: @char "a" @char "A" @char " "
+    - implicit chars (if length is 0 or 1, it will be a char): "a" "A" " "
 
 standard library:
 windows gui -> either natively or a mapping to raylib
