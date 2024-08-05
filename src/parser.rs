@@ -227,10 +227,10 @@ impl ExprWeights {
         }
     }
 
-    fn comp_warn(&self, warning_msg: &str) {
-        println!("\x1b[93mwarning\x1b[0m: {}:{}", self.filename, self.line_num);
-        println!("\x1b[93mwarning\x1b[0m: {warning_msg}");
-    }
+    // fn comp_warn(&self, warning_msg: &str) {
+    //     println!("\x1b[93mwarning\x1b[0m: {}:{}", self.filename, self.line_num);
+    //     println!("\x1b[93mwarning\x1b[0m: {warning_msg}");
+    // }
 
     fn comp_err(&self, error_msg: &str) {
         println!("\x1b[91merror\x1b[0m: {}:{}", self.filename, self.line_num);

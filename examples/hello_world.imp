@@ -1,10 +1,11 @@
 # currently no in house support for print formatting in impulse
 @import "base/string.imp";
 
-_() main: {
+_ main :: () {
     # working print without formatting in impulse
-    string hello: str_from("hello world");
-    str_println(hello);
+    string hello: str.from("hello world");
+    str.println(hello);
+    @c [printf("%d\n", hello.data);];
 
     # c embed version
     @c [ printf("hello world"); ];

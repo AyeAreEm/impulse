@@ -112,6 +112,6 @@ pub enum Macros {
     Import,
     Arr,
     Inline,
-    Dynam,
+    // Dynam,
     None,
 }

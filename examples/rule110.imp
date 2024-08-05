@@ -1,6 +1,6 @@
 @import "stdio.h";
 
-int(int left int curr int right) check_rule: {
+int check_rule :: (int left int curr int right) {
     if (left = 1 and curr = 1 and right = 1) {
         return 0;
     } orif (left = 1 and curr = 1 and right = 0) {
@@ -20,7 +20,7 @@ int(int left int curr int right) check_rule: {
     }
 }
 
-_(int cell) display: {
+_ display :: (int cell) {
     if (cell = 1) {
         @c [printf("#");];
     } else {
@@ -28,13 +28,13 @@ _(int cell) display: {
     }
 }
 
-_(^int dest ^int src int len) copy: {
+_ copy :: (^int dest ^int src int len) {
     loop (i < len) [+] {
         dest[i]: src[i];
     }
 }
 
-_() main: {
+_ main :: () {
     int gens: 100;
     @array[80] int cells: |1 1 0 0 1 0 1 0|;
     @array[80] int next_gen;

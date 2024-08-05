@@ -1,10 +1,9 @@
-@import "stdio.h";
 @import "base/io.imp";
 @import "base/dynamic.imp";
 
 # not sure why the regular input() function doesn't work. it works usually
-string readin() :: {
-    string word: str_new();
+string readin :: () {
+    string word: string.new();
     u8 newline_counter: 0;
 
     loop (newline_counter < 2) {
@@ -15,15 +14,15 @@ string readin() :: {
                 continue;
             }
         ];
-        str_push(&word ch);
+        string.push(&word ch);
     }
 
     return word;
 }
 
-_ main() :: {
+_ main :: () {
     bool quit: false;
-    dyn[string] todos: dyn_new(string);
+    dyn[string] todos: dyn.new(string);
 
     loop (!quit) {
         usize input_num;
@@ -41,20 +40,20 @@ _ main() :: {
                     printf("\n");
                     printf("%zu: ", i+1);
                 ];
-                str_println(todo);
+                string.println(todo);
                 @c [printf("\n");];
             }
         } orif (input_num = 2) {
             @c [printf("enter todo: ");];
             string todo: readin();
-            dyn_push(string todos todo);
+            dyn.push(string todos todo);
         } orif (input_num = 3) {
             @c [
                 printf("enter todo number: ");
                 scanf_s("%zu", &input_num);
             ];
             input_num: [input_num - 1];
-            dyn_remove(string todos input_num);
+            dyn.remove(string todos input_num);
         } orif (input_num = 4) {
             break;
         } else {
