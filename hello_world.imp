@@ -1,9 +1,14 @@
 @import "base/io.imp";
 
-int x: 100;
+int main :: () {
+    string hello :: string.from("hello");
+    string.push_cstr(&hello " world"); # error
 
-_ main :: () {
-    x: 200;
+    string word :: string.from("hello world");
+    string what: string.from("bye world");
 
-    @c [printf("%d", x);];
+    ^string word_ptr: &word; # error
+    what: word_ptr^;
+
+    @c [printf("%s\n", what.data);];
 }

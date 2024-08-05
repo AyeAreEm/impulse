@@ -227,6 +227,11 @@ impl ExprWeights {
         }
     }
 
+    fn comp_warn(&self, warning_msg: &str) {
+        println!("\x1b[93mwarning\x1b[0m: {}:{}", self.filename, self.line_num);
+        println!("\x1b[93mwarning\x1b[0m: {warning_msg}");
+    }
+
     fn comp_err(&self, error_msg: &str) {
         println!("\x1b[91merror\x1b[0m: {}:{}", self.filename, self.line_num);
         println!("\x1b[91merror\x1b[0m: {error_msg}");
@@ -2790,7 +2795,11 @@ impl ExprWeights {
     fn create_address(&self, ident: &String) -> Expr {
         let found_ident = self.find_ident(ident.clone());
         match found_ident {
-            Expr::VariableName { .. } => {
+            Expr::VariableName { ref name, constant, .. } => {
+                if constant {
+                    self.comp_err(&format!("using constant \"{name}\" as address dequalifies it to a variable, did you mean for \"{name}\" to be a variable?"));
+                    exit(1)
+                }
                 return Expr::Address(Box::new(found_ident))
             },
             unexpected => {
