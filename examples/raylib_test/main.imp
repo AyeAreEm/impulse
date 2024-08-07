@@ -41,7 +41,7 @@ Colour new_colour(u8 r u8 g u8 b u8 a) :: {
 }
 
 _ main() :: {
-    Colour background :: new_colour(30 30 30 255);
+    Colour background :: new_colour(255 0 0 255);
 
     init_window(800 600 "hello from impulse");
 

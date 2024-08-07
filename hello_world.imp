@@ -1,14 +1,23 @@
-@import "base/io.imp";
+struct vector :: {
+    int x;
+    int y;
+
+    vector new :: (int x int y) {
+        vector new;
+        new.x: x;
+        new.y: y;
+        return new;
+    }
+}
+
+struct tuple :: {
+    int left;
+    int right;
+}
 
 int main :: () {
-    string hello :: string.from("hello");
-    string.push_cstr(&hello " world"); # error
+    vector x: vector.new(10 15);
+    tuple y: cast_struct(vector x tuple);
 
-    string word :: string.from("hello world");
-    string what: string.from("bye world");
-
-    ^string word_ptr: &word; # error
-    what: word_ptr^;
-
-    @c [printf("%s\n", what.data);];
+    @c [printf("y.left: %d, y.right: %d", y.left, y.right);];
 }

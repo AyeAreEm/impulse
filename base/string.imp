@@ -1,7 +1,6 @@
 # Strings with length and null terminated for easy C interopability
 
 @import "base/memory.imp";
-@import "stdio.h";
 
 @inline usize cstr.len :: (^char str) {
     # maybe just write out the code instead of making a function that calls a function
