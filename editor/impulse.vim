@@ -16,7 +16,7 @@ syntax keyword impulseKeywords break continue return
 syntax keyword impulseBranches if orif else
 syntax keyword impulseLoops loop for
 syntax keyword impulseTypeDefs struct enum
-syntax keyword impulseTypeNames int i32 u32 i8 u8 i16 u16 i64 u64 f32 f64 _ char bool usize
+syntax keyword impulseTypeNames int uint i32 u32 i8 u8 i16 u16 i64 u64 f32 f64 _ char bool usize
 syntax keyword impulseTrueFalse true false
 syntax keyword impulseTypeid typeid
 

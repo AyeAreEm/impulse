@@ -1,0 +1,229 @@
+# TODO: change this to be OS dependant
+
+@c [#include "base/raylib/include/raylib.h"];
+@import "base/math.imp";
+
+# copy this in c_flags
+# -I base/raylib/include/ -L base/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm
+
+f32 pi :: 3.14159265358979323846;
+@inline f32 deg_to_rad :: () {
+    return [pi / 180.0];
+}
+@inline f32 rad_to_deg :: () {
+    return [180.0 / pi];
+}
+
+# Colour, 4 components, R8G8B8A8 (32bits)
+struct rl.Color :: {
+    u8 r; # Color red value
+    u8 g; # Color green value
+    u8 b; # Color blue value
+    u8 a; # Color alpha value
+}
+
+# Some Basic Colors
+# NOTE: Custom raylib color palette for amazing visuals on WHITE background
+rl.Color rl.LIGHTGRAY  :: |200 200 200 255|;
+rl.Color rl.GRAY       :: |130 130 130 255|;
+rl.Color rl.DARKGRAY   :: |80 80 80 255|;
+rl.Color rl.YELLOW     :: |253 249 0 255|;
+rl.Color rl.GOLD       :: |255 203 0 255|;
+rl.Color rl.ORANGE     :: |255 161 0 255|;
+rl.Color rl.PINK       :: |255 109 194 255|;
+rl.Color rl.RED        :: |230 41 55 255|;
+rl.Color rl.MAROON     :: |190 33 55 255|;
+rl.Color rl.GREEN      :: |0 228 48 255|;
+rl.Color rl.LIME       :: |0 158 47 255|;
+rl.Color rl.DARKGREEN  :: |0 117 44 255|;
+rl.Color rl.SKYBLUE    :: |102 191 255 255|;
+rl.Color rl.BLUE       :: |0 121 241 255|;
+rl.Color rl.DARKBLUE   :: |0 82 172 255|;
+rl.Color rl.PURPLE     :: |200 122 255 255|;
+rl.Color rl.VIOLET     :: |135 60 190 255|;
+rl.Color rl.DARKPURPLE :: |112 31 126 255|;
+rl.Color rl.BEIGE      :: |211 176 131 255|;
+rl.Color rl.BROWN      :: |127 106 79 255|;
+rl.Color rl.DARKBROWN  :: |76 63 47 255|;
+
+rl.Color rl.WHITE      :: |255 255 255 255|;
+rl.Color rl.BLACK      :: |0 0 0 255|;
+rl.Color rl.BLANK      :: |0 0 0 0|; # Blank (Transparent)
+rl.Color rl.MAGENTA    :: |255 0 255 255|;
+rl.Color rl.RAYWHITE   :: |245 245 245 255|; # (raylib logo)
+
+# Rectangle, 4 components
+struct rl.Rectangle :: {
+    f32 x;      # Rectangle top-left corner position x
+    f32 y;      # Rectangle top-left corner position y
+    f32 width;  # Rectangle width
+    f32 height; # Rectangle height
+}
+
+# Image, pixel data stored in CPU memory (RAM)
+struct rl.Image :: {
+    ^_ data;
+    int width;
+    int height;
+    int mipmaps;
+    int format;
+}
+
+# Texture, tex data stored in GPU memory (VRAM)
+struct rl.Texture :: {
+    uint id; # OpenGl texture id
+    int width; # Texture base width
+    int height; # Texture base height
+    int mipmaps; # Mipmap levels, 1 by default
+    int format; # Data format (PixelFormat type)
+}
+
+# Texture2d and TextureCubemap are the same, impulse has no way to "type mask" yet, will add those structs when available
+
+struct rl.RenderTexture :: {
+    uint id;            # OpenGL framebuffer object id
+    rl.Texture texture; # Color buffer attachment texture
+    rl.Texture depth;   # Depth buffer attachment texture
+}
+
+struct rl.NPathInfo :: {
+    rl.Rectangle source;
+    int left;
+    int top;
+    int right;
+    int bottom;
+    int layout;
+}
+
+struct rl.GlyphInfo :: {
+    int value;
+    int offsetX;
+    int offsetY;
+    int advanceX;
+    rl.Image image;
+}
+
+struct rl.Font :: {
+    int baseSize;
+    int glyphCount;
+    int glyphPadding;
+    rl.Texture texture;
+    ^rl.Rectangle recs;
+    ^rl.GlyphInfo glyphs;
+}
+
+struct rl.Camera3D :: {
+    Vector3f32 position;
+    Vector3f32 target;
+    Vector3f32 up;
+    f32 fovy;
+    int projection;
+}
+
+# Camera struct is a Camera3D but needa type mask that
+
+struct rl.Camera2D :: {
+    Vector2f32 offset;
+    Vector2f32 target;
+    f32 rotation;
+    f32 zoom;
+}
+
+struct rl.Mesh :: {
+    int vertexCount;
+    int triangleCount;
+
+    ^f32 vertices;
+    ^f32 texcoords;
+    ^f32 texcoords2;
+    ^f32 normals;
+    ^f32 tangents;
+    ^u8 colors;
+    ^u16 indices;
+
+    ^f32 animVerticles;
+    ^f32 animNormals;
+    ^u8 boneIds;
+    ^f32 boneWeights;
+
+    uint vaoId;
+    ^uint vboId;
+}
+
+
+# Window-related functions
+@inline _ rl.InitWindow :: (int width int height ^char title) {@c [InitWindow(width, height, title);];}
+@inline _ rl.CloseWindow :: () {@c [CloseWindow();];}
+@inline bool rl.WindowShouldClose :: () {@c [return WindowShouldClose();];}
+@inline bool rl.IsWindowReady :: () {@c [return IsWindowReady();];}
+@inline bool rl.IsWindowFullscreen :: () {@c [return IsWindowFullscreen();];}
+@inline bool rl.IsWindowHidden :: () {@c [return IsWindowHidden();];}
+@inline bool rl.IsWindowMinimized :: () {@c [return IsWindowMinimized();];}
+@inline bool rl.IsWindowMaximized :: () {@c [return IsWindowMaximized();];}
+@inline bool rl.IsWindowFocused :: () {@c [return IsWindowFocused();];}
+@inline bool rl.IsWindowResized :: () {@c [return IsWindowResized();];}
+@inline bool rl.IsWindowState :: (uint flag) {@c [return IsWindowState(flag);];}
+@inline _ rl.SetWindowState :: (uint flags) {@c [SetWindowState(flags);];}
+@inline _ rl.ClearWindowState :: (uint flags) {@c [ClearWindowState(flags);];}
+@inline _ rl.ToggleFullscreen :: () {@c [ToggleFullscreen();];}
+@inline _ rl.ToggleBorderlessWindowed :: () {@c [ToggleBorderlessWindowed();];}
+@inline _ rl.MaximizeWindow :: () {@c [MaximizeWindow();];}
+@inline _ rl.MinimizeWindow :: () {@c [MinimizeWindow();];}
+@inline _ rl.RestoreWindow :: () {@c [RestoreWindow();];}
+@inline _ rl.SetWindowIcon :: (rl.Image image) {@c [SetWindowIcon(*(Image*)&image);];}
+@inline _ rl.SetWindowIcons :: (^rl.Image images int count) {@c [SetWindowIcons(*(Image**)&images, count);];}
+@inline _ rl.SetWindowTitle :: (^char title) {@c [SetWindowTitle(title);];}
+@inline _ rl.SetWindowPosition :: (int x int y) {@c [SetWindowPosition(x, y);];}
+@inline _ rl.SetWindowMonitor :: (int monitor) {@c [SetWindowMonitor(monitor);];}
+@inline _ rl.SetWindowMinSize :: (int width int height) {@c [SetWindowMinSize(width, height);];}
+@inline _ rl.SetWindowMaxSize :: (int width int height) {@c [SetWindowMaxSize(width, height);];}
+@inline _ rl.SetWindowSize :: (int width int height) {@c [SetWindowSize(width, height);];}
+@inline _ rl.SetWindowOpacity :: (f32 opacity) {@c [SetWindowOpacity(opacity);];}
+@inline _ rl.SetWindowFocused :: () {@c [SetWindowFocused();];}
+@inline ^_ rl.GetWindowHandle :: () {@c [return GetWindowHandle();];}
+@inline int rl.GetScreenWidth :: () {@c [return GetScreenWidth();];}
+@inline int rl.GetScreenHeight :: () {@c [return GetScreenHeight();];}
+@inline int rl.GetRenderWidth :: () {@c [return GetRenderWidth();];}
+@inline int rl.GetRenderHeight :: () {@c [return GetRenderHeight();];}
+@inline int rl.GetMonitorCount :: () {@c [return GetMonitorCount();];}
+@inline int rl.GetCurrentMonitor :: () {@c [return GetCurrentMonitor();];}
+@inline Vector2f32 rl.GetMonitorPosition :: (int monitor) {@c [Vector2 v = GetMonitorPosition(monitor); return *(Vector2f32*)&v;];}
+@inline int rl.GetMonitorWidth :: (int monitor) {@c [return GetMonitorWidth(monitor);];}
+@inline int rl.GetMonitorHeight :: (int monitor) {@c [return GetMonitorHeight(monitor);];}
+@inline int rl.GetMonitorPhysicalWidth :: (int monitor) {@c [return GetMonitorPhysicalWidth(monitor);];}
+@inline int rl.GetMonitorPhysicalHeight :: (int monitor) {@c [return GetMonitorPhysicalHeight(monitor);];}
+@inline int rl.GetMonitorRefreshRate :: (int monitor) {@c [return GetMonitorRefreshRate(monitor);];}
+@inline Vector2f32 rl.GetWindowPosition :: () {@c [Vector2 v = GetWindowPosition(); return *(Vector2f32*)&v;];}
+@inline Vector2f32 rl.GetWindowScaleDPI :: () {@c [Vector2 v = GetWindowScaleDPI(); return *(Vector2f32*)&v;];}
+@inline ^char rl.GetMonitorName :: (int monitor) {@c [return GetMonitorName(monitor);];}
+@inline _ rl.SetClipboardText :: (^char text) {@c [SetClipboardText(text);];}
+@inline ^char rl.GetClipboardText :: () {@c [return GetClipboardText();];}
+@inline _ rl.EnableEventWaiting :: () {@c [EnableEventWaiting();];}
+@inline _ rl.DisableEventWaiting :: () {@c [DisableEventWaiting();];}
+
+# Cursor-related functions
+@inline _ rl.ShowCursor :: () {@c [ShowCursor();];}
+@inline _ rl.HideCursor :: () {@c [HideCursor();];}
+@inline bool rl.IsCursorHidden :: () {@c [return IsCursorHidden();];}
+@inline _ rl.EnableCursor :: () {@c [EnableCursor();];}
+@inline _ rl.DisableCursor :: () {@c [DisableCursor();];}
+@inline bool rl.IsCursorOnScreen :: () {@c [return IsCursorOnScreen();];}
+
+# Drawing-related functions
+@inline _ rl.ClearBackground :: (rl.Color color) {@c [ClearBackground(*(Color*)&color);];}
+@inline _ rl.BeginDrawing :: () {@c [BeginDrawing();];}
+@inline _ rl.EndDrawing :: () {@c [EndDrawing();];}
+@inline _ rl.BeginMode2D :: (rl.Camera2D camera) {@c [BeginMode2D(*(Camera2D*)&camera);];}
+@inline _ rl.EndMode2D :: () {@c [EndMode2D();];}
+@inline _ rl.BeginMode3D :: (rl.Camera3D camera) {@c [BeginMode3D(*(Camera3D*)&camera);];}
+@inline _ rl.EndMode3D :: () {@c [EndMode3D();];}
+@inline _ rl.BeginTextureMode :: (rl.RenderTexture target) {@c [BeginTextureMode(*(RenderTexture*)&target);];}
+@inline _ rl.EndTextureMode :: () {@c [EndTextureMode();];}
+#@inline _ rl.BeginShaderMode :: (rl.Shader shader) {@c [BeginShaderMode(shader)];}
+#@inline _ rl.EndShaderMode :: () {@c [EndShaderMode();];}
+@inline _ rl.BeginBlendMode :: (int mode) {@c [BeginBlendMode(mode);];}
+@inline _ rl.EndBlendMode :: () {@c [EndBlendMode();];}
+@inline _ rl.BeginScissorMode :: (int x int y int width int height) {@c [BeginScissorMode(x, y, width, height);];}
+@inline _ rl.EndScissorMode :: () {@c [EndScissorMode();];}
+#@inline _ rl.BeginVrStereoMode :: (rl.VrStereoConfig config) {@c [BeginVrStereoMode(config);];}
+#@inline _ rl.EndVrStereoMode :: () {@c [EndVrStereoMode();];}

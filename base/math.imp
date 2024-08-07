@@ -1,0 +1,63 @@
+struct Vector2f32 :: {
+    f32 x;
+    f32 y;
+}
+
+struct Vector3f32 :: {
+    f32 x;
+    f32 y;
+    f32 z;
+}
+
+struct Vector4f32 :: {
+    f32 x;
+    f32 y;
+    f32 z;
+    f32 w;
+}
+
+struct Quaternionf32 :: {
+    f32 x;
+    f32 y;
+    f32 z;
+    f32 w;
+}
+
+struct Matrix4x4f32 :: {
+    f32 m0; f32 m4; f32 m8; f32 m12;
+    f32 m1; f32 m5; f32 m9; f32 m13;
+    f32 m2; f32 m6; f32 m10; f32 m14;
+    f32 m3; f32 m7; f32 m11; f32 m15;
+}
+
+struct Vector2f64 :: {
+    f64 x;
+    f64 y;
+}
+
+struct Vector3f64 :: {
+    f64 x;
+    f64 y;
+    f64 z;
+}
+
+struct Vector4f64 :: {
+    f64 x;
+    f64 y;
+    f64 z;
+    f64 w;
+}
+
+struct Quaternionf64 :: {
+    f64 x;
+    f64 y;
+    f64 z;
+    f64 w;
+}
+
+struct Matrix4x4f64 :: {
+    f64 m0; f64 m4; f64 m8; f64 m12;
+    f64 m1; f64 m5; f64 m9; f64 m13;
+    f64 m2; f64 m6; f64 m10; f64 m14;
+    f64 m3; f64 m7; f64 m11; f64 m15;
+}

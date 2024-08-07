@@ -20,6 +20,7 @@ pub enum Types {
 
     Usize,
     Int,
+    UInt,
 
     F32,
     F64,
@@ -67,6 +68,7 @@ pub enum Keyword {
 
     Usize,
     Int,
+    UInt,
 
     F32,
     F64,

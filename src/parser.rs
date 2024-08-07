@@ -154,6 +154,8 @@ impl ExprWeights {
 
             ("u32".to_string(), Keyword::U32),
             ("i32".to_string(), Keyword::I32),
+
+            ("uint".to_string(), Keyword::UInt),
             ("int".to_string(), Keyword::Int),
 
             ("u64".to_string(), Keyword::U64),
@@ -261,6 +263,7 @@ impl ExprWeights {
             Keyword::I64 => Types::I64,
             Keyword::Usize => Types::Usize,
             Keyword::Int => Types::Int,
+            Keyword::UInt => Types::UInt,
             Keyword::F32 => Types::F32,
             Keyword::F64 => Types::F64,
             Keyword::Bool => Types::Bool,
@@ -467,7 +470,7 @@ impl ExprWeights {
                         Expr::VariableName { typ, name, field_data, .. } => {
                             if field_data.0 && field_data.1 {
                                 match typ {
-                                    Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::Int | Types::U16 | Types::I16 |
+                                    Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::UInt | Types::Int | Types::U16 | Types::I16 |
                                     Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
                                     Types::F32 | Types::F64 => {
                                         let new_name = ident.replace(".", "->");
@@ -480,7 +483,7 @@ impl ExprWeights {
                                 }
                             } else {
                                 match typ {
-                                    Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::Int | Types::U16 | Types::I16 |
+                                    Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::UInt | Types::Int | Types::U16 | Types::I16 |
                                     Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
                                     Types::F32 | Types::F64 => clean.push_str(&ident),
                                     _ => {
@@ -492,7 +495,7 @@ impl ExprWeights {
                         },
                         Expr::Func { typ, params, name, is_inline } => {
                             match typ {
-                                Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::Int | Types::U16 | Types::I16 |
+                                Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::UInt | Types::Int | Types::U16 | Types::I16 |
                                 Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
                                 Types::F32 | Types::F64 => {
                                     has_func = Expr::Func { typ, params, name, is_inline };
@@ -505,7 +508,7 @@ impl ExprWeights {
                         },
                         Expr::MacroFunc { typ, params, name } => {
                             match typ {
-                                Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::Int | Types::U16 | Types::I16 |
+                                Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::UInt | Types::Int | Types::U16 | Types::I16 |
                                 Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
                                 Types::F32 | Types::F64 => {
                                     has_func = Expr::MacroFunc { typ, params, name };
@@ -889,14 +892,17 @@ impl ExprWeights {
             None => (),
         }
 
-        let found_func = self.find_func(&name);
+        let found_func = self.find_ident(name.clone());
         if let Expr::Func { .. } = found_func {
-            self.comp_err(&format!("identifier {name} already declared as another function"));
+            self.comp_err(&format!("identifier {name} already declared as function"));
             exit(1);
         } else if let Expr::MacroFunc { .. } = found_func {
-            self.comp_err(&format!("identifier {name} already declared as another function"));
+            self.comp_err(&format!("identifier {name} already declared as function"));
             exit(1);
-        } else if let Expr::StructDef { .. } = self.find_structure(&name) {
+        } else if let Expr::StructDef { .. } = found_func {
+            self.comp_err(&format!("identifier {name} already declared as struct"));
+            exit(1);
+        } else if let Expr::MacroStructDef { .. } = found_func {
             self.comp_err(&format!("identifier {name} already declared as struct"));
             exit(1);
         }
@@ -959,14 +965,40 @@ impl ExprWeights {
         } else {
             Expr::StructDef { struct_name: Box::new(name.clone()), struct_fields: exprs }
         };
-        self.program_push(expr.clone());
+        self.structures.push(expr.clone());
+
+        let sanitised_name: String;
+        let sanitised_expr = match expr {
+            Expr::StructDef { ref struct_name, ref struct_fields } => {
+                if let Expr::StructName(sname) = *struct_name.clone() {
+                    sanitised_name = sname.replace(".", "__");
+                    Expr::StructDef { struct_name: Box::new(Expr::StructName(sanitised_name.clone())), struct_fields: struct_fields.to_vec() }
+                } else {
+                    unreachable!()
+                }
+            },
+            Expr::MacroStructDef { ref struct_name, ref struct_fields } => {
+                if let Expr::StructName(sname) = *struct_name.clone() {
+                    sanitised_name = sname.replace(".", "__");
+                    Expr::MacroStructDef { struct_name: Box::new(Expr::StructName(sanitised_name.clone())), struct_fields: struct_fields.to_vec() }
+                } else if let Expr::MacroStructName { name: sname, generics } = *struct_name.clone() {
+                    sanitised_name = sname.replace(".", "__");
+                    Expr::MacroStructDef { struct_name: Box::new(Expr::MacroStructName { name: sanitised_name.clone(), generics }), struct_fields: struct_fields.to_vec() }
+                } else {
+                    unreachable!()
+                }
+            },
+            _ => unreachable!(),
+        };
+
+        self.program_push(sanitised_expr);
         match name {
             Expr::StructName(struct_name) => {
-                self.program_push(Expr::EndStruct(struct_name.clone()));
+                self.program_push(Expr::EndStruct(sanitised_name));
                 self.func_to_vars.remove(&struct_name);
             },
-            Expr::MacroStructName { name, .. } => {
-                self.program_push(Expr::MacroEndStruct(name));
+            Expr::MacroStructName { .. } => {
+                self.program_push(Expr::MacroEndStruct(sanitised_name));
             },
             _ => {
                 self.comp_err(&format!("unexpected expression when creating struct"));
@@ -974,8 +1006,8 @@ impl ExprWeights {
             }
         }
 
+
         self.in_struct_def = false;
-        self.structures.push(expr);
     }
 
     fn boolean_conditions(&self, params: &Vec<Token>, is_loop: bool) -> (Vec<Expr>, Expr) {
@@ -2116,6 +2148,7 @@ impl ExprWeights {
         parse.structures = self.structures.clone();
         parse.enums = self.enums.clone();
         parse.enums_fields = self.enums_fields.clone();
+        parse.global_vars = self.global_vars.clone();
         let mut expressions = parse.parser();
 
         if self.imports.len() != parse.imports.len() {
@@ -2140,7 +2173,12 @@ impl ExprWeights {
 
         if self.enums_fields.len() != parse.enums_fields.len() {
             let mut new = parse.enums_fields[self.enums_fields.len()..].to_vec();
-            self.enums.append(&mut new);
+            self.enums_fields.append(&mut new);
+        }
+
+        if self.global_vars.len() != parse.global_vars.len() {
+            let mut new = parse.global_vars[self.global_vars.len()..].to_vec();
+            self.global_vars.append(&mut new);
         }
 
         self.program.append(&mut expressions);
@@ -3388,7 +3426,7 @@ impl ExprWeights {
 
         match kw {
             Keyword::Char | Keyword::I8 | Keyword::U8 | Keyword::U16 | Keyword::I16 | Keyword::U32 | Keyword::I32 |
-            Keyword::F32 | Keyword::F64 | Keyword::Usize | Keyword::Bool | Keyword::Int | Keyword::I64 | Keyword::U64 => (),
+            Keyword::F32 | Keyword::F64 | Keyword::Usize | Keyword::Bool | Keyword::UInt | Keyword::Int | Keyword::I64 | Keyword::U64 => (),
             Keyword::None => (),
             Keyword::Generic(_) => (),
             Keyword::Pointer(.., last) => {

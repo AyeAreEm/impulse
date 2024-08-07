@@ -1,23 +1,13 @@
-struct vector :: {
-    int x;
-    int y;
+@import "base/raylib/raylib.imp";
 
-    vector new :: (int x int y) {
-        vector new;
-        new.x: x;
-        new.y: y;
-        return new;
+_ main :: () {
+    rl.InitWindow(800 600 "Raylib - Impulse");
+
+    loop (!rl.WindowShouldClose()) {
+        rl.BeginDrawing();
+        rl.ClearBackground(rl.RED);
+        rl.EndDrawing();
     }
-}
 
-struct tuple :: {
-    int left;
-    int right;
-}
-
-int main :: () {
-    vector x: vector.new(10 15);
-    tuple y: cast_struct(vector x tuple);
-
-    @c [printf("y.left: %d, y.right: %d", y.left, y.right);];
+    rl.CloseWindow();
 }

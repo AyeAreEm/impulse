@@ -147,6 +147,7 @@ impl Gen {
             Types::U64 => (String::from("u64"), String::new()),
             Types::I64 => (String::from("i64"), String::new()),
             Types::Int => (String::from("int"), String::new()),
+            Types::UInt => (String::from("uint"), String::new()),
             Types::F32 => (String::from("f32"), String::new()),
             Types::F64 => (String::from("f64"), String::new()),
             Types::Usize => {
@@ -162,7 +163,8 @@ impl Gen {
                 (String::from("bool"), String::new())
             },
             Types::TypeDef { type_name: user_def, generics: generics_op } => {
-                let mut typ = format!("{user_def}");
+                let replaced_def = user_def.replace(".", "__");
+                let mut typ = format!("{replaced_def}");
 
                 match generics_op {
                     Some(generics) => {
@@ -224,7 +226,7 @@ impl Gen {
                     String::new()
                 };
 
-                let new_name = self.handle_deref_struct(varname.clone());
+                let new_name = self.handle_sanitise_varname(varname.clone());
                 if let Types::ArrIndex { index_at, .. } = typ {
                     vardec.push_str(&format!("{new_name}[{index_at}]"));
                     return vardec
@@ -298,11 +300,12 @@ impl Gen {
                                 funccall_code.push_str(&format!(", {intlit}"))
                             }
                         },
-                        Expr::VariableName { name, .. } => {
+                        Expr::VariableName { .. } => {
+                            let sanitised_name = self.handle_sanitise_varname(param.clone());
                             if i == 0 {
-                                funccall_code.push_str(&name)
+                                funccall_code.push_str(&sanitised_name)
                             } else {
-                                funccall_code.push_str(&format!(", {}", name))
+                                funccall_code.push_str(&format!(", {}", sanitised_name))
                             }
                         },
                         Expr::FuncCall { .. } => {
@@ -398,7 +401,7 @@ impl Gen {
         arrlit_code
     }
 
-    fn handle_deref_struct(&self, value: Expr) -> String {
+    fn handle_sanitise_varname(&self, value: Expr) -> String {
         match value {
             Expr::VariableName { typ, name, field_data, .. } => {
                 // we do this cuz it should be a enum at this point
@@ -440,7 +443,7 @@ impl Gen {
             Expr::True => String::from("true"),
             Expr::False => String::from("false"),
             Expr::VariableName { ref typ, .. } => {
-                let new_name = self.handle_deref_struct(value.clone());
+                let new_name = self.handle_sanitise_varname(value.clone());
                 if let Types::ArrIndex { index_at, .. } = typ {
                     return format!("{new_name}[{index_at}]")
                 } else {
@@ -458,8 +461,23 @@ impl Gen {
                 return format!("*{sub_val}")
             },
             Expr::None => String::new(),
+            Expr::ArrayLit(arraylit) => {
+                let mut values = String::from("{");
+                for (i, elem) in arraylit.iter().enumerate() {
+                    let val = self.handle_value(elem.to_owned());
+                    if i == 0 {
+                        values.push_str(&val);
+                        continue;
+                    }
+
+                    values.push_str(&format!(", {val}"));
+                }
+
+                values.push('}');
+                return values
+            },
             unimpl => {
-                self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
+                self.comp_err(&format!("expression {unimpl:?} this not implemented yet"));
                 exit(1);
             }
         }
@@ -476,7 +494,7 @@ impl Gen {
                     boolean_condition_code.push_str(&format!("{func_call_code}"));
                 },
                 Expr::VariableName { typ, .. } => {
-                    let new_name = self.handle_deref_struct(condition.clone());
+                    let new_name = self.handle_sanitise_varname(condition.clone());
 
                     if let Types::ArrIndex { index_at, .. } = typ {
                         boolean_condition_code.push_str(&format!("{new_name}[{index_at}]"));
@@ -639,6 +657,7 @@ impl Gen {
         self.code.push_str("typedef float f32;\n");
         self.code.push_str("typedef double f64;\n");
         self.code.push_str("typedef size_t usize;\n");
+        self.code.push_str("typedef unsigned int uint;\n");
 
         for (_index, info) in expressions.into_iter().enumerate() {
             let expr = info.0;

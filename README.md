@@ -95,6 +95,7 @@ character literals: the type exists but no way to really make them without C Emb
 standard library:
 windows gui -> either natively or a mapping to raylib
 hashmaps -> hashmap / hash table / etc. maybe make it fairly efficient and fast
+cryptography -> random numbers, hashing, etc
 networks -> http 1.0
 sockets -> websockets, etc
 arenas -> block of memory that all gets freed at the same time
