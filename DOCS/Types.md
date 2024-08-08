@@ -4,8 +4,9 @@
 
 ## Integers
 ### Unsigned
-`u8 u16 u32 u64 usize`<br>
-usize acts the same way as C's `size_t` or Rust's `usize` type
+`u8 u16 u32 u64 usize uint`<br>
+usize acts the same way as C's `size_t` or Rust's `usize` type<br>
+uint acts the same way C's `unsigned int` acts. This means it can be interchangeable in some cases. If you are not sure, assume usize is bigger.
 
 ### Signed
 `i8 i16 i32 i64 int`<br>

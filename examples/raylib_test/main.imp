@@ -45,13 +45,10 @@ _ main() :: {
 
     init_window(800 600 "hello from impulse");
 
-    bool quit: window_should_close();
-    loop (!quit) {
+    loop (!window_should_close()) {
         begin_drawing();
         clear_background(background);
         end_drawing();
-
-        quit: window_should_close();
     }
 
     close_window();

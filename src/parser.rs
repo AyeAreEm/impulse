@@ -856,13 +856,19 @@ impl ExprWeights {
             self.enums_fields.push(ex.clone());
         }
 
-        let expr = Expr::EnumDef { enum_name: Box::new(name.clone()), enum_fields: exprs };
-        self.program_push(expr.clone());
+        let sanitised_name = if let Expr::EnumName(ref enumname) = name {
+            enumname.replace(".", "__")
+        } else {unreachable!()};
+
+        self.program_push(Expr::EnumDef {
+            enum_name: Box::new(Expr::EnumName(sanitised_name.clone())),
+            enum_fields: exprs.clone()
+        });
 
         match name {
-            Expr::EnumName(enum_name) => {
-                self.program_push(Expr::EndStruct(enum_name.clone()));
-                self.func_to_vars.remove(&enum_name);
+            Expr::EnumName(ref enum_name) => {
+                self.program_push(Expr::EndStruct(sanitised_name));
+                self.func_to_vars.remove(enum_name);
             },
             _ => {
                 self.comp_err(&format!("unexpected expression when creating struct"));
@@ -871,6 +877,7 @@ impl ExprWeights {
         }
 
         self.in_enum_def = false;
+        let expr = Expr::EnumDef { enum_name: Box::new(name.clone()), enum_fields: exprs };
         self.enums.push(expr);
     }
 
@@ -2385,6 +2392,15 @@ impl ExprWeights {
                             let found_variable = self.find_ident(ident.to_string());
                             match found_variable {
                                 Expr::None => {
+                                    if self.in_enum_def {
+                                        let new_name = format!("{}.{ident}", self.current_func);
+
+                                        if !is_constant {
+                                            self.comp_err(&format!("enum field {ident} must be constant if given value. did you mean `{ident} :: <value>`?"));
+                                            exit(1);
+                                        }
+                                        return Expr::VariableName { typ: Types::None, name: new_name, reassign: false, constant: true, field_data: (false, false) }
+                                    }
                                     self.comp_err(&format!("undeclared identifier: {ident}"));
                                     exit(1);
                                 },
@@ -2915,7 +2931,8 @@ impl ExprWeights {
 
             match token {
                 Token::Int(intlit) => {
-                    // TODO: ARRAYS INDEXING WITH [i+1] WILL NOT WORK WITH THIS
+                    // TODO: ARRAYS INDEXING WITH [i+1] WILL NOT WORK WITH THIS, edit: this might
+                    // be wrong, double check later
                     buffer.push(self.check_intlit(intlit.to_string()));
                 },
                 Token::Str(strlit) => {
@@ -3046,7 +3063,7 @@ impl ExprWeights {
                                 } else if let Expr::EnumDef { .. } = found_ident {
                                     let mut k = Keyword::TypeDef {
                                         type_name: ident.clone(), 
-                                        generics: Some(vec![])
+                                        generics: None,
                                     };
 
                                     if pointer_counter > 0 {
@@ -3109,8 +3126,25 @@ impl ExprWeights {
                             }
                         },
                         Expr::None => {
-                            self.comp_err(&format!("unknown identifier: {}", ident));
-                            exit(1);
+                            let typ_kw_res = self.keyword_map.get(ident);
+                            match typ_kw_res {
+                                Some(typ_kw) => {
+                                    let typ = self.keyword_to_type(typ_kw.clone());
+                                    match typ {
+                                        Types::None => {
+                                            self.comp_err(&format!("unknown identifier: {}", ident));
+                                            exit(1);
+                                        },
+                                        _ => {
+                                            buffer.push(Expr::IntLit(format!("{ident}")));
+                                        },
+                                    }
+                                },
+                                None => {
+                                    self.comp_err(&format!("unknown identifier: {}", ident));
+                                    exit(1);
+                                }
+                            }
                         },
                         _ => buffer.push(expr),
                     }
@@ -3269,7 +3303,7 @@ impl ExprWeights {
                     }
                 },
                 _ => {
-                    self.comp_err(&format!("this couldn't handle expressions: {:?}", buffer));
+                    self.comp_err(&format!("couldn't handle expressions: {:?}", buffer));
                     exit(1);
                 },
             }
@@ -3446,13 +3480,89 @@ impl ExprWeights {
         expr
     }
 
+    fn handle_type_mask(&mut self, type_name: String, masked_type: Expr) {
+        match masked_type {
+            Expr::StructDef { struct_fields, .. } => {
+                let expr = Expr::StructDef {
+                    struct_name: Box::new(Expr::StructName(type_name)),
+                    struct_fields
+                };
+                self.structures.push(expr);
+            },
+            Expr::MacroStructDef { struct_name, struct_fields } => {
+                let generics = if let Expr::MacroStructName { generics, .. } = *struct_name {
+                    generics
+                } else {vec![]};
+                let expr = Expr::MacroStructDef {
+                    struct_name: Box::new(Expr::MacroStructName {
+                        name: type_name,
+                        generics
+                    }),
+                    struct_fields
+                };
+                self.structures.push(expr);
+            },
+            Expr::EnumDef { .. } => {
+                self.comp_err(&format!("masking an enum is not supported, tried to mask `{masked_type:?}`"));
+                exit(1);
+            },
+            _ => (),
+        }
+    }
+
     fn create_variable(&mut self, left: Vec<Token>, right: Vec<Token>, is_constant: bool) {
         let left_expr = self.handle_left_assign(left, is_constant);
         let right_expr = self.handle_right_assign(right, true);
 
-        let expr = Expr::Variable { info: Box::new(left_expr), value: Box::new(right_expr) };
-        if !self.in_func {
+        match left_expr {
+            Expr::VariableName { ref typ, ref name, .. } => {
+                if let Types::TypeId = typ {
+                    if !is_constant {
+                        self.comp_err(&format!("type masking must be constant. did you mean `typeid {name} :: <value>`?"));
+                        exit(1);
+                    }
+
+                    if let Expr::StructDef { .. } = right_expr {
+                        self.handle_type_mask(name.to_owned(), right_expr.clone());
+                    } else if let Expr::IntLit(_) = right_expr {
+                        self.structures.push(Expr::StructDef {
+                            struct_name: Box::new(Expr::StructName(name.to_owned())),
+                            struct_fields: vec![]
+                        });
+                    }
+
+                    let new_name = name.replace(".", "__");
+
+                    let expr = Expr::Variable {
+                        info: Box::new(Expr::VariableName {
+                            typ: typ.clone(),
+                            name: new_name,
+                            reassign: false,
+                            constant: true,
+                            field_data: (false, false)
+                        }),
+                        value: Box::new(right_expr)
+                    };
+                    self.program_push(expr.clone());
+                    self.token_stack.clear();
+                    return;
+                }
+            },
+            _ => unreachable!(),
+        }
+
+        let expr = Expr::Variable { info: Box::new(left_expr.clone()), value: Box::new(right_expr.clone()) };
+        if !self.in_func && !self.in_enum_def {
             self.global_vars.push(expr.clone());
+        } else if self.in_enum_def {
+            if let Expr::IntLit(_) = right_expr {
+                self.expr_stack.push(expr);
+                self.token_stack.clear();
+                return;
+            } else {
+                self.comp_err(&format!("enum field must be an integer, found {right_expr:?}"));
+                exit(1);
+            }
         } else if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
             vars[self.current_scope].push(expr.clone());
         }

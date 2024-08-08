@@ -81,11 +81,12 @@ foo(bar.data[0]);
 @def -> define a static label for something (e.g. @def CAP: 100; or @def io: @import "stdio.h";)
 
 defer -> perform action right before the end of current scope
-sizeof -> returns the size in bytes of a type
 
 default struct values -> so that there isn't a need for a constructor as its baked into the struct
 
 group -> group of acceptable types. `group number: |u8 i8 i32 int usize|`
+
+any -> any type (may be not type safe)
 
 character literals: the type exists but no way to really make them without C Embed. there are a few options here
     - traditional literal: 'a' 'A' ' '

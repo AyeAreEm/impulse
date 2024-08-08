@@ -16,12 +16,7 @@ struct Vector4f32 :: {
     f32 w;
 }
 
-struct Quaternionf32 :: {
-    f32 x;
-    f32 y;
-    f32 z;
-    f32 w;
-}
+typeid Quaternionf32 :: Vector4f32;
 
 struct Matrix4x4f32 :: {
     f32 m0; f32 m4; f32 m8; f32 m12;
@@ -48,12 +43,7 @@ struct Vector4f64 :: {
     f64 w;
 }
 
-struct Quaternionf64 :: {
-    f64 x;
-    f64 y;
-    f64 z;
-    f64 w;
-}
+typeid Quaternionf64 :: Vector4f64;
 
 struct Matrix4x4f64 :: {
     f64 m0; f64 m4; f64 m8; f64 m12;

@@ -230,9 +230,7 @@ impl Gen {
                 if let Types::ArrIndex { index_at, .. } = typ {
                     vardec.push_str(&format!("{new_name}[{index_at}]"));
                     return vardec
-                }
-
-                if let Types::TypeDef { type_name, generics: generics_op } = typ {
+                } else if let Types::TypeDef { type_name, generics: generics_op } = typ {
                     match generics_op {
                         Some(generics) => {
                             if !generics.is_empty() {
@@ -476,8 +474,16 @@ impl Gen {
                 values.push('}');
                 return values
             },
+            Expr::StructDef { struct_name, .. } => {
+                match *struct_name {
+                    Expr::StructName(structname) => {
+                        return structname.replace(".", "__")
+                    },
+                    _ => unreachable!(),
+                }
+            },
             unimpl => {
-                self.comp_err(&format!("expression {unimpl:?} this not implemented yet"));
+                self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                 exit(1);
             }
         }
@@ -722,8 +728,19 @@ impl Gen {
 
                     let mut fields = String::new();
                     for field in enum_fields {
-                        let varname = self.handle_varname(field).replace(".", "_");
-                        fields.push_str(&format!("    {varname},\n"));
+                        match field {
+                            Expr::Variable { info, value } => {
+                                let mut varname = self.handle_varname(*info);
+                                varname = varname.strip_prefix("const  ").unwrap().to_owned();
+                                let varvalue = self.handle_value(*value);
+                                fields.push_str(&format!("    {varname} = {varvalue},\n"));
+                            },
+                            Expr::VariableName { .. } => {
+                                let varname = self.handle_varname(field).replace(".", "_");
+                                fields.push_str(&format!("    {varname},\n"));
+                            },
+                            _ => (),
+                        }
                     }
                     self.code.push_str(&format!("{def_code}{fields}"));
                 },
@@ -888,6 +905,17 @@ impl Gen {
                 },
                 Expr::Variable { info, value } => {
                     self.add_spaces(self.indent);
+
+                    match *info {
+                        Expr::VariableName { ref typ, ref name, .. } => {
+                            if let Types::TypeId = typ {
+                                let typeid_type = self.handle_value(*value.clone());
+                                self.code.push_str(&format!("typedef {typeid_type} {name};\n"));
+                                continue;
+                            }
+                        },
+                        _ => (),
+                    }
 
                     let mut varname = self.handle_varname(*info.clone());
                     if varname.chars().last().unwrap() == 'Y' {
