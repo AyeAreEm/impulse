@@ -1,6 +1,8 @@
 @import "base/raylib/raylib.imp";
 
-_ main :: () {
+typeid integer :: int;
+
+integer main :: () {
     rl.InitWindow(800 600 "Raylib - Impulse");
 
     loop (!rl.WindowShouldClose()) {
@@ -10,4 +12,5 @@ _ main :: () {
     }
 
     rl.CloseWindow();
+    return 0;
 }
