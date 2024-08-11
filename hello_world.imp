@@ -1,13 +1,14 @@
 @import "base/raylib/raylib.imp";
 
-typeid integer :: int;
-
-integer main :: () {
+_ main :: () {
     rl.InitWindow(800 600 "Raylib - Impulse");
 
     loop (!rl.WindowShouldClose()) {
         rl.BeginDrawing();
-        rl.ClearBackground(rl.RED);
+        rl.ClearBackground(rl.BLACK);
+    
+        rl.Rectangle rec: |100 100 200 200|;
+        rl.DrawRectangleRec(rec rl.RED);
         rl.EndDrawing();
     }
 

@@ -821,3 +821,168 @@ enum rl.NPatchLayout :: {
 @inline _ rl.TakeScreenshot :: (^char fileName) {@c [TakeScreenshot(fileName);];}
 @inline _ rl.SetConfigFlags :: (uint flags) {@c [SetConfigFlags(flags);];}
 @inline _ rl.OpenURL :: (^char url) {@c [OpenURL(url);];}
+
+# Note: Following functins implemented in module [utils]
+# traceLog is not implemented as variadics don't exist in impulse 
+@inline _ rl.SetTraceLogLevel :: (int logLevel) {@c [SetTraceLogLevel(logLevel);];}
+@inline ^_ rl.MemAlloc :: (uint size) {@c [return MemAlloc(size);];}
+@inline ^_ rl.MemRealloc :: (^_ ptr uint size) {@c [return MemRealloc(ptr, size);];}
+@inline _ rl.MemFree :: (^_ ptr) {@c [MemFree(ptr);];}
+
+# Files managament functions
+@inline ^u8 rl.LoadFileData :: (^char fileName ^int dataSize) {@c [return LoadFileData(fileName, dataSize);];}
+@inline _ rl.UnloadFileData :: (^u8 data) {@c [UnloadFileData(data);];}
+@inline bool rl.SaveFileData :: (^char fileName ^_ data int dataSize) {@c [return SaveFileData(fileName, data, dataSize);];}
+@inline bool rl.ExportDataAsCode :: (^u8 data int dataSize ^char fileName) {@c [return ExportDataAsCode(data, dataSize, fileName);];}
+@inline ^char rl.LoadFileText :: (^char fileName) {@c [return LoadFileText(fileName);];}
+@inline _ rl.UnloadFileText :: (^char text) {@c [UnloadFileText(text);];}
+@inline bool rl.SaveFileText :: (^char fileName ^char text) {@c [return SaveFileText(fileName, text);];}
+
+@inline bool rl.FileExists :: (^char fileName) {@c [return FileExists(fileName);];}
+@inline bool rl.DirectoryExists :: (^char dirPath) {@c [return DirectoryExists(dirPath);];}
+@inline bool rl.IsFileExtension :: (^char fileName ^char ext) {@c [return IsFileExtension(fileName, ext);];}
+@inline int rl.GetFileLength :: (^char fileName) {@c [return GetFileLength(fileName);];}
+@inline ^char rl.GetFileExtension :: (^char fileName) {@c [GetFileExtension(fileName);];}
+@inline ^char rl.GetFileName :: (^char filePath) {@c [return GetFileName(filePath);];}
+@inline ^char rl.GetFileNameWithoutExt :: (^char filePath) {@c [return GetFileNameWithoutExt(filePath);];}
+@inline ^char rl.GetDirectoryPath :: (^char filePath) {@c [return GetDirectoryPath(filePath);];}
+@inline ^char rl.GetPrevDirectoryPath :: (^char dirPath) {@c [return GetPrevDirectoryPath(dirPath);];}
+@inline ^char rl.GetWorkingDirectory :: () {@c [return GetWorkingDirectory();];}
+@inline ^char rl.GetApplicationDirectory :: () {@c [return GetApplicationDirectory();];}
+@inline bool rl.ChangeDirectory :: (^char dir) {@c [return ChangeDirectory(dir);];}
+@inline bool rl.IsPathFile :: (^char path) {@c [return IsPathFile(path);];}
+@inline rl.FilePathList rl.LoadDirectoryFiles :: (^char dirPath) {@c [FilePathList v = LoadDirectoryFiles(dirPath); return *(rl__FilePathList*)&v;];}
+@inline rl.FilePathList rl.LoadDirectoryFilesEx :: (^char basePath ^char filter bool scanSubdirs) {@c [FilePathList v = LoadDirectoryFilesEx(basePath, filter, scanSubdirs); return *(rl__FilePathList*)&v;];}
+@inline _ rl.UnloadDirectoryFiles :: (rl.FilePathList files) {@c [UnloadDirectoryFiles(*(FilePathList*)&files);];}
+@inline bool rl.IsFileDropped :: () {@c [return IsFileDropped();];}
+@inline rl.FilePathList rl.LoadDroppedFiles :: () {@c [FilePathList v = LoadDroppedFiles(); return *(rl__FilePathList*)&v;];}
+@inline _ rl.UnloadDroppedFiles :: (rl.FilePathList files) {@c [UnloadDroppedFiles(*(FilePathList*)&files);];}
+@inline i64 rl.GetFileModTime :: (^char fileName) {@c [return GetFileModTime(fileName);];}
+
+# Compression/Encoding functionality
+@inline ^u8 rl.CompressData :: (^u8 data int dataSize ^int compDataSize) {@c [return CompressData(data, dataSize, compDataSize);];}
+@inline ^u8 rl.DecompressData :: (^u8 compData int compDataSize ^int dataSize) {@c [return DecompressData(compData, compDataSize, dataSize);];}
+@inline ^char rl.EncodeDataBase64 :: (^u8 data int dataSize ^int outputSize) {@c [return EncodeDataBase64(data, dataSize, outputSize);];}
+@inline ^u8 rl.DecodeDataBase64 :: (^u8 data ^int outputSize) {@c [return DecodeDataBase64(data, outputSize);];}
+
+# Automation events functionality
+#@inline rl.AutomationEventList rl.LoadAutomationEventList :: (^char fileName) {@c [AutomationEventList v = LoadAutomationEventList(fileName); return *(AutomationEventList*)&v;];}
+#@inline _ rl.UnloadAutomationEventList :: (rl.AutomationEventList *list) {@c [UnloadAutomationEventList(*(AutomationEventList*)&list);];}
+#@inline bool rl.ExportAutomationEventList :: (rl.AutomationEventList list ^char fileName) {@c [return ExportAutomationEventList(*(AutomationEventList*)&list, fileName);];}
+#@inline _ rl.SetAutomationEventList :: (rl.AutomationEventList *list) {@c [SetAutomationEventList(*(AutomationEventList*)&list);];}
+#@inline _ rl.SetAutomationEventBaseFrame :: (int frame) {@c [SetAutomationEventBaseFrame(frame);];}
+#@inline _ rl.StartAutomationEventRecording :: () {@c [StartAutomationEventRecording();];}
+#@inline _ rl.StopAutomationEventRecording :: () {@c [StopAutomationEventRecording();];}
+#@inline _ rl.PlayAutomationEvent :: (rl.AutomationEvent event) {@c [PlayAutomationEvent(*(AutomationEvent*)&event);];}
+
+#------------------------------------------------------------------------------------
+# Input Handling Functions (Module: core)
+#------------------------------------------------------------------------------------
+
+# Input-related functions: keyboard
+@inline bool rl.IsKeyPressed :: (int key) {@c [return IsKeyPressed(key);];}
+@inline bool rl.IsKeyPressedRepeat :: (int key) {@c [return IsKeyPressedRepeat(key);];}
+@inline bool rl.IsKeyDown :: (int key) {@c [return IsKeyDown(key);];}
+@inline bool rl.IsKeyReleased :: (int key) {@c [return IsKeyReleased(key);];}
+@inline bool rl.IsKeyUp :: (int key) {@c [return IsKeyUp(key);];}
+@inline int rl.GetKeyPressed :: () {@c [return GetKeyPressed();];}
+@inline int rl.GetCharPressed :: () {@c [return GetCharPressed();];}
+@inline _ rl.SetExitKey :: (int key) {@c [return SetExitKey(key);];}
+
+# Input-related functions: gamepads
+#RLAPI bool IsGamepadAvailable(int gamepad);                   // Check if a gamepad is available
+#RLAPI const char *GetGamepadName(int gamepad);                // Get gamepad internal name id
+#RLAPI bool IsGamepadButtonPressed(int gamepad, int button);   // Check if a gamepad button has been pressed once
+#RLAPI bool IsGamepadButtonDown(int gamepad, int button);      // Check if a gamepad button is being pressed
+#RLAPI bool IsGamepadButtonReleased(int gamepad, int button);  // Check if a gamepad button has been released once
+#RLAPI bool IsGamepadButtonUp(int gamepad, int button);        // Check if a gamepad button is NOT being pressed
+#RLAPI int GetGamepadButtonPressed(void);                      // Get the last gamepad button pressed
+#RLAPI int GetGamepadAxisCount(int gamepad);                   // Get gamepad axis count for a gamepad
+#RLAPI float GetGamepadAxisMovement(int gamepad, int axis);    // Get axis movement value for a gamepad axis
+#RLAPI int SetGamepadMappings(const char *mappings);           // Set internal gamepad mappings (SDL_GameControllerDB)
+
+# Input-related functions: mouse
+#RLAPI bool IsMouseButtonPressed(int button);                  // Check if a mouse button has been pressed once
+#RLAPI bool IsMouseButtonDown(int button);                     // Check if a mouse button is being pressed
+#RLAPI bool IsMouseButtonReleased(int button);                 // Check if a mouse button has been released once
+#RLAPI bool IsMouseButtonUp(int button);                       // Check if a mouse button is NOT being pressed
+#RLAPI int GetMouseX(void);                                    // Get mouse position X
+#RLAPI int GetMouseY(void);                                    // Get mouse position Y
+#RLAPI Vector2 GetMousePosition(void);                         // Get mouse position XY
+#RLAPI Vector2 GetMouseDelta(void);                            // Get mouse delta between frames
+#RLAPI void SetMousePosition(int x, int y);                    // Set mouse position XY
+#RLAPI void SetMouseOffset(int offsetX, int offsetY);          // Set mouse offset
+#RLAPI void SetMouseScale(float scaleX, float scaleY);         // Set mouse scaling
+#RLAPI float GetMouseWheelMove(void);                          // Get mouse wheel movement for X or Y, whichever is larger
+#RLAPI Vector2 GetMouseWheelMoveV(void);                       // Get mouse wheel movement for both X and Y
+#RLAPI void SetMouseCursor(int cursor);                        // Set mouse cursor
+
+# Input-related functions: touch
+#RLAPI int GetTouchX(void);                                    // Get touch position X for touch point 0 (relative to screen size)
+#RLAPI int GetTouchY(void);                                    // Get touch position Y for touch point 0 (relative to screen size)
+#RLAPI Vector2 GetTouchPosition(int index);                    // Get touch position XY for a touch point index (relative to screen size)
+#RLAPI int GetTouchPointId(int index);                         // Get touch point identifier for given index
+#RLAPI int GetTouchPointCount(void);                           // Get number of touch points
+
+#------------------------------------------------------------------------------------
+# Gestures and Touch Handling Functions (Module: rgestures)
+#------------------------------------------------------------------------------------
+#RLAPI void SetGesturesEnabled(unsigned int flags);      // Enable a set of gestures using flags
+#RLAPI bool IsGestureDetected(unsigned int gesture);     // Check if a gesture have been detected
+#RLAPI int GetGestureDetected(void);                     // Get latest detected gesture
+#RLAPI float GetGestureHoldDuration(void);               // Get gesture hold time in milliseconds
+#RLAPI Vector2 GetGestureDragVector(void);               // Get gesture drag vector
+#RLAPI float GetGestureDragAngle(void);                  // Get gesture drag angle RLAPI Vector2 GetGesturePinchVector(void);              // Get gesture pinch delta
+#RLAPI float GetGesturePinchAngle(void);                 // Get gesture pinch angle
+
+#------------------------------------------------------------------------------------
+# Camera System Functions (Module: rcamera)
+#------------------------------------------------------------------------------------
+#RLAPI void UpdateCamera(Camera *camera, int mode);      // Update camera position for selected mode
+#RLAPI void UpdateCameraPro(Camera *camera, Vector3 movement, Vector3 rotation, float zoom); // Update camera movement/rotation
+
+#------------------------------------------------------------------------------------
+# Basic Shapes Drawing Functions (Module: shapes)
+#------------------------------------------------------------------------------------
+# Set texture and rectangle to be used on shapes drawing
+# NOTE: It can be useful when using basic shapes and one single font,
+# defining a font char white rectangle would allow drawing everything in a single draw call
+#RLAPI void SetShapesTexture(Texture2D texture, Rectangle source);       // Set texture and rectangle to be used on shapes drawing
+
+# Basic shapes drawing functions
+@inline _ rl.DrawPixel :: (int posX int posY rl.Color color) {@c [DrawPixel(posX, posY, *(Color*)&color);];}
+@inline _ rl.DrawPixelV :: (rl.Vector2 position rl.Color color) {@c [DrawPixelV(*(Vector2*)&position, *(Color*)&color);];}
+@inline _ rl.DrawLine :: (int startPosX int startPosY int endPosX int endPosY rl.Color color) {@c [DrawLine(startPosX, startPosY, endPosX, endPosY, *(Color*)&color);];}
+@inline _ rl.DrawLineV :: (rl.Vector2 startPos rl.Vector2 endPos rl.Color color) {@c [DrawLineV(*(Vector2*)&startPos, *(Vector2*)&endPos, *(Color*)&color);];}
+@inline _ rl.DrawLineEx :: (rl.Vector2 startPos rl.Vector2 endPos f32 thick rl.Color color) {@c [DrawLineEx(*(Vector2*)&startPos, *(Vector2*)&endPos, thick, *(Color*)&color);];}
+@inline _ rl.DrawLineStrip :: (^rl.Vector2 points int pointCount rl.Color color) {@c [DrawLineStrip(*(Vector2**)&points, pointCount, *(Color*)&color);];}
+@inline _ rl.DrawLineBezier :: (rl.Vector2 startPos rl.Vector2 endPos f32 thick rl.Color color) {@c [DrawLineBezier(*(Vector2*)&startPos, *(Vector2*)&endPos, thick, *(Color*)&color);];}
+@inline _ rl.DrawCircle :: (int centerX int centerY f32 radius rl.Color color) {@c [DrawCircle(centerX, centerY, radius, *(Color*)&color);];}
+#RLAPI void DrawCircleSector(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color);      // Draw a piece of a circle
+#RLAPI void DrawCircleSectorLines(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color); // Draw circle sector outline
+#RLAPI void DrawCircleGradient(int centerX, int centerY, float radius, Color color1, Color color2);       // Draw a gradient-filled circle
+#RLAPI void DrawCircleV(Vector2 center, float radius, Color color);                                       // Draw a color-filled circle (Vector version)
+#RLAPI void DrawCircleLines(int centerX, int centerY, float radius, Color color);                         // Draw circle outline
+#RLAPI void DrawCircleLinesV(Vector2 center, float radius, Color color);                                  // Draw circle outline (Vector version)
+#RLAPI void DrawEllipse(int centerX, int centerY, float radiusH, float radiusV, Color color);             // Draw ellipse
+#RLAPI void DrawEllipseLines(int centerX, int centerY, float radiusH, float radiusV, Color color);        // Draw ellipse outline
+#RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color); // Draw ring
+#RLAPI void DrawRingLines(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color);    // Draw ring outline
+@inline _ rl.DrawRectangle :: (int posX int posY int width int height rl.Color color) {@c [DrawRectangle(posX, posY, width, height, *(Color*)&color);];}
+@inline _ rl.DrawRectangleV :: (rl.Vector2 position rl.Vector2 size rl.Color color) {@c [DrawRectangleV(*(Vector2*)&position, *(Vector2*)&size, *(Color*)&color);];}
+@inline _ rl.DrawRectangleRec :: (rl.Rectangle rec rl.Color color) {@c [DrawRectangleRec(*(Rectangle*)&rec, *(Color*)&color);];}
+#RLAPI void DrawRectanglePro(Rectangle rec, Vector2 origin, float rotation, Color color);                 // Draw a color-filled rectangle with pro parameters
+#RLAPI void DrawRectangleGradientV(int posX, int posY, int width, int height, Color color1, Color color2);// Draw a vertical-gradient-filled rectangle
+#RLAPI void DrawRectangleGradientH(int posX, int posY, int width, int height, Color color1, Color color2);// Draw a horizontal-gradient-filled rectangle
+#RLAPI void DrawRectangleGradientEx(Rectangle rec, Color col1, Color col2, Color col3, Color col4);       // Draw a gradient-filled rectangle with custom vertex colors
+#RLAPI void DrawRectangleLines(int posX, int posY, int width, int height, Color color);                   // Draw rectangle outline
+#RLAPI void DrawRectangleLinesEx(Rectangle rec, float lineThick, Color color);                            // Draw rectangle outline with extended parameters
+#RLAPI void DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color color);              // Draw rectangle with rounded edges
+#RLAPI void DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments, float lineThick, Color color); // Draw rectangle with rounded edges outline
+#RLAPI void DrawTriangle(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                                // Draw a color-filled triangle (vertex in counter-clockwise order!)
+#RLAPI void DrawTriangleLines(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                           // Draw triangle outline (vertex in counter-clockwise order!)
+#RLAPI void DrawTriangleFan(Vector2 *points, int pointCount, Color color);                                // Draw a triangle fan defined by points (first vertex is the center)
+#RLAPI void DrawTriangleStrip(Vector2 *points, int pointCount, Color color);                              // Draw a triangle strip defined by points
+#RLAPI void DrawPoly(Vector2 center, int sides, float radius, float rotation, Color color);               // Draw a regular polygon (Vector version)
+#RLAPI void DrawPolyLines(Vector2 center, int sides, float radius, float rotation, Color color);          // Draw a polygon outline of n sides
+#RLAPI void DrawPolyLinesEx(Vector2 center, int sides, float radius, float rotation, float lineThick, Color color); // Draw a polygon outline of n sides with extended parameters
