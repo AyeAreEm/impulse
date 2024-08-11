@@ -27,6 +27,7 @@ pub enum Types {
 
     Bool,
     TypeId,
+    Any,
     Generic(String),
 
     Arr {
@@ -75,6 +76,7 @@ pub enum Keyword {
 
     Bool,
     TypeId,
+    Any,
     Generic(String),
 
     Println,

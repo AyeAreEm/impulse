@@ -1,17 +1,8 @@
-@import "base/raylib/raylib.imp";
+_ cast :: (typeid T any val) {
+    @c [(T)val;];
+}
 
 _ main :: () {
-    rl.InitWindow(800 600 "Raylib - Impulse");
-
-    loop (!rl.WindowShouldClose()) {
-        rl.BeginDrawing();
-        rl.ClearBackground(rl.BLACK);
-    
-        rl.Rectangle rec: |100 100 200 200|;
-        rl.DrawRectangleRec(rec rl.RED);
-        rl.EndDrawing();
-    }
-
-    rl.CloseWindow();
-    return 0;
+    i8 x: 10;
+    i16 y: cast(i16 x);
 }

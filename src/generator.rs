@@ -141,7 +141,7 @@ impl Gen {
             Types::I8 => (String::from("i8"), String::new()),
             Types::Char => (String::from("char"), String::new()),
             Types::U16 => (String::from("u16"), String::new()),
-            Types::I16 => (String::from("u16"), String::new()),
+            Types::I16 => (String::from("i16"), String::new()),
             Types::U32 => (String::from("u32"), String::new()),
             Types::I32 => (String::from("i32"), String::new()),
             Types::U64 => (String::from("u64"), String::new()),

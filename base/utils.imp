@@ -25,11 +25,11 @@ struct[T] array :: {
     @c [sizeof(T);];
 }
 
-@inline _ cast_prim :: (typeid T $T val typeid K) {
-    @c [(K)val;];
+@inline _ cast_prim :: (typeid T any val) {
+    @c [(T)val;];
 }
 
-@inline _ cast_struct :: (typeid T $T val typeid K) {
+@inline _ cast_struct :: (typeid T any val) {
     @c [*(K*)&val;];
 }
 
