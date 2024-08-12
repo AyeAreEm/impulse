@@ -2169,7 +2169,7 @@ impl ExprWeights {
         }
     }
 
-    fn handle_import_macro(&mut self, path: &String) -> Expr {
+    pub fn handle_import_macro(&mut self, path: &String) -> Expr {
         if path.chars().nth(path.len()-1).unwrap() == 'h' {
             self.imports.push(path.to_string());
             let no_extension = path.split_at(path.len()-2);

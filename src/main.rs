@@ -46,7 +46,7 @@ fn initalise(dir: &String) {
 
 fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool, lang: Lang) {
     let file_res = fs::read_to_string(filename);
-    let mut content = match file_res {
+    let content = match file_res {
         Ok(content) => content,
         Err(_) => {
             println!("\x1b[91merror\x1b[0m: unable to read file: {filename}");
@@ -54,34 +54,13 @@ fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool
         },
     };
 
-    if !content.contains("@import \"base/utils.imp\";") {
-        let last_occur = content.rfind("@import");
-        if let Some(index) = last_occur {
-            let mut pos = 0;
-            for i in index..content.len() {
-                match content.chars().nth(i) {
-                    Some(ch) => {
-                        if ch == '\n' {
-                            pos = i + 1;
-                            break;
-                        }
-                    },
-                    None => {
-                        println!("\x1b[91merror\x1b[0m: file might be empty");
-                        exit(1);
-                    },
-                }
-            }
+    let tokens = tokeniser(content.clone());
+    let mut parse = ExprWeights::new(tokens, filename);
 
-            content.insert_str(pos, "@import \"base/utils.imp\";");
-        } else {
-            content.insert_str(0, "@import \"base/utils.imp\";");
-        }
+    if !content.contains("@import \"base/utils.imp\";") {
+        parse.handle_import_macro(&String::from("base/utils.imp"));
     }
 
-    let tokens = tokeniser(content);
-
-    let mut parse = ExprWeights::new(tokens, filename);
     let expressions = parse.parser();
     for expr in &expressions {
         println!("{:?}", expr.0);
