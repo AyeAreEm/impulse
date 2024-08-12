@@ -1,8 +1,3 @@
-_ cast :: (typeid T any val) {
-    @c [(T)val;];
-}
-
 _ main :: () {
-    i8 x: 10;
-    i16 y: cast(i16 x);
+
 }

@@ -1610,6 +1610,54 @@ impl ExprWeights {
                         params.push(token.clone());
                     } else if create_struct {
                         generic_subtype = Expr::IntLit(symbols.to_string());
+                    } else if let Types::TypeDef { type_name, .. } = typ {
+                        let mut pass_typs = Vec::new();
+                        let mut name_buf = String::new();
+
+                        for (i, ch) in symbols.chars().enumerate() {
+                            if ch == ' ' || ch == '\n' || i == symbols.len()-1 {
+                                if i == symbols.len() - 1 {
+                                    name_buf.push(ch);
+                                }
+                                let keyword_rs = self.keyword_map.get(&name_buf);
+                                match keyword_rs {
+                                    Some(keyword) => {
+                                        let _ = self.keyword_to_type(keyword.clone());
+                                        pass_typs.push(name_buf.clone());
+                                    },
+                                    None => {
+                                        let found_var = self.find_variable(&name_buf);
+                                        if let Expr::VariableName { typ, .. } = found_var {
+                                            if let Types::TypeId = typ {
+                                                pass_typs.push(name_buf.clone());
+                                                name_buf.clear();
+                                                continue;
+                                            }
+                                        }
+
+                                        let found_typ = self.find_structure(&name_buf);
+                                        if let Expr::StructDef { struct_name, .. } |
+                                            Expr::MacroStructDef { struct_name, .. } = found_typ {
+                                                if let Expr::StructName(name) = *struct_name {
+                                                    pass_typs.push(name);
+                                                    name_buf.clear();
+                                                    continue;
+                                                } else if let Expr::MacroStructName { .. } = *struct_name {
+                                                    self.comp_err("generic struct with type of a generic struct not supported yet");
+                                                    exit(1);
+                                                }
+                                        } else {
+                                            self.comp_err(&format!("expected type, got {name_buf}"));
+                                            exit(1);
+                                        }
+                                    },
+                                }
+                            } else {
+                                name_buf.push(ch);
+                            }
+                        }
+
+                        typ = Types::TypeDef { type_name: type_name.clone(), generics: Some(pass_typs) }
                     } else {
                         self.comp_err(&format!("unexpected integer literal in block definition: {symbols}"));
                         exit(1);

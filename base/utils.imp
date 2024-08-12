@@ -5,7 +5,7 @@ struct[T] option :: {
     $T value;
     bool none;
 
-    option unwrap :: (typeid T option[T] opt) {
+    option[T] unwrap :: (typeid T option[T] opt) {
         if (opt.none) {
             @c [fprintf(stderr, "error: failed to unwrap in %s at line %d\n", __FILE__, __LINE__);];
             @c [fprintf(stderr, "error: please take a look at the c file for more info\n");];
@@ -25,11 +25,11 @@ struct[T] array :: {
     @c [sizeof(T);];
 }
 
-@inline _ cast_prim :: (typeid T any val) {
+@inline $T cast_prim :: (typeid T any val) {
     @c [(T)val;];
 }
 
-@inline _ cast_struct :: (typeid T any val) {
+@inline $T cast_struct :: (typeid T any val) {
     @c [*(K*)&val;];
 }
 

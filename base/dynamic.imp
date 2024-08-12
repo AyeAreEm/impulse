@@ -15,7 +15,7 @@ struct[T] dyn :: {
         return new;
     }
 
-    option at :: (typeid T dyn[T] arr usize index) {
+    option[T] at :: (typeid T dyn[T] arr usize index) {
         option[T] ret;
         ret.none: false;
 
