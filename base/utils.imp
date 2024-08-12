@@ -32,4 +32,3 @@ struct[T] array :: {
 @inline $T cast_struct :: (typeid T any val) {
     @c [*(K*)&val;];
 }
-

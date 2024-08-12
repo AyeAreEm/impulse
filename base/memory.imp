@@ -1,6 +1,6 @@
 @import "string.h";
 
-@inline ^_ mem.alloc :: (typeid T usize len) {
+@inline ^$T mem.alloc :: (typeid T usize len) {
     @c [ calloc(len, sizeof(T)); ];
 }
 
