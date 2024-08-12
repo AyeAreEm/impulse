@@ -1,0 +1,14 @@
+@import "base/raylib/raylib.imp";
+
+_ main :: () {
+    rl.InitWindow(800 600 "Raylib - Impulse");
+
+    loop (!rl.WindowShouldClose()) {
+        rl.BeginDrawing();
+        rl.ClearBackground(rl.BLACK);
+        rl.DrawRectangle(100 100 200 200 rl.RED);
+        rl.EndDrawing();
+    }
+
+    rl.CloseWindow();
+}

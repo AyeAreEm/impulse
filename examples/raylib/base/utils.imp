@@ -1,0 +1,35 @@
+@import "stdio.h";
+@import "stdlib.h";
+
+struct[T] option :: {
+    $T value;
+    bool none;
+
+    option unwrap :: (typeid T option[T] opt) {
+        if (opt.none) {
+            @c [fprintf(stderr, "error: failed to unwrap in %s at line %d\n", __FILE__, __LINE__);];
+            @c [fprintf(stderr, "error: please take a look at the c file for more info\n");];
+            @c [exit(1);];
+        }
+        return opt.value;
+    }
+}
+
+struct[T] array :: {
+    ^$T data;
+    usize len;
+}
+
+# typeid already makes this inlined but explicity is nice
+@inline usize size_of :: (typeid T) {
+    @c [sizeof(T);];
+}
+
+@inline _ cast_prim :: (typeid T any val) {
+    @c [(T)val;];
+}
+
+@inline _ cast_struct :: (typeid T any val) {
+    @c [*(K*)&val;];
+}
+

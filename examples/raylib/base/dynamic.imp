@@ -1,0 +1,50 @@
+@import "base/memory.imp";
+@import "base/utils.imp";
+
+struct[T] dyn :: {
+    ^$T data;
+    usize len;
+    usize cap;
+
+    dyn new :: (typeid T) {
+        dyn[T] new;
+        new.len: 0;
+        new.cap: 32;
+        new.data: mem.alloc(T new.cap);
+        @c [ if (new.data == NULL) exit(1); ];
+        return new;
+    }
+
+    option at :: (typeid T dyn[T] arr usize index) {
+        option[T] ret;
+        ret.none: false;
+
+        if (index >= arr.len) {
+            ret.none: true;
+            return ret;
+        }
+
+        ret.value: arr.data[index];
+        return ret;
+    }
+
+    _ push :: (typeid T dyn[T] arr $T elem) {
+        if ([arr.len + 1] >= arr.cap) {
+            arr.cap: [arr.cap + [arr.len + 1] * 2];
+            @c [arr.data = realloc(arr.data, arr.cap * sizeof(T));];
+        }
+
+        arr.data[arr.len]: elem;
+        arr.len: [arr.len + 1];
+    }
+
+    _ clear :: (typeid T dyn[T] arr) {
+        mem.dealloc(arr.data);
+        arr: dyn.new(T);
+    }
+
+    _ remove :: (typeid T dyn[T] arr usize index) {
+        @c [mem_move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
+        arr.len: [arr.len - 1];
+    }
+}

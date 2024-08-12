@@ -1,0 +1,117 @@
+# Strings with length and null terminated for easy C interopability
+
+@import "base/memory.imp";
+
+@inline usize cstr.len :: (^char str) {
+    # maybe just write out the code instead of making a function that calls a function
+    # func calls are more expensive than rewriting
+    @c [return strlen(str);];
+}
+
+@inline ^char cstr.copy :: (^char dest ^char src usize byte_size) {
+    # doubt i could write safe code that copies strings
+    @c [ return strncpy(dest, src, byte_size); ];
+}
+
+struct string :: {
+    ^char data;
+    usize cap;
+    usize len;
+    
+    string new :: () {
+        string new;
+        new.len: 0;
+        new.cap: 32;
+        new.data: mem.alloc(char new.cap);
+        @c [
+            if (new.data == NULL) {
+                fprintf(stderr, "error: failed to unwrap in %s at line %d\n", __FILE__, __LINE__);
+                fprintf(stderr, "error: please take a look at the c file for more info\n");
+                exit(1);
+            }
+        ];
+
+        return new;
+    }
+
+    _ resize :: (^string str usize modifier) {
+        usize increase: [[str.len + modifier] * 2];
+        str.cap: [str.cap + increase];
+
+        int new_size: [str.cap + 1];
+        str.data: mem.re_alloc(str.data new_size);
+    }
+
+    _ copy :: (^char dest ^char src usize byte_size) {
+        cstr.copy(dest src byte_size);
+        @c [dest[*dest-1] = '\0';];
+    }
+
+    string from :: (^char str) {
+        string new: string.new();
+        usize cstr_len: cstr.len(str);
+
+        if (cstr_len > new.cap) {
+            string.resize(&new cstr_len);
+        }
+
+        new.len: cstr_len;
+        string.copy(new.data str [new.cap + 1]);
+        return new;
+    }
+
+    _ push_char :: (^string str char ch) {
+        usize new_len: [str.len + 1];
+
+        if (new_len >= str.cap) {
+            string.resize(str 0);
+        }
+
+        str.data[str.len]: ch;
+        str.len: new_len;
+        @c [str->data[new_len] = '\0';];
+    }
+
+    _ push_cstr :: (^string dest ^char src) {
+        usize src_len: cstr.len(src);
+        usize new_len: [dest.len + src_len];
+
+        if (new_len >= dest.cap) {
+            string.resize(dest 0);
+        }
+
+        ^_ end_data: [dest.data + dest.len];
+        mem.copy(end_data src src_len);
+
+        dest.len: new_len;
+        @c [dest->data[new_len] = '\0';];
+    }
+
+    _ push :: (^string dest ^string src) {
+        usize new_len :: [dest.len + src.len];
+
+        if (new_len >= dest.cap) {
+            string.resize(dest 0);
+        }
+
+        ^_ end_data: [dest.data + dest.len];
+        mem.copy(end_data src.data src.len);
+
+        dest.len: new_len;
+        @c [dest->data[new_len] = '\0';];
+    }
+
+    bool compare :: (string first string second) {
+        if (first.len != second.len) {
+            return false;
+        }
+
+        for (first) [ch i] {
+            if (ch = second.data[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
