@@ -30,5 +30,10 @@ struct[T] array :: {
 }
 
 @inline $T cast_struct :: (typeid T any val) {
-    @c [*(K*)&val;];
+    @c [*(T*)&val;];
 }
+
+# these are only here to claim the definition, this function is made in the compiler
+_ print :: () {}
+_ println :: () {}
+

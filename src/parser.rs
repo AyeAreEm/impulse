@@ -3323,7 +3323,7 @@ impl ExprWeights {
                         }
                     }
                 }
-                Expr::VariableName { typ, name, constant,  .. } => {
+                Expr::VariableName { typ, name, constant, field_data, .. } => {
                     if let Types::Arr { .. } = typ {
                     } else if let Types::Pointer { .. } = typ {
                     } else {
@@ -3340,7 +3340,7 @@ impl ExprWeights {
                             name: name.to_owned(),
                             reassign: false,
                             constant: constant.to_owned(),
-                            field_data: (false, false),
+                            field_data: (field_data.0, field_data.1),
                         };
                         if returning {
                             return Expr::Return(Box::new(expr))

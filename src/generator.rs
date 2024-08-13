@@ -282,7 +282,11 @@ impl Gen {
         match funccall {
             Expr::FuncCall { name, gave_params } => {
                 let mut funccall_code = String::new();
-                funccall_code.push_str(&format!("{name}("));
+                if name == String::from("print") || name == String::from("println") {
+                    funccall_code.push_str("printf(");
+                } else {
+                    funccall_code.push_str(&format!("{name}("));
+                }
 
                 if gave_params.is_empty() {
                     funccall_code.push(')');
@@ -366,7 +370,11 @@ impl Gen {
                     }
                 }
 
-                funccall_code.push(')');
+                if name == String::from("println") {
+                    funccall_code.push_str("); printf(\"\\n\")");
+                } else {
+                    funccall_code.push(')');
+                }
                 return funccall_code
             },
             unexpected => {
@@ -404,6 +412,7 @@ impl Gen {
             Expr::VariableName { typ, name, field_data, .. } => {
                 // we do this cuz it should be a enum at this point
                 if !field_data.0 && name.contains(".") {
+                    println!("variable name: {name}, field_data: {field_data:?}");
                     return name.replace(".", "_")
                 }
 
