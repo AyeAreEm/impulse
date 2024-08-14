@@ -1,10 +1,1 @@
-@import "base/string.imp";
-
-_ main :: () {
-    string word: string.from("hello world");
-
-    loop (i < word.len) [+] {
-        char ch: word.data[i];
-        println("%c" ch);
-    }
-}
+@import "base/dynamic.imp";

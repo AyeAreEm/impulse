@@ -6,7 +6,6 @@
 # copy this in c_flags
 # -I base/raylib/include/ -L base/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm
 
-f32 pi :: 3.14159265358979323846;
 @inline f32 deg_to_rad :: () {
     return [pi / 180.0];
 }

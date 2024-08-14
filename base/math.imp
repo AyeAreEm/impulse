@@ -1,12 +1,125 @@
+@import "math.h";
+@import "base/string.imp";
+
+f64 pi :: 3.14159265358979323846;
+
+@inline f32 sine_f32 :: (f32 x) { @c [return sinf(x);]; }
+@inline f64 sine_f64 :: (f64 x) { @c [return sin(x);]; }
+
+$T sine :: (typeid T $T x) {
+    $T result;
+    if (size_of(T) = size_of(f32)) {
+        result: sine_f32(x);
+    } orif (size_of(T) = size_of(f64)) {
+        result: sine_f64(x);
+    } else {
+        println("type %s can't be used in sine function as it's not a number" type_of(T));
+        @c [exit(1);];
+    }
+    return result;
+}
+
+@inline f32 cosine_f32 :: (f32 x) { @c [return cosf(x);]; }
+@inline f64 cosine_f64 :: (f64 x) { @c [return cos(x);]; }
+
+$T cosine :: (typeid T $T x) {
+    $T result;
+    if (size_of(T) = size_of(f32)) {
+        result: cosine_f32(x);
+    } orif (size_of(T) = size_of(f64)) {
+        result: cosine_f64(x);
+    } else {
+        println("type %s can't be used in cosine function as it's not a number" type_of(T));
+        @c [exit(1);];
+    }
+    return result;
+}
+
+@inline f32 sqrt_f32 :: (f32 x) { @c [return sqrtf(x);]; }
+@inline f64 sqrt_f64 :: (f64 x) { @c [return sqrt(x);]; }
+
+$T square_rt :: (typeid T $T x) {
+    $T result;
+    if (size_of(T) = size_of(f32)) {
+        result: sqrt_f32(x);
+    } orif (size_of(T) = size_of(f64)) {
+        result: sqrt_f64(x);
+    } else {
+        println("type %s can't be used in square_rt function as it's not a number" type_of(T));
+        @c [exit(1);];
+    }
+    return result;
+}
+
 struct Vector2f32 :: {
     f32 x;
     f32 y;
+
+    @inline Vector2f32 add :: (Vector2f32 a Vector2f32 b) {
+        Vector2f32 c;
+        c.x: [a.x + b.x];
+        c.y: [a.y + b.y];
+        return c;
+    }
+
+    @inline Vector2f32 sub :: (Vector2f32 a Vector2f32 b) {
+        Vector2f32 c;
+        c.x: [a.x - b.x];
+        c.y: [a.y - b.y];
+        return c;
+    }
+
+    @inline Vector2f32 mul :: (Vector2f32 a Vector2f32 b) {
+        Vector2f32 c;
+        c.x: [a.x * b.x];
+        c.y: [a.y * b.y];
+        return c;
+    }
+
+    @inline Vector2f32 div :: (Vector2f32 a Vector2f32 b) {
+        Vector2f32 c;
+        c.x: [a.x / b.x];
+        c.y: [a.y / b.y];
+        return c;
+    }
 }
 
 struct Vector3f32 :: {
     f32 x;
     f32 y;
     f32 z;
+
+    @inline Vector3f32 add :: (Vector3f32 a Vector3f32 b) {
+        Vector3f32 c;
+        c.x: [a.x + b.x];
+        c.y: [a.y + b.y];
+        c.z: [a.z + b.z];
+        return c;
+    }
+
+    @inline Vector3f32 sub :: (Vector3f32 a Vector3f32 b) {
+        Vector3f32 c;
+        c.x: [a.x - b.x];
+        c.y: [a.y - b.y];
+        c.z: [a.z - b.z];
+        return c;
+    }
+
+    @inline Vector3f32 mul :: (Vector3f32 a Vector3f32 b) {
+        Vector3f32 c;
+        c.x: [a.x * b.x];
+        c.y: [a.y * b.y];
+        c.z: [a.z * b.z];
+        return c;
+    }
+
+    @inline Vector3f32 div :: (Vector3f32 a Vector3f32 b) {
+        Vector3f32 c;
+        c.x: [a.x / b.x];
+        c.y: [a.y / b.y];
+        c.z: [a.z / b.z];
+        return c;
+    }
 }
 
 struct Vector4f32 :: {
@@ -14,6 +127,42 @@ struct Vector4f32 :: {
     f32 y;
     f32 z;
     f32 w;
+
+    @inline Vector4f32 add :: (Vector4f32 a Vector4f32 b) {
+        Vector4f32 c;
+        c.x: [a.x + b.x];
+        c.y: [a.y + b.y];
+        c.z: [a.z + b.z];
+        c.w: [a.w + b.w];
+        return c;
+    }
+
+    @inline Vector4f32 sub :: (Vector4f32 a Vector4f32 b) {
+        Vector4f32 c;
+        c.x: [a.x - b.x];
+        c.y: [a.y - b.y];
+        c.z: [a.z - b.z];
+        c.w: [a.w - b.w];
+        return c;
+    }
+
+    @inline Vector4f32 mul :: (Vector4f32 a Vector4f32 b) {
+        Vector4f32 c;
+        c.x: [a.x * b.x];
+        c.y: [a.y * b.y];
+        c.z: [a.z * b.z];
+        c.w: [a.w * b.w];
+        return c;
+    }
+
+    @inline Vector4f32 div :: (Vector4f32 a Vector4f32 b) {
+        Vector4f32 c;
+        c.x: [a.x / b.x];
+        c.y: [a.y / b.y];
+        c.z: [a.z / b.z];
+        c.w: [a.w / b.w];
+        return c;
+    }
 }
 
 typeid Quaternionf32 :: Vector4f32;
@@ -28,12 +177,72 @@ struct Matrix4x4f32 :: {
 struct Vector2f64 :: {
     f64 x;
     f64 y;
+
+    @inline Vector2f64 add :: (Vector2f64 a Vector2f64 b) {
+        Vector2f64 c;
+        c.x: [a.x + b.x];
+        c.y: [a.y + b.y];
+        return c;
+    }
+
+    @inline Vector2f64 sub :: (Vector2f64 a Vector2f64 b) {
+        Vector2f64 c;
+        c.x: [a.x - b.x];
+        c.y: [a.y - b.y];
+        return c;
+    }
+
+    @inline Vector2f64 mul :: (Vector2f64 a Vector2f64 b) {
+        Vector2f64 c;
+        c.x: [a.x * b.x];
+        c.y: [a.y * b.y];
+        return c;
+    }
+
+    @inline Vector2f64 div :: (Vector2f64 a Vector2f64 b) {
+        Vector2f64 c;
+        c.x: [a.x / b.x];
+        c.y: [a.y / b.y];
+        return c;
+    }
 }
 
 struct Vector3f64 :: {
     f64 x;
     f64 y;
     f64 z;
+
+    @inline Vector3f64 add :: (Vector3f64 a Vector3f64 b) {
+        Vector3f64 c;
+        c.x: [a.x + b.x];
+        c.y: [a.y + b.y];
+        c.z: [a.z + b.z];
+        return c;
+    }
+
+    @inline Vector3f64 sub :: (Vector3f64 a Vector3f64 b) {
+        Vector3f64 c;
+        c.x: [a.x - b.x];
+        c.y: [a.y - b.y];
+        c.z: [a.z - b.z];
+        return c;
+    }
+
+    @inline Vector3f64 mul :: (Vector3f64 a Vector3f64 b) {
+        Vector3f64 c;
+        c.x: [a.x * b.x];
+        c.y: [a.y * b.y];
+        c.z: [a.z * b.z];
+        return c;
+    }
+
+    @inline Vector3f64 div :: (Vector3f64 a Vector3f64 b) {
+        Vector3f64 c;
+        c.x: [a.x / b.x];
+        c.y: [a.y / b.y];
+        c.z: [a.z / b.z];
+        return c;
+    }
 }
 
 struct Vector4f64 :: {
@@ -41,6 +250,42 @@ struct Vector4f64 :: {
     f64 y;
     f64 z;
     f64 w;
+
+    @inline Vector4f64 add :: (Vector4f64 a Vector4f64 b) {
+        Vector4f64 c;
+        c.x: [a.x + b.x];
+        c.y: [a.y + b.y];
+        c.z: [a.z + b.z];
+        c.w: [a.w + b.w];
+        return c;
+    }
+
+    @inline Vector4f64 sub :: (Vector4f64 a Vector4f64 b) {
+        Vector4f64 c;
+        c.x: [a.x - b.x];
+        c.y: [a.y - b.y];
+        c.z: [a.z - b.z];
+        c.w: [a.w - b.w];
+        return c;
+    }
+
+    @inline Vector4f64 mul :: (Vector4f64 a Vector4f64 b) {
+        Vector4f64 c;
+        c.x: [a.x * b.x];
+        c.y: [a.y * b.y];
+        c.z: [a.z * b.z];
+        c.w: [a.w * b.w];
+        return c;
+    }
+
+    @inline Vector4f64 div :: (Vector4f64 a Vector4f64 b) {
+        Vector4f64 c;
+        c.x: [a.x / b.x];
+        c.y: [a.y / b.y];
+        c.z: [a.z / b.z];
+        c.w: [a.w / b.w];
+        return c;
+    }
 }
 
 typeid Quaternionf64 :: Vector4f64;
@@ -51,3 +296,262 @@ struct Matrix4x4f64 :: {
     f64 m2; f64 m6; f64 m10; f64 m14;
     f64 m3; f64 m7; f64 m11; f64 m15;
 }
+
+@inline $T ease.linear_none :: (typeid T $T t $T b $T c $T d) { return [c*t/d + b]; }
+@inline $T ease.linear_in :: (typeid T $T t $T b $T c $T d) { return [c*t/d + b]; }
+@inline $T ease.linear_out :: (typeid T $T t $T b $T c $T d) { return [c*t/d + b]; }
+@inline $T ease.linear_in_out :: (typeid T $T t $T b $T c $T d) { return [c*t/d + b]; }
+
+@inline $T ease.sine_in :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_in function" type); @c [exit(1);];}
+
+    $T inner: [t/d * [pi/2.0]];
+    $T outer: cosine(T inner);
+    return [-c * outer + c + b];
+}
+@inline $T ease.sine_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_out function" type); @c [exit(1);];}
+
+    $T inner: [t/d*[pi/2.0]];
+    $T outer: sine(f32 inner);
+    return [c * outer + b];
+}
+@inline $T ease.sine_in_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_in_out function" type); @c [exit(1);];}
+
+    $T inner: [pi * t / d];
+    $T outer: cosine(f32 inner);
+    return [-c/2.0 * [outer - 1.0] + b];
+}
+
+@inline $T ease.circ_in :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_in function" type); @c [exit(1);];}
+
+    $T tt: [t / d];
+    f32 inner: [square_rt(f32 [1.0 - tt*tt]) - 1.0];
+    return [-c*inner + b];
+}
+@inline $T ease.circ_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_out function" type); @c [exit(1);];}
+
+    $T tt: [t / d - 1.0];
+    f32 inner: [1.0 - tt*tt];
+    f32 outer: square_rt(f32 inner);
+    return [c * outer + b];
+}
+@inline $T ease.circ_in_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_in_out function" type); @c [exit(1);];}
+
+    $T tt: [t / d / 2.0];
+    if (tt < 1.0) {
+        f32 inner: [1.0 - tt*tt];
+        f32 outer: square_rt(f32 inner);
+        return [-c/2.0 * [outer - 1.0] + b];
+    }
+
+    tt: [t - 2.0];
+    f32 inner: [1.0 - tt*tt];
+    f32 outer: square_rt(f32 inner);
+    return [-c/2.0 * [outer - 1.0] + b];
+}
+
+@inline $T ease.cubic_in :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_in function" type); @c [exit(1);];}
+
+    $T tt: [t / d];
+    return [c*tt*tt*tt + b];
+}
+@inline $T ease.cubic_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_out function" type); @c [exit(1);];}
+
+    $T tt: [t/d - 1.0];
+    return [c*[tt*tt*tt + 1.0] + b];
+
+}
+@inline $T ease.cubic_in_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_in_out function" type); @c [exit(1);];}
+
+    $T tt: [t / d / 2.0];
+    if (t < 1.0) {
+        return [c/2.0 * tt*tt*tt + b];
+    }
+    tt: [t - 2.0];
+    return [c/2.0 * tt*tt*tt + b];
+}
+
+#// Quadratic Easing functions
+#EaseQuadIn :: proc(t, b, c, d: f32) -> f32 { 
+#	t := t
+#	t /= d
+#	return c*t*t + b
+#}
+#EaseQuadOut :: proc(t, b, c, d: f32) -> f32 { 
+#	t := t
+#	t /= d
+#	return -c*t*(t - 2.0) + b
+#}
+#EaseQuadInOut :: proc(t, b, c, d: f32) -> f32 {
+#	t := t
+#	t /= d/2.0
+#	if t < 1 {
+#		return ((c/2)*(t*t)) + b
+#	}
+#	return -c/2.0*(((t - 1.0)*(t - 3.0)) - 1.0) + b
+#}
+#
+#// Exponential Easing functions
+#EaseExpoIn :: proc(t, b, c, d: f32) -> f32 { 
+#	return (t == 0.0) ? b : (c*math.pow(2.0, 10.0*(t/d - 1.0)) + b)
+#}
+#EaseExpoOut :: proc(t, b, c, d: f32) -> f32 { 
+#	return (t == d) ? (b + c) : (c*(-math.pow(2.0, -10.0*t/d) + 1.0) + b)
+#}
+#EaseExpoInOut :: proc(t, b, c, d: f32) -> f32 {
+#	if t == 0.0 {
+#		return b
+#	}
+#	if t == d {
+#		return b + c
+#	}
+#	t := t
+#	t /= d/2.0
+#	if t < 1.0 {
+#		return c/2.0*math.pow(2.0, 10.0*(t - 1.0)) + b
+#	}
+#
+#	return c/2.0*(-math.pow(2.0, -10.0*(t - 1.0)) + 2.0) + b
+#}
+#
+#// Back Easing functions
+#EaseBackIn :: proc(t, b, c, d: f32) -> f32 {
+#	s :: 1.70158
+#	t := t
+#	t /= d
+#	postFix := t
+#	return (c*(postFix)*t*((s + 1.0)*t - s) + b)
+#}
+#
+#EaseBackOut :: proc(t, b, c, d: f32) -> f32 {
+#	t := t
+#	s :: 1.70158
+#	t = t/d - 1.0
+#	return (c*(t*t*((s + 1.0)*t + s) + 1.0) + b)
+#}
+#
+#EaseBackInOut :: proc(t, b, c, d: f32) -> f32 {
+#	t := t
+#	s := f32(1.70158)
+#	t /= d/2
+#	if t < 1.0 {
+#		s *= 1.525
+#		return (c/2.0*(t*t*((s + 1.0)*t - s)) + b)
+#	}
+#
+#	t -= 2
+#	postFix := t
+#	s *= 1.525
+#	return (c/2.0*((postFix)*t*((s + 1.0)*t + s) + 2.0) + b)
+#}
+#
+#// Bounce Easing functions
+#EaseBounceOut :: proc(t, b, c, d: f32) -> f32 {
+#	t := t
+#	t /= d
+#	switch {
+#	case t < 1.0/2.75:
+#		return (c*(7.5625*t*t) + b)
+#	case t < 2.0/2.75:
+#		t -= 1.5/2.75
+#		postFix := t
+#		return (c*(7.5625*(postFix)*t + 0.75) + b)
+#	case t < 2.5/2.75:
+#		t -= 2.25/2.75
+#		postFix := t
+#		return (c*(7.5625*(postFix)*t + 0.9375) + b)
+#	case:
+#		t -= 2.625/2.75
+#		postFix := t
+#		return (c*(7.5625*(postFix)*t + 0.984375) + b)
+#	}
+#}
+#
+#EaseBounceIn :: proc(t, b, c, d: f32) -> f32 { 
+#	return c - EaseBounceOut(d - t, 0.0, c, d) + b 
+#}
+#EaseBounceInOut :: proc(t, b, c, d: f32) -> f32 {
+#	if t < d/2.0 {
+#		return EaseBounceIn(t*2.0, 0.0, c, d)*0.5 + b
+#	} else {
+#		return EaseBounceOut(t*2.0 - d, 0.0, c, d)*0.5 + c*0.5 + b
+#	}
+#}
+#
+#// Elastic Easing functions
+#EaseElasticIn :: proc(t, b, c, d: f32) -> f32 {
+#	if t == 0.0 {
+#		return b
+#	}
+#	t := t
+#	t /= d
+#	if t == 1.0 {
+#		return b + c
+#	}
+#
+#	p := d*0.3
+#	a := c
+#	s := p/4.0
+#	t -= 1
+#	postFix := a*math.pow(2.0, 10.0*t)
+#
+#	return -(postFix*math.sin((t*d-s)*(2.0*PI)/p )) + b
+#}
+#
+#EaseElasticOut :: proc(t, b, c, d: f32) -> f32 {
+#	if t == 0.0 {
+#		return b
+#	}
+#	t := t
+#	t /= d
+#	if t == 1.0 {
+#		return b + c
+#	}
+#
+#	p := d*0.3
+#	a := c
+#	s := p/4.0
+#
+#	return a*math.pow(2.0,-10.0*t)*math.sin((t*d-s)*(2.0*PI)/p) + c + b
+#}
+#
+#EaseElasticInOut :: proc(t, b, c, d: f32) -> f32 {
+#	if t == 0.0 {
+#		return b
+#	}
+#	t := t
+#	t /= d/2.0
+#	if t == 2.0 {
+#		return b + c
+#	}
+#
+#	p := d*(0.3*1.5)
+#	a := c
+#	s := p/4.0
+#
+#	t -= 1
+#	if t < 1.0 {
+#		postFix := a*math.pow(2.0, 10.0*t)
+#		return -0.5*(postFix*math.sin((t*d-s)*(2.0*PI)/p)) + b
+#	}
+#
+#	postFix := a*math.pow(2.0, -10.0*t)
+#	return (postFix*math.sin((t*d-s)*(2.0*PI)/p)*0.5 + c + b)
+#}

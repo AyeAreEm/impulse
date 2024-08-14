@@ -13,6 +13,11 @@
     @c [ return strncpy(dest, src, byte_size); ];
 }
 
+# NOTE: this is an actually boolean unlike how c strcmp returns 0
+@inline bool cstr.compare :: (^char str1 ^char str2) {
+    @c [return !strcmp(str1, str2);];
+}
+
 struct string :: {
     ^char data;
     usize cap;

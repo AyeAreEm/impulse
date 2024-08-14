@@ -376,9 +376,22 @@ impl ExprWeights {
             }
 
             if i == intlit.len()-1 {
-                buf.push(ch);
-                tokens.push(Token::Ident(buf.clone()));
-                buf.clear();
+                let token_res = symb_to_token.get(&ch);
+                match token_res {
+                    Some(token) => {
+                        if buf.len() > 0 {
+                            tokens.push(Token::Ident(buf.clone()));
+                            buf.clear();
+                        }
+                        tokens.push(token.clone());
+                    },
+                    None => {
+                        buf.push(ch);
+                        tokens.push(Token::Ident(buf.clone()));
+                        buf.clear();
+                    },
+                }
+
                 break;
             }
 
@@ -466,7 +479,7 @@ impl ExprWeights {
                     let expr = self.find_ident(ident.to_string());
                     match expr {
                         Expr::None => {
-                            self.comp_err(&format!("unknown identifier: {}", ident));
+                            self.comp_err(&format!("this unknown identifier: {}", ident));
                             exit(1);
                         },
                         Expr::VariableName { typ, name, field_data, .. } => {
@@ -1119,7 +1132,7 @@ impl ExprWeights {
 
                     let expr = self.find_ident(ident.to_string());
                     match expr {
-                        Expr::Func { ref name, .. } => {
+                        Expr::Func { ref name, .. } | Expr::MacroFunc { ref name, .. } => {
                             if let Token::Lbrack = params[i+1] {
                                 func_call = expr;
                                 func_brack_rc += 1;
@@ -1203,6 +1216,13 @@ impl ExprWeights {
                             func_call = Expr::None;
                             func_params.clear();
                         }
+                    }
+                },
+                Token::Str(word) => {
+                    if func_brack_rc == 0 {
+                        expr_params.push(Expr::StrLit { content: word.to_owned(), is_cstr: true })
+                    } else {
+                        func_params.push(param.clone());
                     }
                 },
                 _ => {
@@ -1633,6 +1653,23 @@ impl ExprWeights {
                                                 name_buf.clear();
                                                 continue;
                                             }
+                                        } else {
+                                            // this is done for the second function declared in a
+                                            // struct that uses a generic type. like option[T] at :: () {}
+                                            // the "T" is defined by the struct above it in the scope
+                                            if !self.previous_func.is_empty() {
+                                                let temp = self.current_func.clone();
+                                                self.current_func = self.previous_func.clone();
+                                                let found_var_again = self.find_variable(&name_buf);
+                                                self.current_func = temp;
+                                                if let Expr::VariableName { typ, .. } = found_var_again {
+                                                    if let Types::TypeId = typ {
+                                                        pass_typs.push(name_buf.clone());
+                                                        name_buf.clear();
+                                                        continue;
+                                                    }
+                                                }
+                                            }
                                         }
 
                                         let found_typ = self.find_structure(&name_buf);
@@ -1687,6 +1724,15 @@ impl ExprWeights {
                             }
                         },
                         _ => (),
+                    }
+                },
+                Token::Quote => (),
+                Token::Str(word) => {
+                    if in_bracks {
+                        params.push(token.clone());
+                    } else {
+                        self.comp_err(&format!("unexpected token String token: `{word}`"));
+                        exit(1);
                     }
                 },
                 unexpected => {

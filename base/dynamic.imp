@@ -6,7 +6,7 @@ struct[T] dyn :: {
     usize len;
     usize cap;
 
-    dyn new :: (typeid T) {
+    dyn[T] new :: (typeid T) {
         dyn[T] new;
         new.len: 0;
         new.cap: 32;

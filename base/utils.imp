@@ -25,6 +25,10 @@ struct[T] array :: {
     @c [sizeof(T);];
 }
 
+@inline ^char type_of :: (typeid T) {
+    @c [#T;];
+}
+
 @inline $T cast_prim :: (typeid T any val) {
     @c [(T)val;];
 }

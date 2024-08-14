@@ -412,7 +412,6 @@ impl Gen {
             Expr::VariableName { typ, name, field_data, .. } => {
                 // we do this cuz it should be a enum at this point
                 if !field_data.0 && name.contains(".") {
-                    println!("variable name: {name}, field_data: {field_data:?}");
                     return name.replace(".", "_")
                 }
 
@@ -984,7 +983,13 @@ impl Gen {
                 Expr::Else => {
                     self.add_spaces(self.indent);
                     self.indent += 1;
-                    self.code.push_str("else {\n");
+                    self.curl_rc += 1;
+
+                    if self.in_macro_func {
+                        self.code.push_str("else {\\\n");
+                    } else {
+                        self.code.push_str("else {\n");
+                    }
                 },
                 Expr::Loop { condition, modifier } => {
                     self.add_spaces(self.indent);
