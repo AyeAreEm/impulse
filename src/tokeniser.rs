@@ -158,7 +158,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             continue;
         }
 
-        if c == ' ' || c == '\n' || c == '\r' || c == ';' {
+        if c == ' ' || c == '\n' || c == '\r' || c == ';' || c == '\t' {
             if buf.len() > 0 {
                 tokens.push(check_ident(&buf));
                 buf.clear();

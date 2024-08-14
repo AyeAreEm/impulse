@@ -388,27 +388,32 @@ struct Matrix4x4f64 :: {
     return [c/2.0 * tt*tt*tt + b];
 }
 
-#// Quadratic Easing functions
-#EaseQuadIn :: proc(t, b, c, d: f32) -> f32 { 
-#	t := t
-#	t /= d
-#	return c*t*t + b
-#}
-#EaseQuadOut :: proc(t, b, c, d: f32) -> f32 { 
-#	t := t
-#	t /= d
-#	return -c*t*(t - 2.0) + b
-#}
-#EaseQuadInOut :: proc(t, b, c, d: f32) -> f32 {
-#	t := t
-#	t /= d/2.0
-#	if t < 1 {
-#		return ((c/2)*(t*t)) + b
-#	}
-#	return -c/2.0*(((t - 1.0)*(t - 3.0)) - 1.0) + b
-#}
-#
-#// Exponential Easing functions
+# Quadratic Easing functions
+@inline $T ease.quad_in :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_in function" type); @c [exit(1);];}
+
+    $T tt: [t / d];
+    return [c*tt*tt + b];
+}
+@inline $T ease.quad_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_out function" type); @c [exit(1);];}
+    
+    $T tt: [t / d];
+    return [-c*tt*[tt - 2.0] + b];
+}
+@inline $T ease.quad_in_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_in_out function" type); @c [exit(1);];}
+
+    $T tt: [t / d / 2.0];
+    if (tt < 1) {
+        return [[c/2] * [tt*tt] + b];
+    }
+    return [-c/2.0*[[[tt - 1.0]*[tt - 3.0]] - 1.0] + b];
+}
+# Exponential Easing functions
 #EaseExpoIn :: proc(t, b, c, d: f32) -> f32 { 
 #	return (t == 0.0) ? b : (c*math.pow(2.0, 10.0*(t/d - 1.0)) + b)
 #}
