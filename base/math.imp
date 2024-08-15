@@ -13,7 +13,7 @@ $T sine :: (typeid T $T x) {
     } orif (size_of(T) = size_of(f64)) {
         result: sine_f64(x);
     } else {
-        println("type %s can't be used in sine function as it's not a number" type_of(T));
+        println("type %s can't be used in sine function as it's not a decimal" type_of(T));
         @c [exit(1);];
     }
     return result;
@@ -29,7 +29,7 @@ $T cosine :: (typeid T $T x) {
     } orif (size_of(T) = size_of(f64)) {
         result: cosine_f64(x);
     } else {
-        println("type %s can't be used in cosine function as it's not a number" type_of(T));
+        println("type %s can't be used in cosine function as it's not a decimal" type_of(T));
         @c [exit(1);];
     }
     return result;
@@ -45,7 +45,23 @@ $T square_rt :: (typeid T $T x) {
     } orif (size_of(T) = size_of(f64)) {
         result: sqrt_f64(x);
     } else {
-        println("type %s can't be used in square_rt function as it's not a number" type_of(T));
+        println("type %s can't be used in square_rt function as it's not a decimal" type_of(T));
+        @c [exit(1);];
+    }
+    return result;
+}
+
+@inline f32 power_f32 :: (f32 x) { @c [return powf(x);]; }
+@inline f64 power_f64 :: (f32 x) { @c [return pow(x);]; }
+
+$T power :: (typeid T $T x) {
+    $T result;
+    if (size_of(T) = size_of(f32)) {
+        result: power_f32(x);
+    } orif (size_of(T) = size_of(f64)) {
+        result: power_f64(x);
+    } else {
+        println("type %s can't be used in power function as it's not a decimal" type_of(T));
         @c [exit(1);];
     }
     return result;
@@ -348,17 +364,20 @@ struct Matrix4x4f64 :: {
     ^char type: type_of(T);
     if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_in_out function" type); @c [exit(1);];}
 
+    $T result;
     $T tt: [t / d / 2.0];
     if (tt < 1.0) {
         f32 inner: [1.0 - tt*tt];
         f32 outer: square_rt(f32 inner);
-        return [-c/2.0 * [outer - 1.0] + b];
+        result: [-c/2.0 * [outer - 1.0] + b];
+    } else {
+        tt: [t - 2.0];
+        f32 inner: [1.0 - tt*tt];
+        f32 outer: square_rt(f32 inner);
+        result: [-c/2.0 * [outer - 1.0] + b];
     }
 
-    tt: [t - 2.0];
-    f32 inner: [1.0 - tt*tt];
-    f32 outer: square_rt(f32 inner);
-    return [-c/2.0 * [outer - 1.0] + b];
+    return result;
 }
 
 @inline $T ease.cubic_in :: (typeid T $T t $T b $T c $T d) {
@@ -380,12 +399,16 @@ struct Matrix4x4f64 :: {
     ^char type: type_of(T);
     if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_in_out function" type); @c [exit(1);];}
 
+    $T result;
     $T tt: [t / d / 2.0];
     if (t < 1.0) {
-        return [c/2.0 * tt*tt*tt + b];
+        result: [c/2.0 * tt*tt*tt + b];
+    } else {
+        tt: [t - 2.0];
+        result: [c/2.0 * tt*tt*tt + b];
     }
-    tt: [t - 2.0];
-    return [c/2.0 * tt*tt*tt + b];
+
+    return result;
 }
 
 # Quadratic Easing functions
@@ -407,91 +430,139 @@ struct Matrix4x4f64 :: {
     ^char type: type_of(T);
     if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_in_out function" type); @c [exit(1);];}
 
+    $T result;
     $T tt: [t / d / 2.0];
     if (tt < 1) {
-        return [[c/2] * [tt*tt] + b];
+        result: [[c/2] * [tt*tt] + b];
+    } else {
+        result: [-c/2.0*[[[tt - 1.0]*[tt - 3.0]] - 1.0] + b];
     }
-    return [-c/2.0*[[[tt - 1.0]*[tt - 3.0]] - 1.0] + b];
+    return result;
 }
+
 # Exponential Easing functions
-#EaseExpoIn :: proc(t, b, c, d: f32) -> f32 { 
-#	return (t == 0.0) ? b : (c*math.pow(2.0, 10.0*(t/d - 1.0)) + b)
-#}
-#EaseExpoOut :: proc(t, b, c, d: f32) -> f32 { 
-#	return (t == d) ? (b + c) : (c*(-math.pow(2.0, -10.0*t/d) + 1.0) + b)
-#}
-#EaseExpoInOut :: proc(t, b, c, d: f32) -> f32 {
-#	if t == 0.0 {
-#		return b
-#	}
-#	if t == d {
-#		return b + c
-#	}
-#	t := t
-#	t /= d/2.0
-#	if t < 1.0 {
-#		return c/2.0*math.pow(2.0, 10.0*(t - 1.0)) + b
-#	}
-#
-#	return c/2.0*(-math.pow(2.0, -10.0*(t - 1.0)) + 2.0) + b
-#}
-#
-#// Back Easing functions
-#EaseBackIn :: proc(t, b, c, d: f32) -> f32 {
-#	s :: 1.70158
-#	t := t
-#	t /= d
-#	postFix := t
-#	return (c*(postFix)*t*((s + 1.0)*t - s) + b)
-#}
-#
-#EaseBackOut :: proc(t, b, c, d: f32) -> f32 {
-#	t := t
-#	s :: 1.70158
-#	t = t/d - 1.0
-#	return (c*(t*t*((s + 1.0)*t + s) + 1.0) + b)
-#}
-#
-#EaseBackInOut :: proc(t, b, c, d: f32) -> f32 {
-#	t := t
-#	s := f32(1.70158)
-#	t /= d/2
-#	if t < 1.0 {
-#		s *= 1.525
-#		return (c/2.0*(t*t*((s + 1.0)*t - s)) + b)
-#	}
-#
-#	t -= 2
-#	postFix := t
-#	s *= 1.525
-#	return (c/2.0*((postFix)*t*((s + 1.0)*t + s) + 2.0) + b)
-#}
-#
-#// Bounce Easing functions
-#EaseBounceOut :: proc(t, b, c, d: f32) -> f32 {
-#	t := t
-#	t /= d
-#	switch {
-#	case t < 1.0/2.75:
-#		return (c*(7.5625*t*t) + b)
-#	case t < 2.0/2.75:
-#		t -= 1.5/2.75
-#		postFix := t
-#		return (c*(7.5625*(postFix)*t + 0.75) + b)
-#	case t < 2.5/2.75:
-#		t -= 2.25/2.75
-#		postFix := t
-#		return (c*(7.5625*(postFix)*t + 0.9375) + b)
-#	case:
-#		t -= 2.625/2.75
-#		postFix := t
-#		return (c*(7.5625*(postFix)*t + 0.984375) + b)
-#	}
-#}
-#
-#EaseBounceIn :: proc(t, b, c, d: f32) -> f32 { 
-#	return c - EaseBounceOut(d - t, 0.0, c, d) + b 
-#}
+@inline $T ease.expo_in :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.expo_in function" type); @c [exit(1);];}
+
+    $T result;
+    if (t = 0.0) {
+        result: b;
+    } else {
+        $T inner: [10.0*[t/d - 1.0]];
+        $T outer: power(T 2.0 inner);
+        result: [c * outer + b];
+    }
+    return result;
+}
+@inline $T ease.expo_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.expo_out function" type); @c [exit(1);];}
+
+    $T result;
+    if (t = d) {
+        result: [b + c];
+    } else {
+        $T inner: [-10.0*t / d];
+        $T outer: [-power(T 2.0 inner)];
+        result: [c * [outer + 1.0] + b];
+    }
+    return result;
+}
+@inline $T ease.expo_in_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.expo_in_out function" type); @c [exit(1);];}
+    
+    $T result;
+    if (t = 0.0) {
+        result: b;
+    } orif (t = d) {
+        result: [b + c];
+    } else {
+        $T tt: [t / d / 2.0];
+        if (t < 1.0) {
+            $T inner: [10.0 * [tt - 1.0]];
+            $T outer: power(T 2.0 inner);
+            result: [c/2.0*outer+b];
+        } else {
+            $T inner: [10.0 * [tt - 1.0]];
+            $T outer: power(T 2.0 inner);
+            result: [c/2.0*[-outer + 2.0] + b];
+        }
+    }
+
+    return result;
+}
+
+# Back Easing functions
+@inline $T ease.back_in :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.back_in function" type); @c [exit(1);];}
+
+    $T s :: 1.90158;
+    $T tt: [t / d];
+    $T postFix: tt;
+    return [c*[postFix]*tt*[[s + 1.0]*t - s] + b];
+}
+@inline $T ease.back_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.back_out function" type); @c [exit(1);];}
+    
+    $T s :: 1.70158;
+    $T tt: [t/d - 1.0];
+    return [c*[tt*tt*[[s+1.0]*t + s] + 1.0] + b];
+}
+@inline $T ease.back_in_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.back_in_out function" type); @c [exit(1);];}
+
+    $T result;
+    $T s: 1.70158;
+    $T tt: [t / d / 2];
+    if (tt < 1.0) {
+        s: [s * 1.525];
+        result: [c/2.0*[tt*tt*[[s + 1.0]*t - s]] + b];
+    } else {
+        tt: [tt - 2];
+        $T postFix: tt;
+        s: [s * 1.525];
+        result: [c/2.0*[[postFix]*t*[[s+1.0]*t + s] + 2.0] + b];
+    }
+
+    return result;
+}
+
+# Bounce Easing functions
+@inline $T ease.bounce_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_out function" type); @c [exit(1);];}
+
+    $T result;
+    $T tt: [t / d];
+    if (t < [1.0/2.75]) {
+        result: [c*[7.5625*tt*tt] + b];
+    } orif (t < [2.0/2.75]) {
+        tt: [tt - 1.5/2.75];
+        $T postFix: tt;
+        result: [c*[7.5625*[postFix]*tt + 0.75] + b];
+    } orif (t < [2.5/2.75]) {
+        tt: [tt - 2.25/2.75];
+        $T postFix: tt;
+        result: [c*[7.5625*[postFix]*tt + 0.9375] + b];
+    } else {
+        tt: [tt - 2.625/2.75];
+        $T postFix: tt;
+        result: [c*[7.5625*[postFix]*tt + 0.984375] + b];
+    }
+    return result;
+}
+@inline $T ease.bounce_in :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_in function" type); @c [exit(1);];}
+
+    $T inner: [d - t];
+    return [c - ease.bounce_out(inner 0.0 c d) + b];
+}
 #EaseBounceInOut :: proc(t, b, c, d: f32) -> f32 {
 #	if t < d/2.0 {
 #		return EaseBounceIn(t*2.0, 0.0, c, d)*0.5 + b

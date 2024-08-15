@@ -328,7 +328,7 @@ impl ExprWeights {
             if self.in_scope && self.current_scope == 0 {
                 self.in_scope = false;
             } else if self.in_scope && self.current_scope > 0 {
-                vars[self.current_scope].pop();
+                vars.pop();
                 self.current_scope -= 1;
 
                 if self.current_scope == 0 {
@@ -336,7 +336,7 @@ impl ExprWeights {
                 }
             } else {
                 self.in_func = false;
-                vars[self.current_scope].pop();
+                vars.pop();
             }
         }
 
