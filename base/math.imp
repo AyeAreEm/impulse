@@ -51,15 +51,15 @@ $T square_rt :: (typeid T $T x) {
     return result;
 }
 
-@inline f32 power_f32 :: (f32 x) { @c [return powf(x);]; }
-@inline f64 power_f64 :: (f32 x) { @c [return pow(x);]; }
+@inline f32 power_f32 :: (f32 x f32 y) { @c [return powf(x, y);]; }
+@inline f64 power_f64 :: (f64 x f64 y) { @c [return pow(x, y);]; }
 
-$T power :: (typeid T $T x) {
+$T power :: (typeid T $T x $T y) {
     $T result;
     if (size_of(T) = size_of(f32)) {
-        result: power_f32(x);
+        result: power_f32(x y);
     } orif (size_of(T) = size_of(f64)) {
-        result: power_f64(x);
+        result: power_f64(x y);
     } else {
         println("type %s can't be used in power function as it's not a decimal" type_of(T));
         @c [exit(1);];
@@ -371,7 +371,7 @@ struct Matrix4x4f64 :: {
         f32 outer: square_rt(f32 inner);
         result: [-c/2.0 * [outer - 1.0] + b];
     } else {
-        tt: [t - 2.0];
+        tt: [tt - 2.0];
         f32 inner: [1.0 - tt*tt];
         f32 outer: square_rt(f32 inner);
         result: [-c/2.0 * [outer - 1.0] + b];
@@ -404,7 +404,7 @@ struct Matrix4x4f64 :: {
     if (t < 1.0) {
         result: [c/2.0 * tt*tt*tt + b];
     } else {
-        tt: [t - 2.0];
+        tt: [tt - 2.0];
         result: [c/2.0 * tt*tt*tt + b];
     }
 
@@ -502,7 +502,7 @@ struct Matrix4x4f64 :: {
     $T s :: 1.90158;
     $T tt: [t / d];
     $T postFix: tt;
-    return [c*[postFix]*tt*[[s + 1.0]*t - s] + b];
+    return [c*[postFix]*tt*[[s + 1.0]*tt - s] + b];
 }
 @inline $T ease.back_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_of(T);
@@ -510,7 +510,7 @@ struct Matrix4x4f64 :: {
     
     $T s :: 1.70158;
     $T tt: [t/d - 1.0];
-    return [c*[tt*tt*[[s+1.0]*t + s] + 1.0] + b];
+    return [c*[tt*tt*[[s+1.0]*tt + s] + 1.0] + b];
 }
 @inline $T ease.back_in_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_of(T);
@@ -521,12 +521,12 @@ struct Matrix4x4f64 :: {
     $T tt: [t / d / 2];
     if (tt < 1.0) {
         s: [s * 1.525];
-        result: [c/2.0*[tt*tt*[[s + 1.0]*t - s]] + b];
+        result: [c/2.0*[tt*tt*[[s + 1.0]*tt - s]] + b];
     } else {
         tt: [tt - 2];
         $T postFix: tt;
         s: [s * 1.525];
-        result: [c/2.0*[[postFix]*t*[[s+1.0]*t + s] + 2.0] + b];
+        result: [c/2.0*[[postFix]*tt*[[s+1.0]*tt + s] + 2.0] + b];
     }
 
     return result;
@@ -561,73 +561,105 @@ struct Matrix4x4f64 :: {
     if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_in function" type); @c [exit(1);];}
 
     $T inner: [d - t];
-    return [c - ease.bounce_out(inner 0.0 c d) + b];
+    $T outer: ease.bounce_out(inner 0.0 c d);
+    return [c - outer + b];
 }
-#EaseBounceInOut :: proc(t, b, c, d: f32) -> f32 {
-#	if t < d/2.0 {
-#		return EaseBounceIn(t*2.0, 0.0, c, d)*0.5 + b
-#	} else {
-#		return EaseBounceOut(t*2.0 - d, 0.0, c, d)*0.5 + c*0.5 + b
-#	}
-#}
-#
-#// Elastic Easing functions
-#EaseElasticIn :: proc(t, b, c, d: f32) -> f32 {
-#	if t == 0.0 {
-#		return b
-#	}
-#	t := t
-#	t /= d
-#	if t == 1.0 {
-#		return b + c
-#	}
-#
-#	p := d*0.3
-#	a := c
-#	s := p/4.0
-#	t -= 1
-#	postFix := a*math.pow(2.0, 10.0*t)
-#
-#	return -(postFix*math.sin((t*d-s)*(2.0*PI)/p )) + b
-#}
-#
-#EaseElasticOut :: proc(t, b, c, d: f32) -> f32 {
-#	if t == 0.0 {
-#		return b
-#	}
-#	t := t
-#	t /= d
-#	if t == 1.0 {
-#		return b + c
-#	}
-#
-#	p := d*0.3
-#	a := c
-#	s := p/4.0
-#
-#	return a*math.pow(2.0,-10.0*t)*math.sin((t*d-s)*(2.0*PI)/p) + c + b
-#}
-#
-#EaseElasticInOut :: proc(t, b, c, d: f32) -> f32 {
-#	if t == 0.0 {
-#		return b
-#	}
-#	t := t
-#	t /= d/2.0
-#	if t == 2.0 {
-#		return b + c
-#	}
-#
-#	p := d*(0.3*1.5)
-#	a := c
-#	s := p/4.0
-#
-#	t -= 1
-#	if t < 1.0 {
-#		postFix := a*math.pow(2.0, 10.0*t)
-#		return -0.5*(postFix*math.sin((t*d-s)*(2.0*PI)/p)) + b
-#	}
-#
-#	postFix := a*math.pow(2.0, -10.0*t)
-#	return (postFix*math.sin((t*d-s)*(2.0*PI)/p)*0.5 + c + b)
-#}
+@inline $T ease.bounce_in_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_in_out function" type); @c [exit(1);];}
+
+    $T result;
+    if (t < [d/2.0]) {
+        $T inner: [t * 2.0];
+        $T outer: ease.bounce_in(T inner 0.0 c d);
+        result: [outer * 0.5 + b];
+    } else {
+        $T inner: [t * 2.0 - d];
+        $T outer: ease.bounce_out(T inner 0.0 c d);
+        result: [outer * 0.5 + c*0.5 + b];
+    }
+    return result;
+}
+
+# Elastic Easing functions
+@inline $T ease.elastic_in :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.elastic_in function" type); @c [exit(1);];}
+
+    $T result;
+    if (t = 0.0) {
+        result: b;
+    } else {
+        $T tt: [t / d];
+        if (tt = 1.0) {
+            result: [b + c];
+        } else {
+            $T p: [d*0.3];
+            $T a: [c];
+            $T s: [p/4.0];
+            tt: [tt - 1];
+
+            $T postFix_inner: power(f32 2.0 [10.0*tt]);
+            $T postFix: [a*postFix_inner];
+
+            $T inner: [[tt*d-s]*[2.0*pi]/p];
+            $T outer: sine(T inner);
+            result: [-[postFix*outer] + b];
+        }
+    }
+    return result;
+}
+@inline $T ease.elastice_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.elastic_out function" type); @c [exit(1);];}
+    
+    $T result;
+    if (t = 0.0) {
+        result: b;
+    } else {
+        $T tt: [t / d];
+        if (tt = 1.0) {
+            result: [b + c];
+        } else {
+            $T p: [d*0.3];
+            $T a: c;
+            $T s: [p/4.0];
+            $T powered: power(T 2.0 [-10.0 * tt]);
+            $T sined: sine(T [[tt*d-s]*[2.0*pi]/p]);
+            result: [a*powered*sined+c+b];
+        }
+    }
+    return result;
+}
+@inline $T ease.elastic_in_out :: (typeid T $T t $T b $T c $T d) {
+    ^char type: type_of(T);
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.elastic_out function" type); @c [exit(1);];}
+
+    $T result;
+    if (t = 0.0) {
+        result: b;
+    } else {
+        $T tt: [t / d / 2.0];
+        if (tt = 2.0) {
+            result: [b + c];
+        } else {
+            $T p: [d*[0.3*1.5]];
+            $T a: c;
+            $T s: [p/4.0];
+            tt: [tt - 1];
+
+            if (tt < 1.0) {
+                $T postFix_powered: power(T 2.0 [10.0*tt]);
+                $T postFix: [a*postFix_powered];
+                $T sined: sine(T [[tt*d-s]*[2.0*pi]/p]);
+                result: [-0.5*[postFix*sined] + b];
+            } else {
+                $T postFix_powered: power(T 2.0 [-10.0*tt]);
+                $T postFix: [a*postFix_powered];
+                $T sined: sine(T [[tt*d-s]*[2.0*pi]/p]);
+                result: [postFix*sined*0.5 + c + b];
+            }
+        }
+    }
+    return result;
+}
