@@ -889,39 +889,39 @@ enum rl.NPatchLayout :: {
 @inline _ rl.SetExitKey :: (int key) {@c [return SetExitKey(key);];}
 
 # Input-related functions: gamepads
-#RLAPI bool IsGamepadAvailable(int gamepad);                   // Check if a gamepad is available
-#RLAPI const char *GetGamepadName(int gamepad);                // Get gamepad internal name id
-#RLAPI bool IsGamepadButtonPressed(int gamepad, int button);   // Check if a gamepad button has been pressed once
-#RLAPI bool IsGamepadButtonDown(int gamepad, int button);      // Check if a gamepad button is being pressed
-#RLAPI bool IsGamepadButtonReleased(int gamepad, int button);  // Check if a gamepad button has been released once
-#RLAPI bool IsGamepadButtonUp(int gamepad, int button);        // Check if a gamepad button is NOT being pressed
-#RLAPI int GetGamepadButtonPressed(void);                      // Get the last gamepad button pressed
-#RLAPI int GetGamepadAxisCount(int gamepad);                   // Get gamepad axis count for a gamepad
-#RLAPI float GetGamepadAxisMovement(int gamepad, int axis);    // Get axis movement value for a gamepad axis
-#RLAPI int SetGamepadMappings(const char *mappings);           // Set internal gamepad mappings (SDL_GameControllerDB)
+@inline bool rl.IsGamepadAvailable :: (int gamepad) {@c [return IsGamepadAvailable(gamepad);];}
+@inline ^char rl.GetGamepadName :: (int gamepad) {@c [return GetGamepadName(gamepad);];}
+@inline bool rl.IsGamepadButtonPressed :: (int gamepad int button) {@c [return IsGamepadButtonPressed(gamepad, button);];}
+@inline bool rl.IsGamepadButtonDown :: (int gamepad int button) {@c [return IsGamepadButtonDown(gamepad, button);];}
+@inline bool rl.IsGamepadButtonReleased :: (int gamepad int button) {@c [return IsGamepadButtonReleased(gamepad, button);];}
+@inline bool rl.IsGamepadButtonUp :: (int gamepad int button) {@c [return IsGamepadButtonUp(gamepad, button);];}
+@inline int rl.GetGamepadButtonPressed :: () {@c [return GetGamepadButtonPressed();];}
+@inline int rl.GetGamepadAxisCount :: (int gamepad) {@c [return GetGamepadAxisCount(gamepad);];}
+@inline f32 rl.GetGamepadAxisMovement :: (int gamepad int axis) {@c [return GetGamepadAxisMovement(gamepad, axis);];}
+@inline int rl.SetGamepadMappings :: (^char mappings) {@c [return SetGamepadMappings(mappings);];} # Set interal gamepad mappings (SDL_GameControllerDB)
 
 # Input-related functions: mouse
-#RLAPI bool IsMouseButtonPressed(int button);                  // Check if a mouse button has been pressed once
-#RLAPI bool IsMouseButtonDown(int button);                     // Check if a mouse button is being pressed
-#RLAPI bool IsMouseButtonReleased(int button);                 // Check if a mouse button has been released once
-#RLAPI bool IsMouseButtonUp(int button);                       // Check if a mouse button is NOT being pressed
-#RLAPI int GetMouseX(void);                                    // Get mouse position X
-#RLAPI int GetMouseY(void);                                    // Get mouse position Y
-#RLAPI Vector2 GetMousePosition(void);                         // Get mouse position XY
-#RLAPI Vector2 GetMouseDelta(void);                            // Get mouse delta between frames
-#RLAPI void SetMousePosition(int x, int y);                    // Set mouse position XY
-#RLAPI void SetMouseOffset(int offsetX, int offsetY);          // Set mouse offset
-#RLAPI void SetMouseScale(float scaleX, float scaleY);         // Set mouse scaling
-#RLAPI float GetMouseWheelMove(void);                          // Get mouse wheel movement for X or Y, whichever is larger
-#RLAPI Vector2 GetMouseWheelMoveV(void);                       // Get mouse wheel movement for both X and Y
-#RLAPI void SetMouseCursor(int cursor);                        // Set mouse cursor
+@inline bool rl.IsMouseButtonPressed :: (int button) {@c [return IsMouseButtonPressed(button);];} # Check if a mouse button has been pressed once
+@inline bool rl.IsMouseButtonDown :: (int button) {@c [return IsMouseButtonDown(button);];}
+@inline bool rl.IsMouseButtonReleased :: (int button) {@c [return IsMouseButtonReleased(button);];}
+@inline bool rl.IsMouseButtonUp :: (int button) {@c [return IsMouseButtonUp(button);];} # Check if a mouse button is NOT being pressed
+@inline int rl.GetMouseX :: () {@c [return GetMouseX();];}
+@inline int rl.GetMouseY :: () {@c [return GetMouseY();];}
+@inline rl.Vector2 rl.GetMousePosition :: () {@c [Vector2 v = GetMousePosition(); return *(rl__Vector2*)&v;];}
+@inline rl.Vector2 rl.GetMouseDelta :: () {@c [Vector2 v = GetMouseDelta(); return *(rl__Vector2*)&v;];}
+@inline _ rl.SetMousePosition :: (int x int y) {@c [SetMousePosition(x, y);];}
+@inline _ rl.SetMouseOffset :: (int offsetX int offsetY) {@c [SetMouseOffset(offsetX, offsetY);];}
+@inline _ rl.SetMouseScale :: (f32 scaleX f32 scaleY) {@c [SetMouseScale(scaleX, scaleY);];}
+@inline f32 rl.GetMouseWheelMove :: () {@c [return GetMouseWheelMove();];}
+@inline rl.Vector2 rl.GetMouseWheelMoveV :: () {@c [Vector2 v = GetMouseWheelMoveV(); return *(rl__Vector2*)&v;];}
+@inline _ rl.SetMouseCursor :: (int cursor) {@c [SetMouseCursor(cursor);];}
 
 # Input-related functions: touch
-#RLAPI int GetTouchX(void);                                    // Get touch position X for touch point 0 (relative to screen size)
-#RLAPI int GetTouchY(void);                                    // Get touch position Y for touch point 0 (relative to screen size)
-#RLAPI Vector2 GetTouchPosition(int index);                    // Get touch position XY for a touch point index (relative to screen size)
-#RLAPI int GetTouchPointId(int index);                         // Get touch point identifier for given index
-#RLAPI int GetTouchPointCount(void);                           // Get number of touch points
+@inline int rl.GetTouchX :: () {@c [return GetTouchX();];}
+@inline int rl.GetTouchY :: () {@c [return GetTouchY();];}
+@inline rl.Vector2 rl.GetTouchPosition :: (int index) {@c [Vector2 v = GetTouchPosition(index); return *(rl__Vector2*)&v;];}
+@inline int rl.GetTouchPointId :: (int index) {@c [return GetTouchPointId(index);];}
+@inline int rl.GetTouchPointCount :: () {@c [return GetTouchPointCount();];}
 
 #------------------------------------------------------------------------------------
 # Gestures and Touch Handling Functions (Module: rgestures)
@@ -937,8 +937,8 @@ enum rl.NPatchLayout :: {
 #------------------------------------------------------------------------------------
 # Camera System Functions (Module: rcamera)
 #------------------------------------------------------------------------------------
-#RLAPI void UpdateCamera(Camera *camera, int mode);      // Update camera position for selected mode
-#RLAPI void UpdateCameraPro(Camera *camera, Vector3 movement, Vector3 rotation, float zoom); // Update camera movement/rotation
+@inline _ rl.UpdateCamera :: (^rl.Camera camera int mode) {@c [UpdateCamera(*(Camera**)&camera, mode);];}
+@inline _ rl.UpdateCameraPro :: (^rl.Camera camera rl.Vector3 movement rl.Vector3 rotation f32 zoom) {@c [UpdateCameraPro(*(Camera**)&camera, *(Vector3*)&movement, *(Vector3*)&rotation, zoom);];}
 
 #------------------------------------------------------------------------------------
 # Basic Shapes Drawing Functions (Module: shapes)
@@ -946,7 +946,7 @@ enum rl.NPatchLayout :: {
 # Set texture and rectangle to be used on shapes drawing
 # NOTE: It can be useful when using basic shapes and one single font,
 # defining a font char white rectangle would allow drawing everything in a single draw call
-#RLAPI void SetShapesTexture(Texture2D texture, Rectangle source);       // Set texture and rectangle to be used on shapes drawing
+@inline _ rl.SetShapesTexture :: (rl.Texture2D texture rl.Rectangle source) {@c [SetShapesTexture(*(Texture2D*)&texture, *(Rectangle*)&source);];} # Set texture and rectangle to be used on shapes drawing
 
 # Basic shapes drawing functions
 @inline _ rl.DrawPixel :: (int posX int posY rl.Color color) {@c [DrawPixel(posX, posY, *(Color*)&color);];}
@@ -959,12 +959,12 @@ enum rl.NPatchLayout :: {
 @inline _ rl.DrawCircle :: (int centerX int centerY f32 radius rl.Color color) {@c [DrawCircle(centerX, centerY, radius, *(Color*)&color);];}
 #RLAPI void DrawCircleSector(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color);      // Draw a piece of a circle
 #RLAPI void DrawCircleSectorLines(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color); // Draw circle sector outline
-#RLAPI void DrawCircleGradient(int centerX, int centerY, float radius, Color color1, Color color2);       // Draw a gradient-filled circle
+@inline _ rl.DrawCircleGradient :: (int centerX int centerY f32 radius rl.Color color1 rl.Color color2) {@c [DrawCircleGradient(centerX, centerY, radius, *(Color*)&color1, *(Color*)&color2);];}
 #RLAPI void DrawCircleV(Vector2 center, float radius, Color color);                                       // Draw a color-filled circle (Vector version)
-#RLAPI void DrawCircleLines(int centerX, int centerY, float radius, Color color);                         // Draw circle outline
+@inline _ rl.DrawCircleLines :: (int centerX int centerY f32 radius rl.Color color) {@c [DrawCircleLines(centerX, centerY, radius, *(Color*)&color);];}
 #RLAPI void DrawCircleLinesV(Vector2 center, float radius, Color color);                                  // Draw circle outline (Vector version)
-#RLAPI void DrawEllipse(int centerX, int centerY, float radiusH, float radiusV, Color color);             // Draw ellipse
-#RLAPI void DrawEllipseLines(int centerX, int centerY, float radiusH, float radiusV, Color color);        // Draw ellipse outline
+@inline _ rl.DrawEllipse :: (int centerX int centerY f32 radiusH f32 radiusV rl.Color color) {@c [DrawEllipse(centerX, centerY, radiusH, radiusV, *(Color*)&color);];}
+@inline _ rl.DrawEllipseLines :: (int centerX int centerY f32 radiusH f32 radiusV rl.Color color) {@c [DrawEllipseLines(centerX, centerY, radiusH, radiusV, *(Color*)&color);];}
 #RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color); // Draw ring
 #RLAPI void DrawRingLines(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color);    // Draw ring outline
 @inline _ rl.DrawRectangle :: (int posX int posY int width int height rl.Color color) {@c [DrawRectangle(posX, posY, width, height, *(Color*)&color);];}
@@ -974,11 +974,11 @@ enum rl.NPatchLayout :: {
 #RLAPI void DrawRectangleGradientV(int posX, int posY, int width, int height, Color color1, Color color2);// Draw a vertical-gradient-filled rectangle
 #RLAPI void DrawRectangleGradientH(int posX, int posY, int width, int height, Color color1, Color color2);// Draw a horizontal-gradient-filled rectangle
 #RLAPI void DrawRectangleGradientEx(Rectangle rec, Color col1, Color col2, Color col3, Color col4);       // Draw a gradient-filled rectangle with custom vertex colors
-#RLAPI void DrawRectangleLines(int posX, int posY, int width, int height, Color color);                   // Draw rectangle outline
+@inline _ rl.DrawRectangleLines :: (int posX int posY int width int height rl.Color color) {@c [DrawRectangleLines(posX, posY, width, height, *(Color*)&color);];}
 #RLAPI void DrawRectangleLinesEx(Rectangle rec, float lineThick, Color color);                            // Draw rectangle outline with extended parameters
 #RLAPI void DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color color);              // Draw rectangle with rounded edges
 #RLAPI void DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments, float lineThick, Color color); // Draw rectangle with rounded edges outline
-#RLAPI void DrawTriangle(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                                // Draw a color-filled triangle (vertex in counter-clockwise order!)
+@inline _ rl.DrawTriangle :: (rl.Vector2 v1 rl.Vector2 v2 rl.Vector2 v3 rl.Color color) {@c [DrawTriangle(*(Vector2*)&v1, *(Vector2*)&v2, *(Vector2*)&v3, *(Color*)&color);];}
 #RLAPI void DrawTriangleLines(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                           // Draw triangle outline (vertex in counter-clockwise order!)
 #RLAPI void DrawTriangleFan(Vector2 *points, int pointCount, Color color);                                // Draw a triangle fan defined by points (first vertex is the center)
 #RLAPI void DrawTriangleStrip(Vector2 *points, int pointCount, Color color);                              // Draw a triangle strip defined by points

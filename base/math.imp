@@ -71,6 +71,13 @@ struct Vector2f32 :: {
     f32 x;
     f32 y;
 
+    @inline Vector2f32 new :: (f32 x f32 y) {
+        Vector2f32 new;
+        new.x: x;
+        new.y: y;
+        return new;
+    }
+
     @inline Vector2f32 add :: (Vector2f32 a Vector2f32 b) {
         Vector2f32 c;
         c.x: [a.x + b.x];

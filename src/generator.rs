@@ -48,10 +48,10 @@ impl Gen {
             ("stddef".to_string(), true),
             ("stdint".to_string(), true),
             ("string".to_string(), true),
-            ("math.h".to_string(), true),
-            ("stdarg.h".to_string(), true),
-            ("assert.h".to_string(), true),
-            ("errno.h".to_string(), true),
+            ("math".to_string(), true),
+            ("stdarg".to_string(), true),
+            ("assert".to_string(), true),
+            ("errno".to_string(), true),
         ]);
 
         let definition_map = HashMap::new();
@@ -409,31 +409,13 @@ impl Gen {
 
     fn handle_sanitise_varname(&self, value: Expr) -> String {
         match value {
-            Expr::VariableName { typ, name, field_data, .. } => {
+            Expr::VariableName { name, field_data, .. } => {
                 // we do this cuz it should be a enum at this point
                 if !field_data.0 && name.contains(".") {
                     return name.replace(".", "_")
                 }
 
-                if let Types::ArrIndex { ref arr_typ, .. } = typ {
-                    if field_data.0 && field_data.1 {
-                        if let Types::Pointer(_) = **arr_typ {
-                            let new_name = name.replace(".", "->");
-                            return new_name
-                        } else {
-                            return name
-                        }
-                    } else {
-                        return name
-                    }
-                }
-
-                if field_data.0 && field_data.1 {
-                    let new_name = name.replace(".", "->");
-                    return new_name
-                } else {
-                    return name
-                }
+                return name
             },
             unexpected => {
                 self.comp_err(&format!("can't deference {unexpected:?}"));

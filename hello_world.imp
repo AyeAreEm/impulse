@@ -1,1 +1,40 @@
-@import "base/math.imp";
+@import "base/raylib/raylib.imp";
+
+struct Triangle :: {
+    rl.Vector2 top;
+    rl.Vector2 left;
+    rl.Vector2 right;
+}
+
+@inline rl.Vector2 vec2 :: (f32 x f32 y) {
+    return Vector2f32.new(x y);
+}
+
+_ move_triangle_up :: (^Triangle tri f32 distance) {
+    tri.top.y: [tri.top.y - distance];
+    tri.left.y: [tri.left.y - distance];
+    tri.right.y: [tri.right.y - distance];
+}
+
+_ main :: () {
+    rl.InitWindow(800 600 "Triangle in Raylib Impulse");
+    Triangle tri;
+    tri.top: vec2(200 200);
+    tri.left: vec2(100 400);
+    tri.right: vec2(300 400);
+
+    loop (!rl.WindowShouldClose()) {
+        if (rl.IsKeyDown(rl.KeyboardKey.W)) {
+            rl.Vector2 top: tri.top;
+            move_triangle_up(&tri 5.0);
+            println("%f" top.y);
+        }
+
+        rl.BeginDrawing();
+        rl.ClearBackground(rl.BLACK);
+        rl.DrawTriangle(tri.top tri.left tri.right rl.RED);
+        rl.EndDrawing();
+    }
+
+    rl.CloseWindow();
+}

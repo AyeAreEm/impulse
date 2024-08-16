@@ -24,6 +24,7 @@ pub enum Expr {
         reassign: bool,
         constant: bool,
         field_data: (bool, bool), // is_field, is_pointer
+        // dots_to_arrows: Vec<bool>,
     },
     Variable {
         info: Box<Expr>, // Expr = VariableName
@@ -479,32 +480,17 @@ impl ExprWeights {
                     let expr = self.find_ident(ident.to_string());
                     match expr {
                         Expr::None => {
-                            self.comp_err(&format!("this unknown identifier: {}", ident));
+                            self.comp_err(&format!("unknown identifier: {}", ident));
                             exit(1);
                         },
-                        Expr::VariableName { typ, name, field_data, .. } => {
-                            if field_data.0 && field_data.1 {
-                                match typ {
-                                    Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::UInt | Types::Int | Types::U16 | Types::I16 |
-                                    Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
-                                    Types::F32 | Types::F64 => {
-                                        let new_name = ident.replace(".", "->");
-                                        clean.push_str(&new_name)
-                                    } ,
-                                    _ => {
-                                        self.comp_err(&format!("variable {name} is not an integer. {typ:?}:{name}"));
-                                        exit(1);
-                                    },
-                                }
-                            } else {
-                                match typ {
-                                    Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::UInt | Types::Int | Types::U16 | Types::I16 |
-                                    Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
-                                    Types::F32 | Types::F64 => clean.push_str(&ident),
-                                    _ => {
-                                        self.comp_err(&format!("variable {name} is not an integer. {typ:?}:{name}"));
-                                        exit(1);
-                                    }
+                        Expr::VariableName { typ, name, .. } => {
+                            match typ {
+                                Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::UInt | Types::Int | Types::U16 | Types::I16 |
+                                Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
+                                Types::F32 | Types::F64 => clean.push_str(&name),
+                                _ => {
+                                    self.comp_err(&format!("variable {name} is not an integer. {typ:?}:{name}"));
+                                    exit(1);
                                 }
                             }
                         },
@@ -558,6 +544,42 @@ impl ExprWeights {
         }
 
         return (Keyword::Pointer(tmp, typ), 0)
+    }
+
+    fn create_func_propagate_field(&mut self, fname: String, user_def: String, is_ptr: bool) -> Vec<Expr> {
+        let mut expr_param = Vec::new();
+
+        if let Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } = self.find_structure(&user_def) {
+            for field in struct_fields {
+                match field {
+                    Expr::VariableName { typ: vartyp, name: varname, constant, field_data, .. } => {
+                        let new_name = if is_ptr {
+                            format!("{fname}->{varname}")
+                        } else {
+                            format!("{fname}.{varname}")
+                        };
+                        println!("{new_name}");
+                        if let Types::TypeDef { ref type_name, .. } = vartyp {
+                            expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), type_name.to_owned(), field_data.1));
+                        }
+                        let new_expr = Expr::Variable {
+                            info: Box::new(Expr::VariableName {
+                                typ: Types::Pointer(Box::new(vartyp)),
+                                name: new_name,
+                                reassign: false,
+                                constant,
+                                field_data: (true, is_ptr),
+                            }),
+                            value: Box::new(Expr::None),
+                        };
+
+                        expr_param.push(new_expr);
+                    },
+                    _ => (),
+                }
+            }
+        }
+        return expr_param;
     }
 
     fn create_func(&mut self, typ: Types, params: Vec<Token>, name: String, is_inline: bool) {
@@ -697,52 +719,12 @@ impl ExprWeights {
                     } else {
                         let typ = self.keyword_to_type(kw_buf.clone());
                         if let Types::TypeDef {type_name: ref user_def, .. } = typ {
-                            if let Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } = self.find_structure(&user_def) {
-                                for field in struct_fields {
-                                    match field {
-                                        Expr::VariableName { typ: vartyp, name: varname, constant, .. } => {
-                                            let new_name = format!("{ident}.{varname}");
-                                            let new_expr = Expr::Variable {
-                                                info: Box::new(Expr::VariableName {
-                                                    typ: vartyp,
-                                                    name: new_name,
-                                                    reassign: false,
-                                                    constant,
-                                                    field_data: (true, false),
-                                                }),
-                                                value: Box::new(Expr::None),
-                                            };
-
-                                            expr_param.push(new_expr);
-                                        },
-                                        _ => (),
-                                    }
-                                }
-                            }
+                            // THIS NEEDS TO BE DONE HERE BECAUSE WE ARE ENTERING A NEW SCOPE, THE
+                            // "propagate_struct_fields" FUNCTION WORKS FOR THE CURRENT SCOPE
+                            expr_param.append(&mut self.create_func_propagate_field(ident.clone(), user_def.to_owned(), false));
                         } else if let Keyword::Pointer(.., last) = kw_buf {
                             if let Types::TypeDef { type_name: ref user_def, .. } = last {
-                                if let Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } = self.find_structure(&user_def) {
-                                    for field in struct_fields {
-                                        match field {
-                                            Expr::VariableName { typ: vartyp, name: varname, constant, .. } => {
-                                                let new_name = format!("{ident}.{varname}");
-                                                let new_expr = Expr::Variable {
-                                                    info: Box::new(Expr::VariableName {
-                                                        typ: Types::Pointer(Box::new(vartyp)),
-                                                        name: new_name,
-                                                        reassign: false,
-                                                        constant,
-                                                        field_data: (true, true),
-                                                    }),
-                                                    value: Box::new(Expr::None),
-                                                };
-
-                                                expr_param.push(new_expr);
-                                            },
-                                            _ => (),
-                                        }
-                                    }
-                                }
+                                expr_param.append(&mut self.create_func_propagate_field(ident.clone(), user_def.to_owned(), true));
                             }
                         } else if let Types::TypeId = typ {
                             typeid_names.push(ident.to_owned());
@@ -1878,7 +1860,7 @@ impl ExprWeights {
                 Expr::Variable { info, .. } => {
                     match *info.clone() {
                         Expr::VariableName { name, .. } => {
-                            if &name == ident {
+                            if &name.replace("->", ".") == ident {
                                 return *info.clone();
                             }
                         },
@@ -1970,6 +1952,13 @@ impl ExprWeights {
                         return enum_field.clone()
                     }
                 },
+                Expr::Variable { info, .. } => {
+                    if let Expr::VariableName { name, .. } = *info.clone() {
+                        if &name == ident {
+                            return *info.clone();
+                        }
+                    }
+                }
                 _ => (),
             }
         }
@@ -2103,13 +2092,6 @@ impl ExprWeights {
                         nested_func = expr;
                     } else if let Expr::MacroFunc { .. } = expr {
                         nested_func = expr;
-                    } else if let Expr::VariableName {ref typ, reassign, constant, field_data, ..} = expr {
-                        if field_data.0 && field_data.1 {
-                            let new_name = ident.replace(".", "->");
-                            expr_params.push(Expr::VariableName { typ: typ.clone(), name: new_name, reassign: reassign.clone(), constant, field_data })
-                        } else {
-                            expr_params.push(expr.clone());
-                        }
                     } else {
                         expr_params.push(expr);
                     }
@@ -3214,12 +3196,7 @@ impl ExprWeights {
                     let expr = self.find_ident(ident.to_string());
                     match expr {
                         Expr::VariableName { ref typ, ref name, reassign, constant: _, field_data } => {
-                            if field_data.0 && field_data.1 {
-                                let new_name = name.replace(".", "->");
-                                buffer.push(Expr::VariableName { typ: typ.clone(), name: new_name, reassign, constant: is_constant, field_data })
-                            } else {
-                                buffer.push(Expr::VariableName { typ: typ.clone(), name: name.to_owned(), reassign, constant: is_constant, field_data })
-                            }
+                            buffer.push(Expr::VariableName { typ: typ.clone(), name: name.to_owned(), reassign, constant: is_constant, field_data })
                         },
                         Expr::None => {
                             let typ_kw_res = self.keyword_map.get(ident);
@@ -3418,8 +3395,17 @@ impl ExprWeights {
             Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } => {
                 for field in struct_fields {
                     match field {
-                        Expr::VariableName { typ, name, .. } => {
-                            let new_name = format!("{fname}.{name}");
+                        Expr::VariableName { typ, name, field_data, .. } => {
+                            let new_name = if is_ptr {
+                                format!("{fname}->{name}")
+                            } else {
+                                format!("{fname}.{name}")
+                            };
+                            println!("{new_name}");
+                            if let Types::TypeDef { ref type_name, .. } = typ {
+                                self.propagate_struct_fields(new_name.clone(), type_name.to_string(), field_data.1, is_constant);
+                            }
+
                             let new_expr = Expr::Variable {
                                 info: Box::new(Expr::VariableName {
                                     typ,
