@@ -105,6 +105,18 @@ struct Vector2f32 :: {
         c.y: [a.y / b.y];
         return c;
     }
+
+    @inline Vector2f32 normalise :: (Vector2f32 vec) {
+        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y]);
+        if (mag > 0) {
+            Vector2f32 normalised;
+            normalised.x: [vec.x / mag];
+            normalised.y: [vec.y / mag];
+            return normalised;
+        }
+
+        return vec;
+    }
 }
 
 struct Vector3f32 :: {

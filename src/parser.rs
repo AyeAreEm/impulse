@@ -558,7 +558,6 @@ impl ExprWeights {
                         } else {
                             format!("{fname}.{varname}")
                         };
-                        println!("{new_name}");
                         if let Types::TypeDef { ref type_name, .. } = vartyp {
                             expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), type_name.to_owned(), field_data.1));
                         }
@@ -3148,6 +3147,12 @@ impl ExprWeights {
                                         (k, _) = self.create_keyword_pointer(self.keyword_to_type(k), pointer_counter);
                                     }
 
+                                    if self.in_struct_def && !self.in_func {
+                                        let expr = self.create_define_var(k, value[i+1].clone(), vec![]);
+                                        self.expr_stack.push(expr);
+                                        return Expr::None;
+                                    }
+
                                     return self.create_define_var(k, value[i+1].clone(), vec![]);
                                 } else {
                                     // if in struct it reference it's own name
@@ -3401,7 +3406,6 @@ impl ExprWeights {
                             } else {
                                 format!("{fname}.{name}")
                             };
-                            println!("{new_name}");
                             if let Types::TypeDef { ref type_name, .. } = typ {
                                 self.propagate_struct_fields(new_name.clone(), type_name.to_string(), field_data.1, is_constant);
                             }

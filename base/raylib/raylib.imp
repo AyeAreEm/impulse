@@ -538,8 +538,8 @@ enum rl.MaterialMapIndex :: {
     BRDF;
 }
 
-#typeid rl.MaterialMapIndex.DIFFUSE :: rl.MaterialMapIndex.ALBEDO;
-#typeid rl.MaterialMapIndex.SPECULAR :: rl.MaterialMapIndex.METALNESS;
+int rl.MaterialMapIndex.DIFFUSE :: rl.MaterialMapIndex.ALBEDO;
+int rl.MaterialMapIndex.SPECULAR :: rl.MaterialMapIndex.METALNESS;
 
 enum rl.ShaderLocationIndex :: {
     VERTEX_POSITION :: 0; # Shader location: vertex attribute: position
@@ -570,8 +570,8 @@ enum rl.ShaderLocationIndex :: {
     MAP_BRDF;             # Shader location: sampler2d texture: brdf
 }
 
-#typeid rl.ShaderLocationIndex.DIFFUSE :: rl.ShaderLocationIndex.ALBEDO;
-#typeid rl.ShaderLocationIndex.SPECULAR :: rl.ShaderLocationIndex.METALNESS;
+int rl.ShaderLocationIndex.MAP_DIFFUSE :: rl.ShaderLocationIndex.MAP_ALBEDO;
+int rl.ShaderLocationIndex.MAP_SPECULAR :: rl.ShaderLocationIndex.MAP_METALNESS;
 
 enum rl.ShaderUniformDataType :: {
     FLOAT :: 0;
@@ -926,13 +926,14 @@ enum rl.NPatchLayout :: {
 #------------------------------------------------------------------------------------
 # Gestures and Touch Handling Functions (Module: rgestures)
 #------------------------------------------------------------------------------------
-#RLAPI void SetGesturesEnabled(unsigned int flags);      // Enable a set of gestures using flags
-#RLAPI bool IsGestureDetected(unsigned int gesture);     // Check if a gesture have been detected
-#RLAPI int GetGestureDetected(void);                     // Get latest detected gesture
-#RLAPI float GetGestureHoldDuration(void);               // Get gesture hold time in milliseconds
-#RLAPI Vector2 GetGestureDragVector(void);               // Get gesture drag vector
-#RLAPI float GetGestureDragAngle(void);                  // Get gesture drag angle RLAPI Vector2 GetGesturePinchVector(void);              // Get gesture pinch delta
-#RLAPI float GetGesturePinchAngle(void);                 // Get gesture pinch angle
+@inline _ rl.SetGesturesEnabled :: (uint flags) {@c [SetGesturesEnabled(flags);];}
+@inline bool rl.IsGestureDetected :: (uint gesture) {@c [return IsGestureDetected(gesture);];}
+@inline int rl.GetGestureDetected :: () {@c [return GetGestureDetected();];} # Get latest detected gesture
+@inline f32 rl.GetGestureHoldDuration :: () {@c [return GetGestureHoldDuration();];} # Get gesture hold time in milliseconds
+@inline rl.Vector2 rl.GetGestureDragVector :: () {@c [Vector2 v = GetGestureDragVector(); return *(rl__Vector2*)&v;];}
+@inline f32 rl.GetGestureDragAngle :: () {@c [return GetGestureDragAngle();];} #
+@inline rl.Vector2 rl.GetGesturePinchVector :: () {@c [Vector2 v = GetGesturePinchVector(); return *(rl__Vector2*)&v;];}
+@inline f32 rl.GetGesturePinchAngle :: () {@c [return GetGesturePinchAngle();];}
 
 #------------------------------------------------------------------------------------
 # Camera System Functions (Module: rcamera)
@@ -956,8 +957,7 @@ enum rl.NPatchLayout :: {
 @inline _ rl.DrawLineEx :: (rl.Vector2 startPos rl.Vector2 endPos f32 thick rl.Color color) {@c [DrawLineEx(*(Vector2*)&startPos, *(Vector2*)&endPos, thick, *(Color*)&color);];}
 @inline _ rl.DrawLineStrip :: (^rl.Vector2 points int pointCount rl.Color color) {@c [DrawLineStrip(*(Vector2**)&points, pointCount, *(Color*)&color);];}
 @inline _ rl.DrawLineBezier :: (rl.Vector2 startPos rl.Vector2 endPos f32 thick rl.Color color) {@c [DrawLineBezier(*(Vector2*)&startPos, *(Vector2*)&endPos, thick, *(Color*)&color);];}
-@inline _ rl.DrawCircle :: (int centerX int centerY f32 radius rl.Color color) {@c [DrawCircle(centerX, centerY, radius, *(Color*)&color);];}
-#RLAPI void DrawCircleSector(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color);      // Draw a piece of a circle
+@inline _ rl.DrawCircle :: (int centerX int centerY f32 radius rl.Color color) {@c [DrawCircle(centerX, centerY, radius, *(Color*)&color);];} #RLAPI void DrawCircleSector(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color);      // Draw a piece of a circle
 #RLAPI void DrawCircleSectorLines(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color); // Draw circle sector outline
 @inline _ rl.DrawCircleGradient :: (int centerX int centerY f32 radius rl.Color color1 rl.Color color2) {@c [DrawCircleGradient(centerX, centerY, radius, *(Color*)&color1, *(Color*)&color2);];}
 #RLAPI void DrawCircleV(Vector2 center, float radius, Color color);                                       // Draw a color-filled circle (Vector version)
