@@ -1,15 +1,19 @@
 @import "stdio.h";
 @import "stdlib.h";
 
+@inline _ exitcode :: (int code) {
+    @c [exit(code);];
+}
+
 struct[T] option :: {
     $T value;
     bool none;
 
     option[T] unwrap :: (typeid T option[T] opt) {
         if (opt.none) {
-            @c [fprintf(stderr, "error: failed to unwrap in %s at line %d\n", __FILE__, __LINE__);];
+            @c [fprintf(stderr, "error: failed to unwrap in %s:%d\n", __FILE__, __LINE__);];
             @c [fprintf(stderr, "error: please take a look at the c file for more info\n");];
-            @c [exit(1);];
+            exitcode(1);
         }
         return opt.value;
     }
@@ -41,3 +45,8 @@ struct[T] array :: {
 _ print :: () {}
 _ println :: () {}
 
+_ panic :: (^char msg) {
+    @c [fprintf(stderr, "panic at %s:%d\n", __FILE__, __LINE__);];
+    println("%s" msg);
+    exitcode(1);
+}

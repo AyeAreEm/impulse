@@ -46,6 +46,7 @@ _ main :: () {
     Player player: Player.new(100.0 100.0 100.0 100.0);
 
     rl.InitWindow(800 600 "movement");
+    defer {rl.CloseWindow();}
 
     loop (!rl.WindowShouldClose()) {
         f32 delta: rl.GetFrameTime();
@@ -59,5 +60,4 @@ _ main :: () {
         rl.EndDrawing();
     }
 
-    rl.CloseWindow();
 }

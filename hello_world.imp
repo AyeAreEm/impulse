@@ -5,4 +5,5 @@ _ main :: () {
     defer {string.dealloc(word);}
 
     println("%s" word.data);
+    panic("WHATT");
 }
