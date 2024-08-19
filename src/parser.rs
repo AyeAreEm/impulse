@@ -3675,7 +3675,48 @@ impl ExprWeights {
                     return;
                 }
             },
-            _ => unreachable!(),
+            Expr::DerefPointer(ref varname) => {
+                match **varname {
+                    Expr::VariableName { ref typ, ref name, .. } => {
+                        if let Types::TypeId = typ {
+                            if !is_constant {
+                                self.comp_err(&format!("type masking must be constant. did you mean `typeid {name} :: <value>`?"));
+                                exit(1);
+                            }
+
+                            if let Expr::StructDef { .. } = right_expr {
+                                self.handle_type_mask(name.to_owned(), right_expr.clone());
+                            } else if let Expr::IntLit(_) = right_expr {
+                                self.structures.push(Expr::StructDef {
+                                    struct_name: Box::new(Expr::StructName(name.to_owned())),
+                                    struct_fields: vec![]
+                                });
+                            }
+
+                            let new_name = name.replace(".", "__");
+
+                            let expr = Expr::Variable {
+                                info: Box::new(Expr::VariableName {
+                                    typ: typ.clone(),
+                                    name: new_name,
+                                    reassign: false,
+                                    constant: true,
+                                    field_data: (false, false)
+                                }),
+                                value: Box::new(right_expr)
+                            };
+                            self.program_push(expr.clone());
+                            self.token_stack.clear();
+                            return;
+                        }
+                    },
+                    _ => unreachable!()
+                }
+            },
+            ref unexpected => {
+                self.comp_err(&format!("unexpected {unexpected:?} on left side of variable"));
+                exit(1);
+            },
         }
 
         let expr = Expr::Variable { info: Box::new(left_expr.clone()), value: Box::new(right_expr.clone()) };

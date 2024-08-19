@@ -18,33 +18,35 @@ Impulse's main principles are interoperability with C while providing modern nic
 - Zero initalised
 
 ```
+@import "base/string.imp";
+
 struct vector :: {
     i32 x;
     i32 y;
 
-    vec new(i32 x i32 y) :: {
-        vec vector;
-        vector.x: x;
-        vector.y: y;
-        return vector;
+    vector new :: (i32 x i32 y) {
+        vector vec: |x y|;
+        return vec;
     }
 }
 
-_ print_chars(^char word) :: {
+_ print_chars :: (string word) {
+    defer { string.dealloc(word); }
+
     for (word) [ch] {
-        @c [printf("%c\n", ch);];
+        println("%c" ch);
     }
 }
 
-_ main() :: {
-    vector pos: vec.new(34 35);
+_ main :: () {
+    vector pos: vector.new(34 35);
 
     if ([pos.x + pos.y] = 69) {
-        @c [printf("haha funny number");];
+        println("haha funny number");
     }
 
     loop (i < pos.x) [+] {
-        @c [printf("%d\n", i);];
+        println("%zu" i);
     }
 
     ^vector pos_ptr: &pos;
@@ -55,7 +57,7 @@ _ main() :: {
     ^int x: &pos_ptr.x;
     x^: 20;
 
-    print_chars("hello world");
+    print_chars(string.from("hello world"));
 }
 ```
 
@@ -78,8 +80,6 @@ foo(bar.data[0]);
 
 ### Todos / Ideas
 ```
-defer -> perform action right before the end of current scope
-
 default struct values -> so that there isn't a need for a constructor as its baked into the struct
 
 group -> group of acceptable types. `group number: |u8 i8 i32 int usize|` (idk what's the name for something like this lmao, it won't be named group tho)
