@@ -1,12 +1,61 @@
 @import "base/raylib/raylib.imp";
 
+f32 SPEED :: 20.0;
+
+struct Player :: {
+    rl.Rectangle shape;
+    rl.Vector2 velocity;
+
+    Player new :: (f32 x f32 y f32 width f32 height) {
+        Player new;
+        new.shape.x: x;
+        new.shape.y: y;
+        new.shape.width: width;
+        new.shape.height: height;
+        new.velocity.x: 0.0;
+        new.velocity.y: 0.0;
+        return new;
+    }
+
+    _ update :: (^Player player f32 delta) {
+        player.velocity.x: 0.0;
+        player.velocity.y: 0.0;
+
+        f32 distance: 1.0;
+        if (rl.IsKeyDown(rl.KeyboardKey.W)) {
+            player.velocity.y: [player.velocity.y - distance * SPEED * delta];
+        }
+        if (rl.IsKeyDown(rl.KeyboardKey.S)) {
+            player.velocity.y: [player.velocity.y + distance * SPEED * delta];
+        }
+        if (rl.IsKeyDown(rl.KeyboardKey.A)) {
+            player.velocity.x: [player.velocity.x - distance * SPEED * delta];
+        }
+        if (rl.IsKeyDown(rl.KeyboardKey.D)) {
+            player.velocity.x: [player.velocity.x + distance * SPEED * delta];
+        }
+
+        player.velocity: Vector2f32.normalise(player.velocity);
+        player.shape.x: [player.shape.x + player.velocity.x];
+        player.shape.y: [player.shape.y + player.velocity.y];
+
+    }
+}
+
 _ main :: () {
-    rl.InitWindow(800 600 "Raylib - Impulse");
+    Player player: Player.new(100.0 100.0 100.0 100.0);
+
+    rl.InitWindow(800 600 "movement");
 
     loop (!rl.WindowShouldClose()) {
+        f32 delta: rl.GetFrameTime();
+
+        Player.update(&player delta);
+        println("x: %f, y: %f" player.shape.x player.shape.y);
+
         rl.BeginDrawing();
         rl.ClearBackground(rl.BLACK);
-        rl.DrawRectangle(100 100 200 200 rl.RED);
+        rl.DrawRectangleRec(player.shape rl.RED);
         rl.EndDrawing();
     }
 

@@ -107,6 +107,8 @@ pub enum Keyword {
         type_name: String,
         generics: Option<Vec<String>>,
     },
+
+    Defer,
     None,
 }
 

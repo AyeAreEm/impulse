@@ -78,15 +78,13 @@ foo(bar.data[0]);
 
 ### Todos / Ideas
 ```
-@def -> define a static label for something (e.g. @def CAP: 100; or @def io: @import "stdio.h";)
-
 defer -> perform action right before the end of current scope
 
 default struct values -> so that there isn't a need for a constructor as its baked into the struct
 
-group -> group of acceptable types. `group number: |u8 i8 i32 int usize|`
+group -> group of acceptable types. `group number: |u8 i8 i32 int usize|` (idk what's the name for something like this lmao, it won't be named group tho)
 
-any -> any type (may be not type safe)
+pseudo methods -> struct function that takes a "self" as the first arg, variable can be used as the prefix (e.g. player.update() instead of Player.update(&player))
 
 character literals: the type exists but no way to really make them without C Embed. there are a few options here
     - traditional literal: 'a' 'A' ' '

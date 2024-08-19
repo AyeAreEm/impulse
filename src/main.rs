@@ -62,9 +62,9 @@ fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool
     }
 
     let expressions = parse.parser();
-    for expr in &expressions {
-        println!("{:?}", expr.0);
-    }
+    // for expr in &expressions {
+    //     println!("{:?}", expr.0);
+    // }
 
     let mut gen = Gen::new(filename.to_string(), out_filename.clone(), compile, keep_gen, lang);
     gen.generate(expressions);

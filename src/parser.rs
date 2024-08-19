@@ -130,6 +130,8 @@ pub struct ExprWeights {
     in_func: bool,
     in_struct_def: bool,
     in_enum_def: bool,
+    in_defer: bool,
+    defer_scope: usize,
 
     line_num: u32,
     
@@ -188,6 +190,8 @@ impl ExprWeights {
 
             ("struct".to_string(), Keyword::Struct),
             ("enum".to_string(), Keyword::Enum),
+
+            ("defer".to_string(), Keyword::Defer),
         ]);
 
         let macros_map: HashMap<String, Macros> = HashMap::from([
@@ -222,6 +226,8 @@ impl ExprWeights {
             in_func: false,
             in_struct_def: false,
             in_enum_def: false,
+            in_defer: false,
+            defer_scope: 0,
 
             line_num: 1,
             
@@ -245,7 +251,7 @@ impl ExprWeights {
         self.program.push((expr, self.filename.clone(), self.line_num));
     }
 
-    fn error_if_stack_not_empty(&self) {
+    fn error_if_token_stack_not_empty(&self) {
         if !self.token_stack.is_empty() {
             self.comp_err("might be a missing `;`. stack is not empty when it should be");
             exit(1);
@@ -1298,6 +1304,9 @@ impl ExprWeights {
         let for_this_typ = match &in_this.0[0] {
             Expr::VariableName { typ, constant, .. } => {
                 if let Types::Arr { typ: subtyp, .. } = typ {
+                    if let Types::TypeDef { type_name, .. } = *subtyp.clone() {
+                        self.propagate_struct_fields(new_varnames[0].to_owned(), type_name, false, *constant);
+                    }
                     *subtyp.clone()
                 } else if let Types::TypeDef { type_name, generics: generics_op } = typ {
                     let generics = match generics_op {
@@ -1411,6 +1420,16 @@ impl ExprWeights {
         self.new_scope_vars(side_effects);
     }
 
+    fn create_defer(&mut self) {
+        let exprs = self.expr_stack.clone();
+        self.expr_stack.clear();
+
+        for expr in exprs {
+            // println!("{expr:?}");
+            self.program_push(expr)
+        }
+    }
+
     fn handle_lcurl(&mut self) {
         let mut typ: Types = Types::None;
         let mut name = String::new();
@@ -1430,6 +1449,8 @@ impl ExprWeights {
         let mut loop_modifier = String::new();
 
         let mut create_for = false;
+
+        let mut create_defer = false;
 
         let mut create_struct = false;
         let mut create_generic = false;
@@ -1507,6 +1528,7 @@ impl ExprWeights {
                                 Keyword::Loop => create_loop = true,
                                 Keyword::Struct => create_struct = true,
                                 Keyword::Enum => create_enum = true,
+                                Keyword::Defer => create_defer = true,
                                 _ => {
                                     if let Types::None = typ {
                                         typ = if create_generic {
@@ -1794,6 +1816,14 @@ impl ExprWeights {
                 self.create_enum_def(name.clone());
                 return
             }
+        }
+
+        if create_defer {
+            self.token_stack.clear();
+            self.in_defer = true;
+            self.defer_scope = self.current_scope;
+            self.new_scope(Expr::None);
+            return
         }
 
         if seen_colon == 2 {
@@ -3052,7 +3082,6 @@ impl ExprWeights {
                                     exit(1);
                                 }
 
-                                // similar syntax between defining var and returning, check which
                                 if self.in_struct_def && !self.in_func {
                                     let expr = self.create_define_var(keyword, value[i+1].clone(), vec![]);
                                     self.expr_stack.push(expr);
@@ -3079,6 +3108,8 @@ impl ExprWeights {
                                             }
 
                                             if self.in_struct_def && !self.in_func {
+                                                // i should've commented this earlier, don't
+                                                // remember why this is needed lmao
                                                 let expr = if i + 2 < value.len() {
                                                     let slice = value[i+1..value.len()-1].to_vec();
                                                     let last = value.last().unwrap().clone();
@@ -3134,8 +3165,18 @@ impl ExprWeights {
 
                                     return self.create_define_var(k, last, slice)
                                 } else if let Expr::Func { .. } = found_ident {
+                                    if self.in_defer {
+                                        let expr = self.create_func_call(&found_ident, value[i+1..].to_vec());
+                                        self.expr_stack.push(expr);
+                                        return Expr::None;
+                                    }
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
                                 } else if let Expr::MacroFunc { .. } = found_ident {
+                                    if self.in_defer {
+                                        let expr = self.create_func_call(&found_ident, value[i+1..].to_vec());
+                                        self.expr_stack.push(expr);
+                                        return Expr::None;
+                                    }
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
                                 } else if let Expr::EnumDef { .. } = found_ident {
                                     let mut k = Keyword::TypeDef {
@@ -3271,7 +3312,7 @@ impl ExprWeights {
                                 exit(1);
                             }
 
-                            if self.in_struct_def {
+                            if self.in_struct_def || self.in_defer {
                                 let expr = self.create_define_var(keyword, value[i+1].clone(), vec![]);
                                 self.expr_stack.push(expr);
                                 return Expr::None
@@ -3715,24 +3756,50 @@ impl ExprWeights {
 
     pub fn parser(&mut self) -> Vec<(Expr, String, u32)> {
         let mut curl_rc = 0;
+        let mut paste_defer = true;
+        let mut paste_defer_rc = 0;
 
         while self.current_token < self.tokens.len() {
             match self.tokens[self.current_token] {
                 Token::Lcurl => {
                     curl_rc += 1;
+                    if paste_defer {
+                        paste_defer_rc += 1;
+                    }
                     self.handle_lcurl();
                 },
                 Token::Rcurl => {
-                    self.error_if_stack_not_empty();
+                    self.error_if_token_stack_not_empty();
 
                     curl_rc -= 1;
                     self.prev_scope();
+
+                    if paste_defer {
+                        if paste_defer_rc > 0 {
+                            paste_defer_rc -= 1;
+                        }
+                        if paste_defer_rc == 0 {
+                            paste_defer = false;
+                            self.create_defer();
+                        }
+                    }
+
                     if self.in_struct_def && curl_rc == 0 {
                         if self.previous_func.is_empty() {
                             self.create_struct();
                         } else {
                             self.previous_func.clear();
                             self.in_struct_def = false;
+                        }
+                    } else if self.in_defer {
+                        self.in_defer = false;
+                        if self.defer_scope == self.current_scope {
+                            if curl_rc == 0 {
+                                self.create_defer();
+                                continue;
+                            }
+                            paste_defer = true;
+                            paste_defer_rc = 1;
                         }
                     } else if self.in_enum_def {
                         self.create_enum();
@@ -3744,7 +3811,7 @@ impl ExprWeights {
                     self.handle_semicolon();
                 },
                 Token::Newline => {
-                    self.error_if_stack_not_empty();
+                    self.error_if_token_stack_not_empty();
                     self.line_num += 1;
                 },
                 _ => self.token_stack.push(self.tokens[self.current_token].clone()),
