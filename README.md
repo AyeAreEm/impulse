@@ -78,6 +78,16 @@ Passing array at index to function parameter
 foo(bar.data[0]);
 ```
 
+Defer bracket doesn't get last expression (note: it works when there's only one expression)
+```
+defer {
+    println("hello");
+    println("world");
+    println("!"); # this never gets printed 
+}
+
+```
+
 ### Todos / Ideas
 ```
 default struct values -> so that there isn't a need for a constructor as its baked into the struct
@@ -90,6 +100,8 @@ character literals: the type exists but no way to really make them without C Emb
     - traditional literal: 'a' 'A' ' '
     - Jai style char literals: @char "a" @char "A" @char " "
     - implicit chars (if length is 0 or 1, it will be a char): "a" "A" " "
+
+constant func args by default -> since there isn't a "const" keyword, there is no way to tell if a function argument should be constant or not, so maybe it should be constant by default. (like in Odin)
 
 standard library:
 windows gui -> either natively or a mapping to raylib

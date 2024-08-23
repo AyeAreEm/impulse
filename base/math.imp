@@ -8,9 +8,12 @@ f64 pi :: 3.14159265358979323846;
 
 $T sine :: (typeid T $T x) {
     $T result;
-    if (size_of(T) = size_of(f32)) {
+    ^char type: type_of(T);
+    ^char f32_str: type_of(f32);
+    ^char f64_str: type_of(f64);
+    if (cstr.compare(type f32_str)) {
         result: sine_f32(x);
-    } orif (size_of(T) = size_of(f64)) {
+    } orif (cstr.compare(type f64_str)) {
         result: sine_f64(x);
     } else {
         println("type %s can't be used in sine function as it's not a decimal" type_of(T));
@@ -24,9 +27,12 @@ $T sine :: (typeid T $T x) {
 
 $T cosine :: (typeid T $T x) {
     $T result;
-    if (size_of(T) = size_of(f32)) {
+    ^char type: type_of(T);
+    ^char f32_str: type_of(f32);
+    ^char f64_str: type_of(f64);
+    if (cstr.compare(type f32_str)) {
         result: cosine_f32(x);
-    } orif (size_of(T) = size_of(f64)) {
+    } orif (cstr.compare(type f64_str)) {
         result: cosine_f64(x);
     } else {
         println("type %s can't be used in cosine function as it's not a decimal" type_of(T));
@@ -40,9 +46,12 @@ $T cosine :: (typeid T $T x) {
 
 $T square_rt :: (typeid T $T x) {
     $T result;
-    if (size_of(T) = size_of(f32)) {
+    ^char type: type_of(T);
+    ^char f32_str: type_of(f32);
+    ^char f64_str: type_of(f64);
+    if (cstr.compare(type f32_str)) {
         result: sqrt_f32(x);
-    } orif (size_of(T) = size_of(f64)) {
+    } orif (cstr.compare(type f64_str)) {
         result: sqrt_f64(x);
     } else {
         println("type %s can't be used in square_rt function as it's not a decimal" type_of(T));
@@ -56,9 +65,12 @@ $T square_rt :: (typeid T $T x) {
 
 $T power :: (typeid T $T x $T y) {
     $T result;
-    if (size_of(T) = size_of(f32)) {
+    ^char type: type_of(T);
+    ^char f32_str: type_of(f32);
+    ^char f64_str: type_of(f64);
+    if (cstr.compare(type f32_str)) {
         result: power_f32(x y);
-    } orif (size_of(T) = size_of(f64)) {
+    } orif (cstr.compare(type f64_str)) {
         result: power_f64(x y);
     } else {
         println("type %s can't be used in power function as it's not a decimal" type_of(T));

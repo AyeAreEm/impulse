@@ -57,8 +57,8 @@ fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool
     let tokens = tokeniser(content.clone());
     let mut parse = ExprWeights::new(tokens, filename);
 
-    if !content.contains("@import \"base/utils.imp\";") {
-        parse.handle_import_macro(&String::from("base/utils.imp"));
+    if !content.contains("@import \"base/builtin.imp\";") {
+        parse.handle_import_macro(&String::from("base/builtin.imp"));
     }
 
     let expressions = parse.parser();

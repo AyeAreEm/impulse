@@ -33,11 +33,7 @@ struct[T] array :: {
     @c [#T;];
 }
 
-@inline $T cast_prim :: (typeid T any val) {
-    @c [(T)val;];
-}
-
-@inline $T cast_struct :: (typeid T any val) {
+@inline $T cast :: (typeid T any val) {
     @c [*(T*)&val;];
 }
 
@@ -46,7 +42,20 @@ _ print :: () {}
 _ println :: () {}
 
 _ panic :: (^char msg) {
-    @c [fprintf(stderr, "panic at %s:%d\n", __FILE__, __LINE__);];
-    println("%s" msg);
+    @c [fprintf(stderr, "panic at %s:%d: %s\n", __FILE__, __LINE__, msg);];
     exitcode(1);
+}
+
+# runtime assert
+_ rt_assert :: (bool expression ^char msg) {
+    if (expression) {
+        return;
+    }
+
+    println("assertion failed: %s" msg);
+}
+
+# comptime assert
+_ ct_assert :: (bool expression ^char msg) {
+    # no clue how to do this rn
 }

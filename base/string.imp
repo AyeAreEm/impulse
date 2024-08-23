@@ -1,5 +1,7 @@
 # Strings with length and null terminated for easy C interopability
 
+@import "ctype.h";
+@import "base/builtin.imp";
 @import "base/memory.imp";
 
 @inline usize cstr.len :: (^char str) {
@@ -92,7 +94,7 @@ struct string :: {
         @c [dest->data[new_len] = '\0';];
     }
 
-    _ push :: (^string dest ^string src) {
+    _ push_string :: (^string dest ^string src) {
         usize new_len :: [dest.len + src.len];
 
         if (new_len >= dest.cap) {
@@ -104,6 +106,20 @@ struct string :: {
 
         dest.len: new_len;
         @c [dest->data[new_len] = '\0';];
+    }
+
+    _ push :: (^string dest typeid T $T src) {
+        ^char type: type_of(T);
+        if (cstr.compare(type "string*")) {
+            string.push_string(dest src);
+        } orif (cstr.compare(type "char")) {
+            string.push_char(dest src);
+        } orif (cstr.compare(type "char*")) {
+            string.push_cstr(dest src);
+        } else {
+            println("%s is not supported for pushing to a string" type);
+            exitcode(1);
+        }
     }
 
     bool compare :: (string first string second) {
@@ -120,6 +136,63 @@ struct string :: {
         return true;
     }
 
+    option[char] at :: (string str usize index) {
+        option[char] ret;
+
+        if (index >= str.len) {
+            ret.none: true;
+            return ret;
+        }
+
+        ret.value: str.data[index];
+        return ret;
+    }
+
+    bool starts_with :: (string str char ch) {
+        option[char] first_letter_op: string.at(str 0);
+        if (first_letter_op.none) {
+            return false;
+        }
+        if (first_letter_op.value != ch) {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ends_with :: (string str char ch) {
+        option[char] last_letter_op: string.at(str [str.len - 1]);
+        if (last_letter_op.none) {
+            return false;
+        }
+        if (last_letter_op.value != ch) {
+            return false;
+        }
+        return true;
+    }
+
+    _ to_lowercase :: (string str) {
+        for (str) [ch i] {
+            @c [str.data[i] = tolower(ch);];
+        }
+    }
+    
+    _ to_uppercase :: (string str) {
+        for (str) [ch i] {
+            @c [str.data[i] = toupper(ch);];
+        }
+    }
+
+    _ replace_char :: (string str char from char to) {
+        for (str) [ch i] {
+            if (ch = from) {
+                str.data[i]: to;
+            }
+        }
+    }
+
+    #bool contains :: (string str ^char pattern) {}
+    
     _ dealloc :: (string str) {
         mem.dealloc(str.data);
         str.len: 0;

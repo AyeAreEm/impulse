@@ -52,6 +52,7 @@ impl Gen {
             ("stdarg".to_string(), true),
             ("assert".to_string(), true),
             ("errno".to_string(), true),
+            ("ctype".to_string(), true),
         ]);
 
         let definition_map = HashMap::new();
@@ -279,6 +280,24 @@ impl Gen {
     }
 
     fn handle_funccall(&mut self, funccall: Expr) -> String {
+        fn handle_local_pointer(this: &mut Gen, name: String, typ: Types) -> (String, bool) {
+            println!("{typ:?} {name}");
+            if let Types::Pointer(subtyp) = typ {
+                let handled = handle_local_pointer(this, name, *subtyp);
+                return (format!("{}*", handled.0), handled.1);
+            } else if let Types::TypeId = typ {
+                return (name, true);
+            } else if let Types::TypeDef { ref type_name, .. } = typ {
+                if type_name == &name {
+                    return (name, true);
+                } else {
+                    return (name, false);
+                }
+            } else {
+                return (name, false);
+            }
+        }
+
         match funccall {
             Expr::FuncCall { name, gave_params } => {
                 let mut funccall_code = String::new();
@@ -302,8 +321,16 @@ impl Gen {
                                 funccall_code.push_str(&format!(", {intlit}"))
                             }
                         },
-                        Expr::VariableName { .. } => {
-                            let sanitised_name = self.handle_sanitise_varname(param.clone());
+                        Expr::VariableName { typ, .. } => {
+                            let mut sanitised_name = self.handle_sanitise_varname(param.clone());
+                            if let Types::Pointer(_) = typ {
+                                let handled_varname = handle_local_pointer(self, sanitised_name.clone(), typ.clone());
+                                sanitised_name = if handled_varname.1 {
+                                    handled_varname.0
+                                } else {
+                                    sanitised_name
+                                };
+                            }
                             if i == 0 {
                                 funccall_code.push_str(&sanitised_name)
                             } else {
@@ -407,15 +434,16 @@ impl Gen {
         arrlit_code
     }
 
-    fn handle_sanitise_varname(&self, value: Expr) -> String {
+    fn handle_sanitise_varname(&mut self, value: Expr) -> String {
         match value {
             Expr::VariableName { name, field_data, .. } => {
                 // we do this cuz it should be a enum at this point
+                let mut sanitised = name.clone();
                 if !field_data.0 && name.contains(".") {
-                    return name.replace(".", "_")
+                    sanitised = name.replace(".", "_")
                 }
 
-                return name
+                return sanitised 
             },
             unexpected => {
                 self.comp_err(&format!("can't deference {unexpected:?}"));

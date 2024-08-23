@@ -1415,7 +1415,11 @@ impl ExprWeights {
             _ => (),
         }
 
-        self.program_push(expr);
+        if self.in_defer {
+            self.expr_stack.push(expr);
+        } else {
+            self.program_push(expr);
+        }
         self.token_stack.clear();
         self.new_scope_vars(side_effects);
     }
@@ -2049,6 +2053,7 @@ impl ExprWeights {
         let mut square_rc = 0;
         let mut intlit_buf = String::new();
         let mut found_amper = false;
+        let mut pointer_counter = 0;
 
         let mut expr_params = Vec::new();
         for (i, param) in params.iter().enumerate() {
@@ -2080,7 +2085,6 @@ impl ExprWeights {
                         nested_params.push(param.clone());
                         continue;
                     }
-
                     if square_rc > 0 {
                         intlit_buf.push_str(ident);
                         continue;
@@ -2091,6 +2095,7 @@ impl ExprWeights {
                         found_amper = false;
                         continue;
                     }
+
 
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let ident_num = ident.parse::<f64>();
@@ -2109,6 +2114,13 @@ impl ExprWeights {
                         let keyword_rs = self.keyword_map.get(ident);
                         match keyword_rs {
                             Some(keyword) => {
+                                if pointer_counter > 0 {
+                                    let (kw, _) = self.create_keyword_pointer(self.keyword_to_type(Keyword::TypeId), pointer_counter);
+                                    let typ = self.keyword_to_type(kw);
+                                    expr_params.push(Expr::VariableName { typ, name: ident.clone(), reassign: false, constant: false, field_data: (false, false) });
+                                    pointer_counter = 0;
+                                    continue;
+                                }
                                 let _ = self.keyword_to_type(keyword.clone());
                                 expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.clone(), reassign: false, constant: false, field_data: (false, false) })
                             },
@@ -2116,6 +2128,19 @@ impl ExprWeights {
                                 self.comp_err(&format!("unknown identifier: {}", ident));
                                 exit(1);
                             }
+                        }
+                    } else if let Expr::StructDef { ref struct_name, .. } = expr {
+                        if pointer_counter > 0 {
+                            let name = if let Expr::StructName(n) = *struct_name.clone() { n } else { unreachable!() };
+                            let kw;
+                            (kw, pointer_counter) = self.create_keyword_pointer(Types::TypeDef {
+                                type_name: name,
+                                generics: None,
+                            }, pointer_counter);
+                            let typ = self.keyword_to_type(kw);
+                            expr_params.push(Expr::VariableName { typ, name: ident.clone(), reassign: false, constant: false, field_data: (false, false) });
+                        } else {
+                            expr_params.push(expr);
                         }
                     } else if let Expr::Func { .. } = expr {
                         nested_func = expr;
@@ -2185,6 +2210,9 @@ impl ExprWeights {
                 },
                 Token::Ampersand => {
                     found_amper = true;
+                },
+                Token::Caret => {
+                    pointer_counter += 1;
                 },
                 Token::True => {
                     if square_rc > 0 {
@@ -3797,7 +3825,7 @@ impl ExprWeights {
 
     pub fn parser(&mut self) -> Vec<(Expr, String, u32)> {
         let mut curl_rc = 0;
-        let mut paste_defer = true;
+        let mut paste_defer = false;
         let mut paste_defer_rc = 0;
 
         while self.current_token < self.tokens.len() {
@@ -3816,12 +3844,13 @@ impl ExprWeights {
                     self.prev_scope();
 
                     if paste_defer {
-                        if paste_defer_rc > 0 {
-                            paste_defer_rc -= 1;
-                        }
+                        paste_defer_rc -= 1;
                         if paste_defer_rc == 0 {
                             paste_defer = false;
+                            let _ = self.expr_stack.pop();
                             self.create_defer();
+                        } else {
+                            self.expr_stack.push(Expr::EndBlock);
                         }
                     }
 
@@ -3844,7 +3873,7 @@ impl ExprWeights {
                         }
                     } else if self.in_enum_def {
                         self.create_enum();
-                    } else {
+                    } else if !paste_defer {
                         self.program_push(Expr::EndBlock);
                     }
                 },
