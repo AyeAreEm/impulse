@@ -103,6 +103,8 @@ character literals: the type exists but no way to really make them without C Emb
 
 constant func args by default -> since there isn't a "const" keyword, there is no way to tell if a function argument should be constant or not, so maybe it should be constant by default. (like in Odin)
 
+variable equal to expression -> similar to how Rust has "let val = if true { 10 } else { 5 };"
+
 standard library:
 windows gui -> either natively or a mapping to raylib
 hashmaps -> hashmap / hash table / etc. maybe make it fairly efficient and fast
