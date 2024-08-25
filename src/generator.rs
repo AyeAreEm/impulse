@@ -281,7 +281,6 @@ impl Gen {
 
     fn handle_funccall(&mut self, funccall: Expr) -> String {
         fn handle_local_pointer(this: &mut Gen, name: String, typ: Types) -> (String, bool) {
-            println!("{typ:?} {name}");
             if let Types::Pointer(subtyp) = typ {
                 let handled = handle_local_pointer(this, name, *subtyp);
                 return (format!("{}*", handled.0), handled.1);

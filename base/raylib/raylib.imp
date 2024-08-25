@@ -865,14 +865,14 @@ enum rl.NPatchLayout :: {
 @inline ^u8 rl.DecodeDataBase64 :: (^u8 data ^int outputSize) {@c [return DecodeDataBase64(data, outputSize);];}
 
 # Automation events functionality
-#@inline rl.AutomationEventList rl.LoadAutomationEventList :: (^char fileName) {@c [AutomationEventList v = LoadAutomationEventList(fileName); return *(AutomationEventList*)&v;];}
-#@inline _ rl.UnloadAutomationEventList :: (rl.AutomationEventList *list) {@c [UnloadAutomationEventList(*(AutomationEventList*)&list);];}
-#@inline bool rl.ExportAutomationEventList :: (rl.AutomationEventList list ^char fileName) {@c [return ExportAutomationEventList(*(AutomationEventList*)&list, fileName);];}
-#@inline _ rl.SetAutomationEventList :: (rl.AutomationEventList *list) {@c [SetAutomationEventList(*(AutomationEventList*)&list);];}
-#@inline _ rl.SetAutomationEventBaseFrame :: (int frame) {@c [SetAutomationEventBaseFrame(frame);];}
-#@inline _ rl.StartAutomationEventRecording :: () {@c [StartAutomationEventRecording();];}
-#@inline _ rl.StopAutomationEventRecording :: () {@c [StopAutomationEventRecording();];}
-#@inline _ rl.PlayAutomationEvent :: (rl.AutomationEvent event) {@c [PlayAutomationEvent(*(AutomationEvent*)&event);];}
+@inline rl.AutomationEventList rl.LoadAutomationEventList :: (^char fileName) {@c [AutomationEventList v = LoadAutomationEventList(fileName); return *(AutomationEventList*)&v;];}
+@inline _ rl.UnloadAutomationEventList :: (rl.AutomationEventList *list) {@c [UnloadAutomationEventList(*(AutomationEventList*)&list);];}
+@inline bool rl.ExportAutomationEventList :: (rl.AutomationEventList list ^char fileName) {@c [return ExportAutomationEventList(*(AutomationEventList*)&list, fileName);];}
+@inline _ rl.SetAutomationEventList :: (rl.AutomationEventList *list) {@c [SetAutomationEventList(*(AutomationEventList*)&list);];}
+@inline _ rl.SetAutomationEventBaseFrame :: (int frame) {@c [SetAutomationEventBaseFrame(frame);];}
+@inline _ rl.StartAutomationEventRecording :: () {@c [StartAutomationEventRecording();];}
+@inline _ rl.StopAutomationEventRecording :: () {@c [StopAutomationEventRecording();];}
+@inline _ rl.PlayAutomationEvent :: (rl.AutomationEvent event) {@c [PlayAutomationEvent(*(AutomationEvent*)&event);];}
 
 #------------------------------------------------------------------------------------
 # Input Handling Functions (Module: core)
@@ -958,11 +958,11 @@ enum rl.NPatchLayout :: {
 @inline _ rl.DrawLineStrip :: (^rl.Vector2 points int pointCount rl.Color color) {@c [DrawLineStrip(*(Vector2**)&points, pointCount, *(Color*)&color);];}
 @inline _ rl.DrawLineBezier :: (rl.Vector2 startPos rl.Vector2 endPos f32 thick rl.Color color) {@c [DrawLineBezier(*(Vector2*)&startPos, *(Vector2*)&endPos, thick, *(Color*)&color);];}
 @inline _ rl.DrawCircle :: (int centerX int centerY f32 radius rl.Color color) {@c [DrawCircle(centerX, centerY, radius, *(Color*)&color);];} #RLAPI void DrawCircleSector(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color);      // Draw a piece of a circle
-#RLAPI void DrawCircleSectorLines(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color); // Draw circle sector outline
+@inline _ rl.DrawCircleSectorLines :: (rl.Vector2 center f32 radius f32 startAngle f32 endAngle int segments rl.Color color) {@c [DrawCircleSectorLines(*(Vector2*)&center, radius, startAngle, endAngle, segments, *(Color*)&color);];}
 @inline _ rl.DrawCircleGradient :: (int centerX int centerY f32 radius rl.Color color1 rl.Color color2) {@c [DrawCircleGradient(centerX, centerY, radius, *(Color*)&color1, *(Color*)&color2);];}
-#RLAPI void DrawCircleV(Vector2 center, float radius, Color color);                                       // Draw a color-filled circle (Vector version)
+@inline _ rl.DrawCircleV :: (rl.Vector2 center f32 radius rl.Color color) {@c [DrawCircleV(*(Vector2*)&center, radius, *(Color*)&color);];}
 @inline _ rl.DrawCircleLines :: (int centerX int centerY f32 radius rl.Color color) {@c [DrawCircleLines(centerX, centerY, radius, *(Color*)&color);];}
-#RLAPI void DrawCircleLinesV(Vector2 center, float radius, Color color);                                  // Draw circle outline (Vector version)
+@inline _ rl.DrawCircleLinesV :: (rl.Vector2 center f32 radius rl.Color color) {@c [DrawCircleLinesV(*(Vector2*)&center, radius, color);];}
 @inline _ rl.DrawEllipse :: (int centerX int centerY f32 radiusH f32 radiusV rl.Color color) {@c [DrawEllipse(centerX, centerY, radiusH, radiusV, *(Color*)&color);];}
 @inline _ rl.DrawEllipseLines :: (int centerX int centerY f32 radiusH f32 radiusV rl.Color color) {@c [DrawEllipseLines(centerX, centerY, radiusH, radiusV, *(Color*)&color);];}
 #RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color); // Draw ring
@@ -979,8 +979,8 @@ enum rl.NPatchLayout :: {
 #RLAPI void DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color color);              // Draw rectangle with rounded edges
 #RLAPI void DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments, float lineThick, Color color); // Draw rectangle with rounded edges outline
 @inline _ rl.DrawTriangle :: (rl.Vector2 v1 rl.Vector2 v2 rl.Vector2 v3 rl.Color color) {@c [DrawTriangle(*(Vector2*)&v1, *(Vector2*)&v2, *(Vector2*)&v3, *(Color*)&color);];}
-#RLAPI void DrawTriangleLines(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                           // Draw triangle outline (vertex in counter-clockwise order!)
-#RLAPI void DrawTriangleFan(Vector2 *points, int pointCount, Color color);                                // Draw a triangle fan defined by points (first vertex is the center)
+@inline _ rl.DrawTriangleLines :: (rl.Vector2 v1 rl.Vector2 v2 rl.Vector2 v3 rl.Color color) {@c [DrawTriangleLines(*(Vector2*)&v1, *(Vector2*)&v2, *(Vector2*)&v3, *(Color*)&color);];}
+@inline _ rl.DrawTriangleFan :: (^rl.Vector2 points int pointCount rl.Color color) {@c [DrawTriangleFan(*(Vector2**)&points, pointCount, *(Color*)&color);];} # Draw a triangle fan defined by points (first vertex is the center)
 #RLAPI void DrawTriangleStrip(Vector2 *points, int pointCount, Color color);                              // Draw a triangle strip defined by points
 #RLAPI void DrawPoly(Vector2 center, int sides, float radius, float rotation, Color color);               // Draw a regular polygon (Vector version)
 #RLAPI void DrawPolyLines(Vector2 center, int sides, float radius, float rotation, Color color);          // Draw a polygon outline of n sides

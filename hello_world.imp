@@ -1,31 +1,13 @@
-@import "base/string.imp";
+@import "base/dynamic.imp";
+struct Bullet :: {
+    int x; int y;
+}
+
+struct Game :: {
+    dyn[Bullet] bullets;
+}
 
 _ main :: () {
-    string hello: string.from("hello");
-    string world: string.from(" world");
-    string.push(&hello ^string &world);
-    string.to_uppercase(hello);
-    println("%s" hello.data);
-
-    string.to_lowercase(hello);
-
-    char exclaim; @c [exclaim = '!';];
-    string.push(&hello char exclaim);
-    println("%s" hello.data);
-
-    bool ends_h;
-    @c [ends_h = string__ends_with(hello, '!');];
-    if (ends_h) {
-        println("%s ends with !" hello.data);
-    } else {
-        println("huh");
-    }
-
-    option[char] ch_option: string.at(hello 6);
-    char ch: option.unwrap(char ch_option);
-    println("%c" ch);
-
-    char question; @c [question = '?';];
-    string.replace_char(hello exclaim question);
-    println("%s" hello.data);
+    Game game;
+    game.bullets: dyn.new(Bullet);
 }

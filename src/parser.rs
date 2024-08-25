@@ -1429,7 +1429,6 @@ impl ExprWeights {
         self.expr_stack.clear();
 
         for expr in exprs {
-            // println!("{expr:?}");
             self.program_push(expr)
         }
     }
@@ -2276,8 +2275,8 @@ impl ExprWeights {
         let file_res = fs::read_to_string(path);
         let content = match file_res {
             Ok(content) => content,
-            Err(_) => {
-                self.comp_err("unable to read file");
+            Err(err) => {
+                self.comp_err(&format!("unable to read file with error: {err:?}"));
                 exit(1);
             },
         };
@@ -3186,7 +3185,7 @@ impl ExprWeights {
                                     let last = value.last().unwrap().clone();
 
                                     if self.in_struct_def && !self.in_func {
-                                        let expr = self.create_define_var(k, value[i+1].clone(), vec![]);
+                                        let expr = self.create_define_var(k, last, slice);
                                         self.expr_stack.push(expr);
                                         return Expr::None;
                                     }
