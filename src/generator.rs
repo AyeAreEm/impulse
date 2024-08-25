@@ -99,15 +99,10 @@ impl Gen {
     }
 
     fn generate_new_struct(&mut self, fullname: String, og_name: &String) {
-        let mut found = false;
         for gen_struct in &self.generated_structs {
             if gen_struct == &format!("{og_name}_{fullname}") {
-                found = true;
+                return;
             }
-        }
-
-        if found {
-            return;
         }
 
         let parts: Vec<&str> = fullname.split("_").collect();
@@ -122,14 +117,12 @@ impl Gen {
         }
         gen_code.push_str(");\n");
 
-        let index_op = self.definition_map.get(og_name);
-        let index = match index_op {
-            Some(i) => i.to_owned(),
-            None => {
-                self.comp_err(&format!("failed to handle generating struct `{og_name}` at compile time."));
-                exit(1);
-            },
-        };
+        let mut index = 0;
+        for (_, value) in self.definition_map.iter() {
+            if value > &index {
+                index = *value;
+            }
+        }
 
         self.code.insert_str(index, &gen_code);
         self.update_struct_definitions(index, gen_code.len());
@@ -736,11 +729,13 @@ impl Gen {
                 },
                 Expr::EnumDef { enum_name, enum_fields } => {
                     let mut def_code = String::new();
+                    let enumname: String;
                     match *enum_name {
                         Expr::EnumName(name) => {
+                            enumname = name.clone();
                             def_code.push_str(&format!("typedef enum {name} {{\n"));
                         },
-                        _ => (),
+                        _ => unreachable!(),
                     }
 
                     let mut fields = String::new();
@@ -760,6 +755,7 @@ impl Gen {
                         }
                     }
                     self.code.push_str(&format!("{def_code}{fields}"));
+                    self.definition_map.entry(enumname).or_insert(self.code.len());
                 },
                 Expr::StructDef { struct_name, struct_fields } => {
                     let mut def_code = String::new();
@@ -781,6 +777,7 @@ impl Gen {
                 },
                 Expr::EndStruct(name) => {
                     self.code.push_str(&format!("}}{name};\n"));
+                    self.definition_map.entry(name).or_insert(self.code.len());
                 },
                 Expr::MacroStructDef { struct_name, struct_fields } => {
                     self.in_macro_func = true;
@@ -824,14 +821,11 @@ impl Gen {
                 },
                 Expr::MacroEndStruct(name) => {
                     self.code.push_str(&format!("}} {name}"));
-                    let mut useable_name = format!("{name}");
                     for (i, generic) in struct_generics.iter().enumerate() {
                         if i == 0 {
                             self.code.push_str(&format!("_##{generic}"));
-                            useable_name.push_str(&format!("_{generic}"));
                         } else {
                             self.code.push_str(&format!("##{generic}"));
-                            useable_name.push_str(&format!("{generic}"));
                         }
                     }
 
@@ -869,6 +863,7 @@ impl Gen {
                         }
                     }
                     func_code.push_str(") {\n");
+                    self.definition_map.entry(name).or_insert(self.code.len());
                     self.code.push_str(&func_code);
                 },
                 Expr::MacroFunc { params, name, .. } => {
@@ -889,6 +884,7 @@ impl Gen {
                     }
                     func_code.push_str(") ({\\\n");
                     self.code.push_str(&func_code);
+                    self.definition_map.entry(name).or_insert(self.code.len());
                 },
                 Expr::VariableName { typ, name, reassign, constant, field_data } => {
                     self.add_spaces(self.indent);
