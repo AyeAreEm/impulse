@@ -18,7 +18,7 @@ pub struct Gen {
     lang: Lang,
 
     libc_map: HashMap<String, bool>,
-    definition_map: HashMap<String, usize>,
+    defs_location: Vec<usize>,
 
     generated_structs: Vec<String>,
 
@@ -55,8 +55,6 @@ impl Gen {
             ("ctype".to_string(), true),
         ]);
 
-        let definition_map = HashMap::new();
-
         return Gen {
             imports: String::new(),
             comp_imports: String::new(),
@@ -68,7 +66,7 @@ impl Gen {
             lang,
             line_num: 0,
             libc_map,
-            definition_map,
+            defs_location: Vec::new(),
             indent: 0,
             generated_structs: Vec::new(),
             in_macro_func: false,
@@ -91,9 +89,9 @@ impl Gen {
     }
 
     fn update_struct_definitions(&mut self, mut line_num: usize, offset: usize) {
-        for (_, value) in self.definition_map.iter_mut() {
-            if value > &mut line_num {
-                *value += offset;
+        for i in self.defs_location.iter_mut() {
+            if i > &mut line_num {
+                *i += offset;
             }
         }
     }
@@ -117,12 +115,14 @@ impl Gen {
         }
         gen_code.push_str(");\n");
 
-        let mut index = 0;
-        for (_, value) in self.definition_map.iter() {
-            if value > &index {
-                index = *value;
+        let index_op = self.defs_location.last();
+        let index = match index_op {
+            Some(i) => *i,
+            None => {
+                self.comp_err("failed to generate generic during compilation");
+                exit(1);
             }
-        }
+        };
 
         self.code.insert_str(index, &gen_code);
         self.update_struct_definitions(index, gen_code.len());
@@ -729,10 +729,8 @@ impl Gen {
                 },
                 Expr::EnumDef { enum_name, enum_fields } => {
                     let mut def_code = String::new();
-                    let enumname: String;
                     match *enum_name {
                         Expr::EnumName(name) => {
-                            enumname = name.clone();
                             def_code.push_str(&format!("typedef enum {name} {{\n"));
                         },
                         _ => unreachable!(),
@@ -755,7 +753,7 @@ impl Gen {
                         }
                     }
                     self.code.push_str(&format!("{def_code}{fields}"));
-                    self.definition_map.entry(enumname).or_insert(self.code.len());
+                    self.defs_location.push(self.code.len());
                 },
                 Expr::StructDef { struct_name, struct_fields } => {
                     let mut def_code = String::new();
@@ -777,7 +775,7 @@ impl Gen {
                 },
                 Expr::EndStruct(name) => {
                     self.code.push_str(&format!("}}{name};\n"));
-                    self.definition_map.entry(name).or_insert(self.code.len());
+                    self.defs_location.push(self.code.len());
                 },
                 Expr::MacroStructDef { struct_name, struct_fields } => {
                     self.in_macro_func = true;
@@ -830,7 +828,7 @@ impl Gen {
                     }
 
                     self.code.push_str(";\n");
-                    self.definition_map.entry(name).or_insert(self.code.len());
+                    self.defs_location.push(self.code.len());
                     struct_generics.clear();
                     self.in_macro_func = false;
                 },
@@ -863,7 +861,7 @@ impl Gen {
                         }
                     }
                     func_code.push_str(") {\n");
-                    self.definition_map.entry(name).or_insert(self.code.len());
+                    self.defs_location.push(self.code.len());
                     self.code.push_str(&func_code);
                 },
                 Expr::MacroFunc { params, name, .. } => {
@@ -884,7 +882,7 @@ impl Gen {
                     }
                     func_code.push_str(") ({\\\n");
                     self.code.push_str(&func_code);
-                    self.definition_map.entry(name).or_insert(self.code.len());
+                    self.defs_location.push(self.code.len());
                 },
                 Expr::VariableName { typ, name, reassign, constant, field_data } => {
                     self.add_spaces(self.indent);
