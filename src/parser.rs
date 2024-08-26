@@ -2114,7 +2114,7 @@ impl ExprWeights {
                         match keyword_rs {
                             Some(keyword) => {
                                 if pointer_counter > 0 {
-                                    let (kw, _) = self.create_keyword_pointer(self.keyword_to_type(Keyword::TypeId), pointer_counter);
+                                    let (kw, _) = self.create_keyword_pointer(Types::TypeId, pointer_counter);
                                     let typ = self.keyword_to_type(kw);
                                     expr_params.push(Expr::VariableName { typ, name: ident.clone(), reassign: false, constant: false, field_data: (false, false) });
                                     pointer_counter = 0;
@@ -2131,11 +2131,11 @@ impl ExprWeights {
                     } else if let Expr::StructDef { ref struct_name, .. } = expr {
                         if pointer_counter > 0 {
                             let name = if let Expr::StructName(n) = *struct_name.clone() { n } else { unreachable!() };
-                            let kw;
-                            (kw, pointer_counter) = self.create_keyword_pointer(Types::TypeDef {
-                                type_name: name,
+                            let (kw, _) = self.create_keyword_pointer(Types::TypeDef {
+                                type_name: name.clone(),
                                 generics: None,
                             }, pointer_counter);
+                            pointer_counter = 0;
                             let typ = self.keyword_to_type(kw);
                             expr_params.push(Expr::VariableName { typ, name: ident.clone(), reassign: false, constant: false, field_data: (false, false) });
                         } else {
@@ -2209,9 +2209,19 @@ impl ExprWeights {
                 },
                 Token::Ampersand => {
                     found_amper = true;
+                    if nested_brack_rs > 0 {
+                        nested_params.push(param.clone());
+                    } else if square_rc > 0 {
+                        intlit_buf.push('&');
+                    }
                 },
                 Token::Caret => {
                     pointer_counter += 1;
+                    if nested_brack_rs > 0 {
+                        nested_params.push(param.clone());
+                    } else if square_rc > 0 {
+                        intlit_buf.push('^');
+                    }
                 },
                 Token::True => {
                     if square_rc > 0 {

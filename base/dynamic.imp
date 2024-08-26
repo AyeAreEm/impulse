@@ -1,5 +1,4 @@
 @import "base/memory.imp";
-@import "base/builtin.imp";
 
 struct[T] dyn :: {
     ^$T data;
