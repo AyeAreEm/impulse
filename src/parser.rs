@@ -1297,10 +1297,17 @@ impl ExprWeights {
                     },
                 }
 
-                self.program_push(Expr::Loop {
-                    condition: expr_params.0,
-                    modifier: Box::new(Expr::IntLit(modifier.to_owned())),
-                });
+                if self.in_defer {
+                    self.expr_stack.push(Expr::Loop {
+                        condition: expr_params.0,
+                        modifier: Box::new(Expr::IntLit(modifier.to_owned())),
+                    });
+                } else {
+                    self.program_push(Expr::Loop {
+                        condition: expr_params.0,
+                        modifier: Box::new(Expr::IntLit(modifier.to_owned())),
+                    });
+                }
             },
             _ => {
                 self.comp_err(&format!("unexpected loop modifier: {modifier}"));
@@ -3137,7 +3144,7 @@ impl ExprWeights {
                                     exit(1);
                                 }
 
-                                if self.in_struct_def && !self.in_func {
+                                if (self.in_struct_def && !self.in_func) || self.in_defer {
                                     let expr = self.create_define_var(keyword, value[i+1].clone(), vec![]);
                                     self.expr_stack.push(expr);
                                     return Expr::None
@@ -3725,8 +3732,14 @@ impl ExprWeights {
                         }),
                         value: Box::new(right_expr)
                     };
-                    self.program_push(expr.clone());
+
                     self.token_stack.clear();
+
+                    if self.in_defer {
+                        self.expr_stack.push(expr.clone());
+                    } else {
+                        self.program_push(expr.clone());
+                    }
                     return;
                 }
             },
@@ -3760,8 +3773,14 @@ impl ExprWeights {
                                 }),
                                 value: Box::new(right_expr)
                             };
-                            self.program_push(expr.clone());
+
                             self.token_stack.clear();
+
+                            if self.in_defer {
+                                self.expr_stack.push(expr.clone());
+                            } else {
+                                self.program_push(expr.clone());
+                            }
                             return;
                         }
                     },
@@ -3791,7 +3810,11 @@ impl ExprWeights {
         }
 
         self.token_stack.clear();
-        self.program_push(expr);
+        if self.in_defer {
+            self.expr_stack.push(expr);
+        } else {
+            self.program_push(expr);
+        }
     }
 
     fn handle_semicolon(&mut self) {

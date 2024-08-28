@@ -4,11 +4,11 @@ _ main :: () {
     string word: string.from("hello world");
 
     defer {
-        if (word.len = 11) {
-            println("it is 11 letters long");
-        } else {
-            println("what how");
+        loop (i < word.len) [+] {
+            char ch: word.data[i];
+            println("%c" ch);
         }
+        string.dealloc(word);
     }
 
     println("%s" word.data);
