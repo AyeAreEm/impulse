@@ -78,16 +78,6 @@ Passing array at index to function parameter
 foo(bar.data[0]);
 ```
 
-Defer bracket doesn't get last expression (note: it works when there's only one expression)
-```
-defer {
-    println("hello");
-    println("world");
-    println("!"); # this never gets printed 
-}
-
-```
-
 ### Todos / Ideas
 ```
 default struct values -> so that there isn't a need for a constructor as its baked into the struct

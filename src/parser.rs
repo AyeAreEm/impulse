@@ -1029,6 +1029,8 @@ impl ExprWeights {
         let mut side_affect = Expr::None;
         let mut had_index = false;
 
+        let mut pointer_counter = 0;
+
         if params.is_empty() {
             expr_params.push(Expr::IntLit(String::from(";")));
         }
@@ -1077,6 +1079,13 @@ impl ExprWeights {
                         func_params.push(param.clone());
                     }
                 },
+                Token::Caret => {
+                    if func_brack_rc == 0 {
+                        pointer_counter += 1;
+                    } else {
+                        func_params.push(param.clone());
+                    }
+                },
                 Token::Ident(ident) => {
                     if func_brack_rc != 0 {
                         func_params.push(param.clone());
@@ -1117,6 +1126,7 @@ impl ExprWeights {
                         },
                     }
 
+                    // TODO: add dereferncing inside of boolean condition
                     let expr = self.find_ident(ident.to_string());
                     match expr {
                         Expr::Func { ref name, .. } | Expr::MacroFunc { ref name, .. } => {
@@ -3834,15 +3844,17 @@ impl ExprWeights {
 
     pub fn parser(&mut self) -> Vec<(Expr, String, u32)> {
         let mut curl_rc = 0;
-        let mut paste_defer = false;
-        let mut paste_defer_rc = 0;
+
+        let mut defer_rc = 0;
+        let mut defer_paste_next_time = false;
 
         while self.current_token < self.tokens.len() {
             match self.tokens[self.current_token] {
                 Token::Lcurl => {
                     curl_rc += 1;
-                    if paste_defer {
-                        paste_defer_rc += 1;
+
+                    if self.in_defer {
+                        defer_rc += 1;
                     }
                     self.handle_lcurl();
                 },
@@ -3852,15 +3864,9 @@ impl ExprWeights {
                     curl_rc -= 1;
                     self.prev_scope();
 
-                    if paste_defer {
-                        paste_defer_rc -= 1;
-                        if paste_defer_rc == 0 {
-                            paste_defer = false;
-                            let _ = self.expr_stack.pop();
-                            self.create_defer();
-                        } else {
-                            self.expr_stack.push(Expr::EndBlock);
-                        }
+                    if defer_paste_next_time {
+                        self.create_defer();
+                        defer_paste_next_time = false;
                     }
 
                     if self.in_struct_def && curl_rc == 0 {
@@ -3871,18 +3877,27 @@ impl ExprWeights {
                             self.in_struct_def = false;
                         }
                     } else if self.in_defer {
-                        self.in_defer = false;
+                        let mut include_rcurl = false;
+                        if defer_rc != 0 {
+                            defer_rc -= 1;
+                            include_rcurl = true;
+                        }
+
                         if self.defer_scope == self.current_scope {
+                            self.in_defer = false;
+
                             if curl_rc == 0 {
                                 self.create_defer();
-                                continue;
+                                self.program_push(Expr::EndBlock);
+                            } else if defer_rc == 0 {
+                                defer_paste_next_time = true;
                             }
-                            paste_defer = true;
-                            paste_defer_rc = 1;
+                        } else if include_rcurl {
+                            self.expr_stack.push(Expr::EndBlock);
                         }
                     } else if self.in_enum_def {
                         self.create_enum();
-                    } else if !paste_defer {
+                    } else if !self.in_defer {
                         self.program_push(Expr::EndBlock);
                     }
                 },

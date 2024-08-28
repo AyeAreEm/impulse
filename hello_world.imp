@@ -1,42 +1,14 @@
-struct Admin :: {
-    ^char name;
-    u8 age;
-
-    _ log :: (^Admin admin) {
-        println("%s, %d" admin.name admin.age);
-    }
-}
-
-struct User :: {    
-    ^char name;
-    u8 age;
-    ^char social_security_number;
-
-    _ redact :: (^User user) {
-        user.social_security_number: "REDACTED";
-    }
-
-    _ format :: (^User user) {
-        println("%s, %d, %s" user.name user.age user.social_security_number);
-    }
-
-    _ log :: (^User user) {
-        User.redact(user);
-        User.format(user);
-    }
-}
-
-@inline $T log :: (typeid T $T val) {
-    if (size_of(T) = size_of(User)) {
-        User.log(cast(^User val));
-    } orif (size_of(T) = size_of(Admin)) {
-        Admin.log(cast(^Admin val));
-    } else {
-        println("I don't know how to log this");
-    }
-}
+@import "base/string.imp";
 
 _ main :: () {
-    Admin admin: |"Adrian" 17|;
-    log(Admin admin);
+    string word: string.from("hello world");
+
+    defer {
+        for (word) [ch] {
+            println("%c" ch);
+        }
+        string.dealloc(word);
+    }
+
+    println("%s" word.data);
 }
