@@ -1243,19 +1243,38 @@ impl ExprWeights {
     }
 
     fn create_branch(&mut self, branch_typ: Keyword, params: Vec<Token>) {
-        let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
+        self.token_stack.clear();
+        self.new_scope(Expr::None);
 
         match branch_typ {
             Keyword::If => {
-                self.token_stack.clear();
-                self.new_scope(Expr::None);
-                self.program_push(Expr::If(expr_params));
+                let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
+                if self.in_defer {
+                    self.expr_stack.push(Expr::If(expr_params));
+                } else {
+                    self.program_push(Expr::If(expr_params));
+                }
             },
             Keyword::OrIf => {
-                self.token_stack.clear();
-                self.new_scope(Expr::None);
-                self.program_push(Expr::OrIf(expr_params));
+                let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
+                if self.in_defer {
+                    self.expr_stack.push(Expr::If(expr_params));
+                } else {
+                    self.program_push(Expr::OrIf(expr_params));
+                }
             },
+            Keyword::Else => {
+                if !params.is_empty() {
+                    self.comp_err("expected no conditions for else branch, got one");
+                    exit(1);
+                }
+
+                if self.in_defer {
+                    self.expr_stack.push(Expr::Else);
+                } else {
+                    self.program_push(Expr::Else);
+                }
+            }
             _ => (),
         }
     }
@@ -1785,17 +1804,6 @@ impl ExprWeights {
             }
 
             match keyword {
-                Keyword::Else => {
-                    if !params.is_empty() {
-                        self.comp_err("expected no conditions for else branch, got one");
-                        exit(1);
-                    }
-
-                    self.token_stack.clear();
-                    self.program_push(Expr::Else);
-                    self.new_scope(Expr::None);
-                    return
-                }
                 _ => self.create_branch(keyword, params),
             }
             return
