@@ -3112,6 +3112,11 @@ impl ExprWeights {
                 },
                 Token::Ident(ident) => {
                     if found_macro {
+                        if (self.in_struct_def && !self.in_func) || self.in_defer {
+                            let mac = self.handle_macros(ident, &i, &value);
+                            self.expr_stack.push(mac);
+                            return Expr::None;
+                        }
                         return self.handle_macros(ident, &i, &value);
                     } else if found_amper {
                         buffer.push(self.create_address(ident));

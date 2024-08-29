@@ -269,6 +269,12 @@ impl Gen {
                 let derefed = self.handle_varname(*value);
                 return format!("*{derefed}")
             },
+            Expr::CEmbed(mut value) => {
+                if value.chars().last().unwrap() == ';' {
+                    value.pop();
+                }
+                return value;
+            }
             unexpected => {
                 self.comp_err(&format!("unexpected expression: {unexpected:?}"));
                 exit(1);
