@@ -49,7 +49,7 @@ struct[T] dyn :: {
     }
 
     _ remove :: (typeid T dyn[T] arr usize index) {
-        @c [mem_move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
+        @c [mem__move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
         arr.len: [arr.len - 1];
     }
 }

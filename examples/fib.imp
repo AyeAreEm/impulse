@@ -1,6 +1,6 @@
 @import "stdio.h";
 
-int(int nth) fib: {
+int fib :: (int nth) {
     if (nth = 0 or nth = 1) {return nth;}
     orif (nth = 2) {return 1;}
     else {
@@ -10,15 +10,15 @@ int(int nth) fib: {
     }
 }
 
-_() main: {
+_ main :: () {
     println("%d" fib(5));
 
     int a: 1;
     int b: 0;
 
-    loop (i < 4) [+] {
-        int tmp: a;
-        a: [a + b];
+    loop (i <= 5) [+] {
+        int tmp: [a + b];
+        a: b;
         b: tmp;
     }
 

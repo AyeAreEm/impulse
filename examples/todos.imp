@@ -14,7 +14,7 @@ string readin :: () {
                 continue;
             }
         ];
-        string.push(&word ch);
+        string.push(&word char ch);
     }
 
     return word;
@@ -40,7 +40,7 @@ _ main :: () {
                     printf("\n");
                     printf("%zu: ", i+1);
                 ];
-                string.println(todo);
+                println("%s" todo.data);
                 @c [printf("\n");];
             }
         } orif (input_num = 2) {

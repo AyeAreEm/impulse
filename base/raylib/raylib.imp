@@ -274,6 +274,7 @@ struct rl.Sound :: {
     uint frameCount;
 }
 
+# Music, audio stream, anything longer than ~10 seconds should be streamed
 struct rl.Music :: {
     rl.AudioStream stream;
     uint frameCount;
@@ -326,22 +327,22 @@ struct rl.AutomationEvenList :: {
 }
 
 enum rl.ConfigFlags :: {
-    VSYNC_HINT :: 6;
-    FULLSCREEN_MODE :: 1;
-    WINDOW_RESIZABLE :: 2;
-    WINDOW_UNDECORATED :: 3;
-    WINDOW_HIDDEN :: 7;
-    WINDOW_MINIMIZED :: 9;
-    WINDOW_MAXIMIZED :: 10;
-    WINDOW_UNFOCUSED :: 11;
-    WINDOW_TOPMOST :: 12;
-    WINDOW_ALWAYS_RUN :: 8;
-    WINDOW_TRANSPARENT :: 4;
-    WINDOW_HIGHDPI :: 13;
-    WINDOW_MOUSE_PASSTHROUGH :: 14;
-    BORDERLESS_WINDOW_MODE :: 15;
-    MSAA_4X_HINT :: 5;
-    INTERLACED_HINT :: 16;
+    VSYNC_HINT :: 64;
+    FULLSCREEN_MODE :: 2;
+    WINDOW_RESIZABLE :: 4;
+    WINDOW_UNDECORATED :: 8;
+    WINDOW_HIDDEN :: 128;
+    WINDOW_MINIMIZED :: 512;
+    WINDOW_MAXIMIZED :: 1024;
+    WINDOW_UNFOCUSED :: 2048;
+    WINDOW_TOPMOST :: 4096;
+    WINDOW_ALWAYS_RUN :: 256;
+    WINDOW_TRANSPARENT :: 16;
+    WINDOW_HIGHDPI :: 8192;
+    WINDOW_MOUSE_PASSTHROUGH :: 16384;
+    BORDERLESS_WINDOW_MODE :: 32768;
+    MSAA_4X_HINT :: 32;
+    INTERLACED_HINT :: 65536;
 }
 
 enum rl.TraceLogLevel :: {
@@ -538,8 +539,8 @@ enum rl.MaterialMapIndex :: {
     BRDF;
 }
 
-int rl.MaterialMapIndex.DIFFUSE :: rl.MaterialMapIndex.ALBEDO;
-int rl.MaterialMapIndex.SPECULAR :: rl.MaterialMapIndex.METALNESS;
+#typeid rl.MaterialMapIndex.DIFFUSE :: rl.MaterialMapIndex.ALBEDO;
+#typeid rl.MaterialMapIndex.SPECULAR :: rl.MaterialMapIndex.METALNESS;
 
 enum rl.ShaderLocationIndex :: {
     VERTEX_POSITION :: 0; # Shader location: vertex attribute: position
@@ -570,8 +571,8 @@ enum rl.ShaderLocationIndex :: {
     MAP_BRDF;             # Shader location: sampler2d texture: brdf
 }
 
-int rl.ShaderLocationIndex.MAP_DIFFUSE :: rl.ShaderLocationIndex.MAP_ALBEDO;
-int rl.ShaderLocationIndex.MAP_SPECULAR :: rl.ShaderLocationIndex.MAP_METALNESS;
+#typeid rl.ShaderLocationIndex.DIFFUSE :: rl.ShaderLocationIndex.ALBEDO;
+#typeid rl.ShaderLocationIndex.SPECULAR :: rl.ShaderLocationIndex.METALNESS;
 
 enum rl.ShaderUniformDataType :: {
     FLOAT :: 0;
@@ -865,14 +866,14 @@ enum rl.NPatchLayout :: {
 @inline ^u8 rl.DecodeDataBase64 :: (^u8 data ^int outputSize) {@c [return DecodeDataBase64(data, outputSize);];}
 
 # Automation events functionality
-@inline rl.AutomationEventList rl.LoadAutomationEventList :: (^char fileName) {@c [AutomationEventList v = LoadAutomationEventList(fileName); return *(AutomationEventList*)&v;];}
-@inline _ rl.UnloadAutomationEventList :: (rl.AutomationEventList *list) {@c [UnloadAutomationEventList(*(AutomationEventList*)&list);];}
-@inline bool rl.ExportAutomationEventList :: (rl.AutomationEventList list ^char fileName) {@c [return ExportAutomationEventList(*(AutomationEventList*)&list, fileName);];}
-@inline _ rl.SetAutomationEventList :: (rl.AutomationEventList *list) {@c [SetAutomationEventList(*(AutomationEventList*)&list);];}
-@inline _ rl.SetAutomationEventBaseFrame :: (int frame) {@c [SetAutomationEventBaseFrame(frame);];}
-@inline _ rl.StartAutomationEventRecording :: () {@c [StartAutomationEventRecording();];}
-@inline _ rl.StopAutomationEventRecording :: () {@c [StopAutomationEventRecording();];}
-@inline _ rl.PlayAutomationEvent :: (rl.AutomationEvent event) {@c [PlayAutomationEvent(*(AutomationEvent*)&event);];}
+#@inline rl.AutomationEventList rl.LoadAutomationEventList :: (^char fileName) {@c [AutomationEventList v = LoadAutomationEventList(fileName); return *(AutomationEventList*)&v;];}
+#@inline _ rl.UnloadAutomationEventList :: (rl.AutomationEventList *list) {@c [UnloadAutomationEventList(*(AutomationEventList*)&list);];}
+#@inline bool rl.ExportAutomationEventList :: (rl.AutomationEventList list ^char fileName) {@c [return ExportAutomationEventList(*(AutomationEventList*)&list, fileName);];}
+#@inline _ rl.SetAutomationEventList :: (rl.AutomationEventList *list) {@c [SetAutomationEventList(*(AutomationEventList*)&list);];}
+#@inline _ rl.SetAutomationEventBaseFrame :: (int frame) {@c [SetAutomationEventBaseFrame(frame);];}
+#@inline _ rl.StartAutomationEventRecording :: () {@c [StartAutomationEventRecording();];}
+#@inline _ rl.StopAutomationEventRecording :: () {@c [StopAutomationEventRecording();];}
+#@inline _ rl.PlayAutomationEvent :: (rl.AutomationEvent event) {@c [PlayAutomationEvent(*(AutomationEvent*)&event);];}
 
 #------------------------------------------------------------------------------------
 # Input Handling Functions (Module: core)
@@ -931,7 +932,6 @@ enum rl.NPatchLayout :: {
 @inline int rl.GetGestureDetected :: () {@c [return GetGestureDetected();];} # Get latest detected gesture
 @inline f32 rl.GetGestureHoldDuration :: () {@c [return GetGestureHoldDuration();];} # Get gesture hold time in milliseconds
 @inline rl.Vector2 rl.GetGestureDragVector :: () {@c [Vector2 v = GetGestureDragVector(); return *(rl__Vector2*)&v;];}
-@inline f32 rl.GetGestureDragAngle :: () {@c [return GetGestureDragAngle();];} #
 @inline rl.Vector2 rl.GetGesturePinchVector :: () {@c [Vector2 v = GetGesturePinchVector(); return *(rl__Vector2*)&v;];}
 @inline f32 rl.GetGesturePinchAngle :: () {@c [return GetGesturePinchAngle();];}
 
@@ -958,6 +958,7 @@ enum rl.NPatchLayout :: {
 @inline _ rl.DrawLineStrip :: (^rl.Vector2 points int pointCount rl.Color color) {@c [DrawLineStrip(*(Vector2**)&points, pointCount, *(Color*)&color);];}
 @inline _ rl.DrawLineBezier :: (rl.Vector2 startPos rl.Vector2 endPos f32 thick rl.Color color) {@c [DrawLineBezier(*(Vector2*)&startPos, *(Vector2*)&endPos, thick, *(Color*)&color);];}
 @inline _ rl.DrawCircle :: (int centerX int centerY f32 radius rl.Color color) {@c [DrawCircle(centerX, centerY, radius, *(Color*)&color);];} #RLAPI void DrawCircleSector(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color);      // Draw a piece of a circle
+@inline _ rl.DrawCircleSector :: (rl.Vector2 center f32 radius f32 startAngle f32 endAngle int segments rl.Color color) {@c [DrawCircleSector(*(Vector2*)&center, radius, startAngle, endAngle, segments, *(Color*)&color);];}
 @inline _ rl.DrawCircleSectorLines :: (rl.Vector2 center f32 radius f32 startAngle f32 endAngle int segments rl.Color color) {@c [DrawCircleSectorLines(*(Vector2*)&center, radius, startAngle, endAngle, segments, *(Color*)&color);];}
 @inline _ rl.DrawCircleGradient :: (int centerX int centerY f32 radius rl.Color color1 rl.Color color2) {@c [DrawCircleGradient(centerX, centerY, radius, *(Color*)&color1, *(Color*)&color2);];}
 @inline _ rl.DrawCircleV :: (rl.Vector2 center f32 radius rl.Color color) {@c [DrawCircleV(*(Vector2*)&center, radius, *(Color*)&color);];}
