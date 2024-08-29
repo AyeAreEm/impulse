@@ -3895,7 +3895,10 @@ impl ExprWeights {
                     curl_rc -= 1;
                     self.prev_scope();
 
-                    if defer_paste_next_time {
+                    // used to paste the next time there's a right curl but what there's a for loop
+                    // or another defer? it would paste it right after that scope when it should be
+                    // pasting at the end of its scope. this should fix it
+                    if defer_paste_next_time && self.defer_scope == self.current_scope && !self.in_defer {
                         self.create_defer();
                         defer_paste_next_time = false;
                     }

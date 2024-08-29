@@ -14,7 +14,7 @@ _ main :: () {
     println("cap: %zu" hello.cap);
 
     string greet: string.format("this programming language is %s and it currently has %d commits" "Impulse" 154);
+    defer { string.dealloc(greet); }
 
     println("%s" greet.data);
-    string.dealloc(greet);
 }
