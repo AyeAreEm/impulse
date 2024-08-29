@@ -1,15 +1,20 @@
 @import "base/string.imp";
 
+# introduced new "str" type that is a string with length and not memory allocated 
+
 _ main :: () {
-    string word: string.from("hello world");
+    string hello: string.from("hello"); # mem allocated
+    defer { string.dealloc(hello); }
 
-    defer {
-        loop (i < word.len) [+] {
-            char ch: word.data[i];
-            println("%c" ch);
-        }
-        string.dealloc(word);
-    }
+    str world: str.from(" world!!!!!!!!!!!!!!!!!!!!!"); # not mem allocated
+    string.push(&hello str world);
 
-    println("%s" word.data);
+    println("%s" hello.data);
+    println("len: %zu" hello.len);
+    println("cap: %zu" hello.cap);
+
+    string greet: string.format("this programming language is %s and it currently has %d commits" "Impulse" 154);
+
+    println("%s" greet.data);
+    string.dealloc(greet);
 }

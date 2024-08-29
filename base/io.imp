@@ -6,9 +6,8 @@
 
 string io.input :: () {
     string word: string.new();
-    bool newline: false;
 
-    loop (!newline) {
+    loop (true) {
         char ch: c_getchar();
         @c [
             if (ch == '\n') {

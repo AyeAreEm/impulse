@@ -249,9 +249,13 @@ impl Gen {
                 if reassign == false {
                     let str_typ = self.handle_typ(typ.clone());
                     if !str_typ.1.is_empty() {
-                        self.generate_new_struct(format!("{}", str_typ.0), &String::from("array"));
-                        vardec.push_str(&format!("array_{} {new_name} = {{.data = ({}{})Y", str_typ.0, str_typ.0, str_typ.1));
-                        return vardec
+                        if let Types::TypeDef { type_name, .. } = typ {
+                            if type_name == "array" {
+                                self.generate_new_struct(format!("{}", str_typ.0), &String::from("array"));
+                                vardec.push_str(&format!("array_{} {new_name} = {{.data = ({}{})A", str_typ.0, str_typ.0, str_typ.1));
+                                return vardec
+                            }
+                        }
                     }
 
                     vardec.push_str(&format!("{} {new_name}{}", str_typ.0, str_typ.1));
@@ -295,6 +299,8 @@ impl Gen {
                 let mut funccall_code = String::new();
                 if name == String::from("print") || name == String::from("println") {
                     funccall_code.push_str("printf(");
+                } else if name == String::from("string__format") {
+                    funccall_code.push_str("__IMPULSE__STRING__FORMAT__(");
                 } else {
                     funccall_code.push_str(&format!("{name}("));
                 }
@@ -459,7 +465,6 @@ impl Gen {
                 }
             },
             Expr::FuncCall { .. } => return self.handle_funccall(value.clone()),
-            // Expr::ArrayLit(arrlit) => return self.handle_arraylit(arrlit),
             Expr::Address(atoval) =>{
                 let sub_val = self.handle_value(*atoval);
                 return format!("&{sub_val}")
@@ -593,10 +598,10 @@ impl Gen {
                 if reassign == &true {
                     loop_code.push_str(&format!("{} {name} = 0; ", self.handle_typ(typ.clone()).0));
                 } else {
-                    loop_code.push_str(&format!(";"));
+                    loop_code.push_str(";");
                 }
             },
-            Expr::Exclaim => loop_code.push_str(&format!(";")),
+            Expr::Exclaim | Expr::True | Expr::False => loop_code.push_str(";"),
             _ => (),
         }
 
@@ -629,7 +634,7 @@ impl Gen {
                     arr_name = name.clone();
                     format!("{name}.len")
                 } else if let Types::TypeDef { type_name, .. } = typ {
-                    if type_name == String::from("dyn") || type_name == String::from("string") || type_name == String::from("array")  {
+                    if type_name == String::from("dyn") || type_name == String::from("string") || type_name == String::from("str") || type_name == String::from("array")  {
                         arr_name = name.clone();
                         format!("{name}.len")
                     } else {
@@ -881,14 +886,15 @@ impl Gen {
                         }
                     }
                     func_code.push_str(") ({\\\n");
-                    self.code.push_str(&func_code);
                     self.defs_location.push(self.code.len());
+                    self.code.push_str(&func_code);
                 },
                 Expr::VariableName { typ, name, reassign, constant, field_data } => {
                     self.add_spaces(self.indent);
 
                     let mut varname = self.handle_varname(Expr::VariableName { typ: typ.clone(), name, reassign, constant, field_data });
-                    if varname.chars().last().unwrap() == 'Y' {
+                    let last_varname = varname.chars().last().unwrap();
+                    if last_varname == 'A' {
                         varname.pop();
                         match varname.find('{') {
                             Some(index) => {
@@ -929,7 +935,7 @@ impl Gen {
                     }
 
                     let mut varname = self.handle_varname(*info.clone());
-                    if varname.chars().last().unwrap() == 'Y' {
+                    if varname.chars().last().unwrap() == 'A' {
                         varname.pop();
                         match (*value.clone(), *info) {
                             (Expr::ArrayLit(arrlit), Expr::VariableName { typ, .. }) => {

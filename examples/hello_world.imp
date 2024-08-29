@@ -1,12 +1,7 @@
-# currently no in house support for print formatting in impulse
-@import "base/string.imp";
-
 _ main :: () {
-    # working print without formatting in impulse
-    string hello: str.from("hello world");
-    str.println(hello);
-    @c [printf("%d\n", hello.data);];
+    println("hello world");
+    print("no newline character at the end");
 
     # c embed version
-    @c [ printf("hello world"); ];
+    @c [ printf("hello world\n"); ];
 }

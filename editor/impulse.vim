@@ -20,6 +20,7 @@ syntax keyword impulseTypeNames int uint i32 u32 i8 u8 i16 u16 i64 u64 f32 f64 _
 syntax keyword impulseTrueFalse true false
 syntax keyword impulseTypeid typeid any
 syntax keyword impulseDefer defer
+syntax keyword impulseBuiltin println print
 
 syntax match impulseFuncCallName "\<\w\+\>\ze\s*("
 syntax match impulseMacros "@\(import\|c\|array\|inline\)"
@@ -52,5 +53,6 @@ highlight link impulseTypeid Define
 highlight link impulseIdent Statement
 highlight link impulseNamespaceFuncDef Statement
 highlight link impulseDefer Error
+highlight link impulseBuiltin Error
 
 let b:current_syntax = "impulse"

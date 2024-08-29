@@ -10,7 +10,13 @@ struct[T] dyn :: {
         new.len: 0;
         new.cap: 32;
         new.data: mem.alloc(T new.cap);
-        @c [ if (new.data == NULL) exit(1); ];
+        @c [ 
+            if (new.data == NULL) {
+                fprintf(stderr, "error: failed to allocate memory in %s at line %d\n", __FILE__, __LINE__);
+                fprintf(stderr, "error: please take a look at the c file for more info\n");
+                exit(1);
+            }
+         ];
         return new;
     }
 
@@ -29,7 +35,7 @@ struct[T] dyn :: {
 
     _ push :: (typeid T dyn[T] arr $T elem) {
         if ([arr.len + 1] >= arr.cap) {
-            arr.cap: [arr.cap + [arr.len + 1] * 2];
+            arr.cap: [[arr.cap + arr.len + 1] * 2];
             @c [arr.data = realloc(arr.data, arr.cap * sizeof(T));];
         }
 

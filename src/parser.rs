@@ -1366,7 +1366,7 @@ impl ExprWeights {
                             },
                         };
                         subtyp
-                    } else if type_name == &String::from("string") {
+                    } else if type_name == &String::from("string") || type_name == &String::from("str") {
                         Types::Char
                     } else {
                         self.comp_err(&format!("{type_name} unsupported in for loops currently"));

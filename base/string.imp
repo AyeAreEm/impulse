@@ -1,23 +1,11 @@
-# Strings with length and null terminated for easy C interopability
+# Memory allocated string with length and null terminated for easy C interopability
 
-@import "ctype.h";
 @import "base/builtin.imp";
 @import "base/memory.imp";
-
-@inline usize cstr.len :: (^char str) {
-    # maybe just write out the code instead of making a function that calls a function
-    # func calls are more expensive than rewriting
-    @c [return strlen(str);];
-}
 
 @inline ^char cstr.copy :: (^char dest ^char src usize byte_size) {
     # doubt i could write safe code that copies strings
     @c [ return strncpy(dest, src, byte_size); ];
-}
-
-# NOTE: this is an actually boolean unlike how c strcmp returns 0
-@inline bool cstr.compare :: (^char str1 ^char str2) {
-    @c [return !strcmp(str1, str2);];
 }
 
 struct string :: {
@@ -28,11 +16,11 @@ struct string :: {
     string new :: () {
         string new;
         new.len: 0;
-        new.cap: 32;
+        new.cap: 32; # including null terminator
         new.data: mem.alloc(char new.cap);
         @c [
             if (new.data == NULL) {
-                fprintf(stderr, "error: failed to unwrap in %s at line %d\n", __FILE__, __LINE__);
+                fprintf(stderr, "error: failed to allocate memory in %s at line %d\n", __FILE__, __LINE__);
                 fprintf(stderr, "error: please take a look at the c file for more info\n");
                 exit(1);
             }
@@ -41,29 +29,51 @@ struct string :: {
         return new;
     }
 
-    _ resize :: (^string str usize modifier) {
-        usize increase: [[str.len + modifier] * 2];
-        str.cap: [str.cap + increase];
-
-        int new_size: [str.cap + 1];
-        str.data: mem.re_alloc(str.data new_size);
+    string with_capacity :: (usize cap) {
+        string new;
+        new.len: 0;
+        new.cap: cap;
+        new.data: mem.alloc(char new.cap);
+        @c [
+            if (new.data == NULL) {
+                fprintf(stderr, "error: failed to allocate memory in %s at line %d\n", __FILE__, __LINE__);
+                fprintf(stderr, "error: please take a look at the c file for more info\n");
+                exit(1);
+            }
+        ];
+        return new;
     }
 
-    _ copy :: (^char dest ^char src usize byte_size) {
-        cstr.copy(dest src byte_size);
-        @c [dest[*dest-1] = '\0';];
+    _ resize :: (^string str usize modifier) {
+        str.cap: [[str.cap + modifier] * 2];
+        str.data: mem.realloc(str.data str.cap);
+    }
+
+    #_ copy :: (^char dest ^char src usize byte_size) {
+    #    cstr.copy(dest src byte_size);
+    #    @c [dest[*dest-1] = '\0';];
+    #}
+
+    string clone :: (string src) {
+        string new: string.with_capacity(src.cap);
+        mem.copy(new.data src.data new.cap);
+        new.len: src.len;
+        @c [new.data[new.len] = '\0';];
+        return new;
     }
 
     string from :: (^char str) {
         string new: string.new();
         usize cstr_len: cstr.len(str);
 
-        if (cstr_len > new.cap) {
-            string.resize(&new cstr_len);
+        if ([cstr_len + 1] >= new.cap) {
+            string.resize(&new [cstr_len + 1]);
         }
 
         new.len: cstr_len;
-        string.copy(new.data str [new.cap + 1]);
+        mem.copy(new.data str new.cap);
+
+        @c [new.data[new.len] = '\0';];
         return new;
     }
 
@@ -83,8 +93,8 @@ struct string :: {
         usize src_len: cstr.len(src);
         usize new_len: [dest.len + src_len];
 
-        if (new_len >= dest.cap) {
-            string.resize(dest 0);
+        if ([new_len + 1] >= dest.cap) {
+            string.resize(dest [new_len + 1]);
         }
 
         ^_ end_data: [dest.data + dest.len];
@@ -94,11 +104,11 @@ struct string :: {
         @c [dest->data[new_len] = '\0';];
     }
 
-    _ push_string :: (^string dest ^string src) {
+    _ push_string :: (^string dest string src) {
         usize new_len :: [dest.len + src.len];
 
-        if (new_len >= dest.cap) {
-            string.resize(dest 0);
+        if ([new_len + 1] >= dest.cap) {
+            string.resize(dest [new_len + 1]);
         }
 
         ^_ end_data: [dest.data + dest.len];
@@ -108,14 +118,30 @@ struct string :: {
         @c [dest->data[new_len] = '\0';];
     }
 
+    _ push_str :: (^string dest str src) {
+        usize new_len :: [dest.len + src.len];
+        
+        if ([new_len + 1] >= dest.cap) {
+            string.resize(dest [new_len + 1]);
+        }
+
+        ^_ end_data: [dest.data + dest.len];
+        mem.copy(end_data src.data src.len);
+        
+        dest.len: new_len;
+        @c [dest->data[new_len] = '\0';];
+    }
+
     _ push :: (^string dest typeid T $T src) {
-        ^char type: type_of(T);
-        if (cstr.compare(type "string*")) {
-            string.push_string(dest src);
+        ^char type: type_to_cstr(T);
+        if (cstr.compare(type "string")) {
+            string.push_string(dest cast(string src));
         } orif (cstr.compare(type "char")) {
-            string.push_char(dest src);
+            string.push_char(dest cast(char src));
         } orif (cstr.compare(type "char*")) {
-            string.push_cstr(dest src);
+            string.push_cstr(dest cast(^char src));
+        } orif (cstr.compare(type "str")) {
+            string.push_str(dest cast(str src));
         } else {
             println("%s is not supported for pushing to a string" type);
             exitcode(1);
@@ -191,6 +217,16 @@ struct string :: {
         }
     }
 
+    bool replace_index :: (str word usize index char to) {
+        option[char] at_index: str.at(word index);
+        if (at_index.none = true) {
+            return false;
+        }
+
+        word.data[index]: to;
+        return true;
+    }
+
     #bool contains :: (string str ^char pattern) {}
     
     _ dealloc :: (string str) {
@@ -199,3 +235,33 @@ struct string :: {
         str.cap: 0;
     }
 }
+
+# this function is handled in the compiler but you can see the code for it below
+# returns an empty string if there's an error
+_ string.format :: () { }
+
+# string.format();
+@c [
+string __IMPULSE__STRING__FORMAT__(char* fmt, ...) {
+    string result = string__new();
+
+    va_list args;
+    va_start(args, fmt);
+
+    int size = vsnprintf(NULL, 0, fmt, args);
+    if (size <= 0) {
+        va_end(args);
+        return result;
+    }
+
+    if (size + 1 >= result.cap) {
+        string__resize(&result, size + 1);
+    }
+
+    vsnprintf(result.data, size, fmt, args);
+    va_end(args);
+
+    result.len = size;
+    return result;
+}
+];
