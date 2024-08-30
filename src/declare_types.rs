@@ -94,6 +94,7 @@ pub enum Keyword {
 
     Switch,
     Case,
+    Fall,
 
     Loop,
     For,

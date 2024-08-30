@@ -6,23 +6,20 @@ enum Dir :: {
 }
 
 _ main :: () {
-    Dir dir: Dir.North;
+    Dir dir: Dir.West;
 
     switch (dir) {
         case (Dir.North) {
             println("vertical");
-            break;
         }
-        case (Dir.West) {
+        fall (Dir.West) {
             println("horziontal");
-            break;
         }
         case (Dir.East) {
             println("horziontal");
-            break;
         }
-        case {
-            println("has to be vertical");
+        case (Dir.South) {
+            println("vertical");
         }
     }
 }

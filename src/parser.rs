@@ -39,6 +39,7 @@ pub enum Expr {
 
     Switch(Vec<Expr>),
     Case(Vec<Expr>),
+    Fall(Vec<Expr>),
 
     Loop {
         condition: Vec<Expr>,
@@ -184,6 +185,7 @@ impl ExprWeights {
 
             ("switch".to_string(), Keyword::Switch),
             ("case".to_string(), Keyword::Case),
+            ("fall".to_string(), Keyword::Fall),
 
             ("or".to_string(), Keyword::Or),
             ("and".to_string(), Keyword::And),
@@ -1256,7 +1258,7 @@ impl ExprWeights {
         (expr_params, side_affect)
     }
 
-    fn create_case(&mut self, params: &Vec<Token>) {
+    fn create_case(&mut self, params: &Vec<Token>, is_fall: bool) {
         self.token_stack.clear();
         self.new_scope(Expr::None);
 
@@ -1266,7 +1268,19 @@ impl ExprWeights {
             self.boolean_conditions(&params, false).0
         };
 
-        self.program_push(Expr::Case(expr_params));
+        if self.in_defer {
+            if is_fall {
+                self.expr_stack.push(Expr::Fall(expr_params));
+            } else {
+                self.expr_stack.push(Expr::Case(expr_params));
+            }
+        } else {
+            if is_fall {
+                self.program_push(Expr::Fall(expr_params));
+            } else {
+                self.program_push(Expr::Case(expr_params));
+            }
+        }
     }
 
     fn create_branch(&mut self, branch_typ: Keyword, params: Vec<Token>) {
@@ -1519,6 +1533,7 @@ impl ExprWeights {
 
         let mut create_branch = false;
         let mut create_case = false;
+        let mut create_fall = false;
 
         let mut create_loop = false;
         let mut loop_modifier = String::new();
@@ -1601,6 +1616,7 @@ impl ExprWeights {
                                 Keyword::If | Keyword::OrIf | Keyword::Else => create_branch = true,
                                 Keyword::Switch => create_branch = true,
                                 Keyword::Case => create_case = true,
+                                Keyword::Fall => create_fall = true,
                                 Keyword::For => create_for = true,
                                 Keyword::Loop => create_loop = true,
                                 Keyword::Struct => create_struct = true,
@@ -1861,14 +1877,14 @@ impl ExprWeights {
             return
         }
 
-        if create_case {
-            // TODO: check if inside switch as well 
+        if create_case || create_fall {
+            // TODO: check if inside switch as well, could do it inside generator
             if (self.in_struct_def && !self.in_func) || self.in_enum_def {
                 self.comp_err("can't use cases inside structs or enums");
                 exit(1);
             }
 
-            self.create_case(&params);
+            self.create_case(&params, create_fall);
         }
 
         if create_struct {

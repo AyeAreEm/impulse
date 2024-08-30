@@ -697,6 +697,9 @@ impl Gen {
         self.code.push_str("typedef size_t usize;\n");
         self.code.push_str("typedef unsigned int uint;\n");
 
+        let mut first_case = false;
+        let mut fall_case = false;
+
         for (_index, info) in expressions.into_iter().enumerate() {
             let expr = info.0;
             self.in_file = info.1;
@@ -996,6 +999,9 @@ impl Gen {
                 Expr::Switch(conditions) => {
                     self.add_spaces(self.indent);
                     self.indent += 1;
+
+                    first_case = true;
+
                     let switch_code = self.handle_branch(&String::from("switch "), conditions);
                     self.code.push_str(&switch_code);
                 },
@@ -1003,15 +1009,46 @@ impl Gen {
                     self.add_spaces(self.indent);
 
                     let case_code: String;
+                    // conditions[0] might be unsafe but oh wells, we'll see when it comes to
+                    // that point
                     if let Expr::None = conditions[0] {
                         case_code = format!("default:\n");
                     } else {
                         let condition_str = self.handle_boolean_condition(&conditions);
-                        case_code = format!("case {condition_str}:\n")
+                        if first_case || fall_case {
+                            first_case = false;
+                            fall_case = false;
+                            case_code = format!("case {condition_str}:\n")
+                        } else {
+                            self.code.push_str("break;\n");
+                            self.add_spaces(self.indent);
+                            case_code = format!("case {condition_str}:\n")
+                        }
                     }
 
                     self.code.push_str(&case_code);
-                }
+                },
+                Expr::Fall(conditions) => {
+                    self.add_spaces(self.indent);
+                    fall_case = true;
+
+                    let case_code: String;
+                    if let Expr::None = conditions[0] {
+                        case_code = format!("default:\n");
+                    } else {
+                        let condition_str = self.handle_boolean_condition(&conditions);
+                        if first_case {
+                            first_case = false;
+                            case_code = format!("case {condition_str}:\n")
+                        } else {
+                            self.code.push_str("break;\n");
+                            self.add_spaces(self.indent);
+                            case_code = format!("case {condition_str}:\n")
+                        }
+                    }
+
+                    self.code.push_str(&case_code);
+                },
                 Expr::If(conditions) => {
                     self.add_spaces(self.indent);
                     self.indent += 1;
