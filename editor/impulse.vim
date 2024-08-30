@@ -29,7 +29,8 @@ syntax match impulseFuncDef "\v\w+\ze\s*::\s*\("
 syntax match impulseNamespaceFuncDef "\v\w+\ze\s*\.\s*\w+\s*::\s*\("
 
 syntax region impulseComment start="#.*" end="$"
-syntax match impulseString /"\v[^"]*"/
+syntax match impulseString /"\v[^"]*"/ contains=impulseEscapes
+syntax match impulseChar "'[^'\\]\{1,1}'" contains=impulseEscapes
 syntax match impulseNumber "\<\d\+\>"
 syntax match impulseEscapes /\\[nr\"']/
 
@@ -41,6 +42,7 @@ highlight link impulseTypeDefs Include
 highlight link impulseMacros Include
 highlight link impulseComment Comment
 highlight link impulseString String
+highlight link impulseChar String
 highlight link impulseNumber Number
 highlight link impulseTypeNames Type
 highlight link impulseEscapes SpecialChar

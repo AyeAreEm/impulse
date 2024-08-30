@@ -3,6 +3,8 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub enum Token {
     Quote,
+    SingleQuote,
+
     Macro,
     Lbrack,
     Rbrack,
@@ -38,6 +40,7 @@ pub enum Token {
 
     Ident(String),
     Str(String),
+    Char(String),
     Int(String),
     // Digit(char), // this is a single digit inside an Int
 }
@@ -77,6 +80,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
     let mut buf = String::new();
 
     let mut in_quotes = false;
+    let mut in_single_quotes = false;
     let mut in_squares = false;
     let mut square_occurences = 0;
     let mut comment_line = false;
@@ -130,6 +134,22 @@ pub fn tokeniser(file: String) -> Vec<Token> {
                 buf.push(c);
             }
 
+            continue;
+        }
+
+        if c == '\'' {
+            in_single_quotes = !in_single_quotes;
+
+            if !in_single_quotes {
+                tokens.push(Token::Char(buf.clone()));
+                buf.clear();
+            }
+            tokens.push(Token::SingleQuote);
+            continue;
+        }
+
+        if in_single_quotes {
+            buf.push(c);
             continue;
         }
 

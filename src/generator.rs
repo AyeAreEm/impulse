@@ -459,6 +459,7 @@ impl Gen {
     fn handle_value(&mut self, value: Expr) -> String {
         match value {
             Expr::IntLit(intlit) => intlit,
+            Expr::CharLit(charlit) => format!("'{charlit}'"),
             Expr::StrLit { content, .. } => format!("\"{content}\""),
             Expr::True => String::from("true"),
             Expr::False => String::from("false"),
@@ -504,7 +505,7 @@ impl Gen {
                 }
             },
             unimpl => {
-                self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
+                self.comp_err(&format!("this expression {unimpl:?} not implemented yet"));
                 exit(1);
             }
         }

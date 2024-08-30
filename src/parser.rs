@@ -59,6 +59,7 @@ pub enum Expr {
     False,
 
     IntLit(String),
+    CharLit(String),
     StrLit {
         content: String,
         is_cstr: bool, // TODO: REMOVE, ALL STRING LITERALS ARE CSTR BY DEFAULT
@@ -3104,6 +3105,9 @@ impl ExprWeights {
                     // be wrong, double check later
                     buffer.push(self.check_intlit(intlit.to_string()));
                 },
+                Token::Char(charlit) => {
+                    buffer.push(Expr::CharLit(charlit.clone()));
+                },
                 Token::Str(strlit) => {
                     buffer.push(Expr::StrLit {
                         content: strlit.to_string(),
@@ -3351,6 +3355,7 @@ impl ExprWeights {
                     create_generic = true;
                 },
                 Token::Quote => (),
+                Token::SingleQuote => (),
                 Token::Lsquare => (),
                 Token::Rsquare => (),
                 Token::Caret => {
