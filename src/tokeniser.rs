@@ -101,7 +101,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             continue;
         }
 
-        if c == '[' && !in_quotes {
+        if c == '[' && !in_quotes && !in_single_quotes {
             square_occurences += 1;
             if !in_squares {
                 if buf.len() > 0 {
@@ -123,7 +123,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             continue;
         }
 
-        if c == ']' && !in_quotes {
+        if c == ']' && !in_quotes && !in_single_quotes {
             square_occurences -= 1;
             if in_squares && square_occurences == 0 {
                 in_squares = false;
