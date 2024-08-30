@@ -942,24 +942,27 @@ impl Gen {
 
                     let mut varname = self.handle_varname(*info.clone());
                     if varname.chars().last().unwrap() == 'A' {
-                        varname.pop();
                         match (*value.clone(), *info) {
                             (Expr::ArrayLit(arrlit), Expr::VariableName { typ, .. }) => {
                                 if let Types::Arr { length, .. } = typ {
+                                    varname.pop();
                                     let var_val = self.handle_arraylit(arrlit, length);
                                     if self.in_macro_func {
                                         self.code.push_str(&format!("{varname}{var_val};\\\n"));
                                     } else {
                                         self.code.push_str(&format!("{varname}{var_val};\n"));
                                     }
+                                    continue;
                                 }
                             }
-                            _ => {
-                                self.comp_err("unable to handle array macro");
-                                exit(1);
+                            (_, Expr::VariableName { typ, .. })=> {
+                                if let Types::Arr { .. } = typ {
+                                    self.comp_err("unable to handle array macro");
+                                    exit(1);
+                                }
                             },
+                            _ => (),
                         }
-                        continue;
                     }
                     let var_val = self.handle_value(*value);
                     

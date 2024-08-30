@@ -1,20 +1,3 @@
-struct strview :: {
-    ^char data;
-@c [usize len;];
-
-    strview from :: (^char word) {
-        strview new;
-        @c [new.len = strlen(word);];
-        new.data: word;
-        return new;
-    }
-
-    usize len :: (strview word) {
-        @c [return word.len;];
-    }
-}
-
 _ main :: () {
-    strview word: strview.from("hello world");
-    println("%zu" strview.len(word));
+    char A: 65;
 }
