@@ -44,9 +44,9 @@ struct string :: {
         return new;
     }
 
-    _ resize :: (^string str usize modifier) {
-        str.cap: [[str.cap + modifier] * 2];
-        str.data: mem.realloc(str.data str.cap);
+    _ resize :: (^string word usize modifier) {
+        word.cap: [[word.cap + modifier] * 2];
+        word.data: mem.realloc(word.data word.cap);
     }
 
     #_ copy :: (^char dest ^char src usize byte_size) {
@@ -58,35 +58,35 @@ struct string :: {
         string new: string.with_capacity(src.cap);
         mem.copy(new.data src.data new.cap);
         new.len: src.len;
-        @c [new.data[new.len] = '\0';];
+        new.data[new.len]: '\0';
         return new;
     }
 
-    string from :: (^char str) {
+    string from :: (^char word) {
         string new: string.new();
-        usize cstr_len: cstr.len(str);
+        usize cstr_len: cstr.len(word);
 
         if ([cstr_len + 1] >= new.cap) {
             string.resize(&new [cstr_len + 1]);
         }
 
         new.len: cstr_len;
-        mem.copy(new.data str new.cap);
+        mem.copy(new.data word new.cap);
 
-        @c [new.data[new.len] = '\0';];
+        new.data[new.len]: '\0';
         return new;
     }
 
-    _ push_char :: (^string str char ch) {
-        usize new_len: [str.len + 1];
+    _ push_char :: (^string word char ch) {
+        usize new_len: [word.len + 1];
 
-        if (new_len >= str.cap) {
-            string.resize(str 0);
+        if (new_len >= word.cap) {
+            string.resize(word 0);
         }
 
-        str.data[str.len]: ch;
-        str.len: new_len;
-        @c [str->data[new_len] = '\0';];
+        word.data[word.len]: ch;
+        word.len: new_len;
+        word.data[word.len]: '\0';
     }
 
     _ push_cstr :: (^string dest ^char src) {
@@ -101,7 +101,7 @@ struct string :: {
         mem.copy(end_data src src_len);
 
         dest.len: new_len;
-        @c [dest->data[new_len] = '\0';];
+        dest.data[dest.len]: '\0';
     }
 
     _ push_string :: (^string dest string src) {
@@ -115,7 +115,7 @@ struct string :: {
         mem.copy(end_data src.data src.len);
 
         dest.len: new_len;
-        @c [dest->data[new_len] = '\0';];
+        dest.data[dest.len]: '\0';
     }
 
     _ push_str :: (^string dest str src) {
@@ -129,19 +129,21 @@ struct string :: {
         mem.copy(end_data src.data src.len);
         
         dest.len: new_len;
-        @c [dest->data[new_len] = '\0';];
+        dest.data[dest.len]: '\0';
     }
 
     _ push :: (^string dest typeid T $T src) {
         ^char type: type_to_cstr(T);
+        $T real_var: src;
+
         if (cstr.compare(type "string")) {
-            string.push_string(dest cast(string src));
+            string.push_string(dest cast(string real_var));
         } orif (cstr.compare(type "char")) {
-            string.push_char(dest cast(char src));
+            string.push_char(dest cast(char real_var));
         } orif (cstr.compare(type "char*")) {
-            string.push_cstr(dest cast(^char src));
+            string.push_cstr(dest cast(^char real_var));
         } orif (cstr.compare(type "str")) {
-            string.push_str(dest cast(str src));
+            string.push_str(dest cast(str real_var));
         } else {
             println("%s is not supported for pushing to a string" type);
             exitcode(1);
@@ -162,20 +164,20 @@ struct string :: {
         return true;
     }
 
-    option[char] at :: (string str usize index) {
+    option[char] at :: (string word usize index) {
         option[char] ret;
 
-        if (index >= str.len) {
+        if (index >= word.len) {
             ret.none: true;
             return ret;
         }
 
-        ret.value: str.data[index];
+        ret.value: word.data[index];
         return ret;
     }
 
-    bool starts_with :: (string str char ch) {
-        option[char] first_letter_op: string.at(str 0);
+    bool starts_with :: (string word char ch) {
+        option[char] first_letter_op: string.at(word 0);
         if (first_letter_op.none) {
             return false;
         }
@@ -186,8 +188,8 @@ struct string :: {
         return true;
     }
 
-    bool ends_with :: (string str char ch) {
-        option[char] last_letter_op: string.at(str [str.len - 1]);
+    bool ends_with :: (string word char ch) {
+        option[char] last_letter_op: string.at(word [word.len - 1]);
         if (last_letter_op.none) {
             return false;
         }
@@ -197,22 +199,22 @@ struct string :: {
         return true;
     }
 
-    _ to_lowercase :: (string str) {
-        for (str) [ch i] {
-            @c [str.data[i] = tolower(ch);];
+    _ to_lowercase :: (string word) {
+        for (word) [ch i] {
+            @c [word.data[i] = tolower(ch);];
         }
     }
     
-    _ to_uppercase :: (string str) {
-        for (str) [ch i] {
-            @c [str.data[i] = toupper(ch);];
+    _ to_uppercase :: (string word) {
+        for (word) [ch i] {
+            @c [word.data[i] = toupper(ch);];
         }
     }
 
-    _ replace_char :: (string str char from char to) {
-        for (str) [ch i] {
+    _ replace_char :: (string word char from char to) {
+        for (word) [ch i] {
             if (ch = from) {
-                str.data[i]: to;
+                word.data[i]: to;
             }
         }
     }
@@ -229,10 +231,10 @@ struct string :: {
 
     #bool contains :: (string str ^char pattern) {}
     
-    _ dealloc :: (string str) {
-        mem.dealloc(str.data);
-        str.len: 0;
-        str.cap: 0;
+    _ dealloc :: (string word) {
+        mem.dealloc(word.data);
+        word.len: 0;
+        word.cap: 0;
     }
 }
 

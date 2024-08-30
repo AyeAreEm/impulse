@@ -362,6 +362,13 @@ impl Gen {
                                 funccall_code.push_str(&format!(", {}", self.handle_value(param.clone())));
                             }
                         },
+                        Expr::CharLit(_) => {
+                            if i == 0 {
+                                funccall_code.push_str(&self.handle_value(param.clone()));
+                            } else {
+                                funccall_code.push_str(&format!(", {}", self.handle_value(param.clone())));
+                            }
+                        },
                         Expr::True => {
                             if i == 0 {
                                 funccall_code.push_str("true");
@@ -552,6 +559,9 @@ impl Gen {
                 },
                 Expr::IntLit(intlit) => {
                     boolean_condition_code.push_str(&format!("{intlit}"))
+                },
+                Expr::CharLit(charlit) => {
+                    boolean_condition_code.push_str(&format!("'{charlit}'"));
                 },
                 // Expr::StrLit(string) => boolean_condition_code.push_str(&format!("{string}")),
                 Expr::Or => boolean_condition_code.push_str("||"),
@@ -983,6 +993,25 @@ impl Gen {
                         self.code.push_str(&format!("{call};\n"));
                     }
                 },
+                Expr::Switch(conditions) => {
+                    self.add_spaces(self.indent);
+                    self.indent += 1;
+                    let switch_code = self.handle_branch(&String::from("switch "), conditions);
+                    self.code.push_str(&switch_code);
+                },
+                Expr::Case(conditions) => {
+                    self.add_spaces(self.indent);
+
+                    let case_code: String;
+                    if let Expr::None = conditions[0] {
+                        case_code = format!("default:\n");
+                    } else {
+                        let condition_str = self.handle_boolean_condition(&conditions);
+                        case_code = format!("case {condition_str}:\n")
+                    }
+
+                    self.code.push_str(&case_code);
+                }
                 Expr::If(conditions) => {
                     self.add_spaces(self.indent);
                     self.indent += 1;

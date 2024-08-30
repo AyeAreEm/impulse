@@ -86,7 +86,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
     let mut comment_line = false;
 
     for c in file.chars() {
-        if c == '#' && !in_squares && !in_quotes {
+        if c == '#' && !in_squares && !in_quotes && !in_single_quotes {
             comment_line = true;
             continue;
         }

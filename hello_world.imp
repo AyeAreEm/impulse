@@ -1,3 +1,28 @@
+enum Dir :: {
+    North;
+    South;
+    West;
+    East;
+}
+
 _ main :: () {
-    char bracket: '[';
+    Dir dir: Dir.North;
+
+    switch (dir) {
+        case (Dir.North) {
+            println("vertical");
+            break;
+        }
+        case (Dir.West) {
+            println("horziontal");
+            break;
+        }
+        case (Dir.East) {
+            println("horziontal");
+            break;
+        }
+        case {
+            println("has to be vertical");
+        }
+    }
 }

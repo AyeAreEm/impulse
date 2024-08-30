@@ -9,11 +9,9 @@ string io.input :: () {
 
     loop (true) {
         char ch: c_getchar();
-        @c [
-            if (ch == '\n') {
-                break;
-            }
-        ];
+        if (ch = '\n') {
+            break;
+        }
         string.push_char(&word ch);
     }
 

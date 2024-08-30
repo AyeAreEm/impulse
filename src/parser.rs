@@ -37,6 +37,9 @@ pub enum Expr {
     OrIf(Vec<Expr>),
     Else,
 
+    Switch(Vec<Expr>),
+    Case(Vec<Expr>),
+
     Loop {
         condition: Vec<Expr>,
         modifier: Box<Expr>, // Expr = IntLit
@@ -178,6 +181,9 @@ impl ExprWeights {
             ("if".to_string(), Keyword::If),
             ("orif".to_string(), Keyword::OrIf),
             ("else".to_string(), Keyword::Else),
+
+            ("switch".to_string(), Keyword::Switch),
+            ("case".to_string(), Keyword::Case),
 
             ("or".to_string(), Keyword::Or),
             ("and".to_string(), Keyword::And),
@@ -1223,6 +1229,13 @@ impl ExprWeights {
                         func_params.push(param.clone());
                     }
                 },
+                Token::Char(charlit) => {
+                    if func_brack_rc == 0 {
+                        expr_params.push(Expr::CharLit(charlit.clone()))
+                    } else {
+                        func_params.push(param.clone());
+                    }
+                },
                 _ => {
                     self.comp_err(&format!("unexpected token in boolean condition: {:?}", param));
                     exit(1);
@@ -1243,6 +1256,19 @@ impl ExprWeights {
         (expr_params, side_affect)
     }
 
+    fn create_case(&mut self, params: &Vec<Token>) {
+        self.token_stack.clear();
+        self.new_scope(Expr::None);
+
+        let expr_params = if params.is_empty() {
+            vec![Expr::None]
+        } else {
+            self.boolean_conditions(&params, false).0
+        };
+
+        self.program_push(Expr::Case(expr_params));
+    }
+
     fn create_branch(&mut self, branch_typ: Keyword, params: Vec<Token>) {
         self.token_stack.clear();
         self.new_scope(Expr::None);
@@ -1259,7 +1285,7 @@ impl ExprWeights {
             Keyword::OrIf => {
                 let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
                 if self.in_defer {
-                    self.expr_stack.push(Expr::If(expr_params));
+                    self.expr_stack.push(Expr::OrIf(expr_params));
                 } else {
                     self.program_push(Expr::OrIf(expr_params));
                 }
@@ -1275,7 +1301,15 @@ impl ExprWeights {
                 } else {
                     self.program_push(Expr::Else);
                 }
-            }
+            },
+            Keyword::Switch => {
+                let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
+                if self.in_defer {
+                    self.expr_stack.push(Expr::Switch(expr_params));
+                } else {
+                    self.program_push(Expr::Switch(expr_params));
+                }
+            },
             _ => (),
         }
     }
@@ -1484,6 +1518,7 @@ impl ExprWeights {
         let mut params = Vec::new();
 
         let mut create_branch = false;
+        let mut create_case = false;
 
         let mut create_loop = false;
         let mut loop_modifier = String::new();
@@ -1564,6 +1599,8 @@ impl ExprWeights {
 
                             match keyword {
                                 Keyword::If | Keyword::OrIf | Keyword::Else => create_branch = true,
+                                Keyword::Switch => create_branch = true,
+                                Keyword::Case => create_case = true,
                                 Keyword::For => create_for = true,
                                 Keyword::Loop => create_loop = true,
                                 Keyword::Struct => create_struct = true,
@@ -1778,6 +1815,15 @@ impl ExprWeights {
                         exit(1);
                     }
                 },
+                Token::SingleQuote => (),
+                Token::Char(charlit) => {
+                    if in_bracks {
+                        params.push(token.clone());
+                    } else {
+                        self.comp_err(&format!("unexpected token Char token: `{charlit}`"));
+                        exit(1);
+                    }
+                },
                 unexpected => {
                     self.comp_err(&format!("unexpected token: {unexpected:?}"));
                     exit(1);
@@ -1811,10 +1857,18 @@ impl ExprWeights {
                 exit(1);
             }
 
-            match keyword {
-                _ => self.create_branch(keyword, params),
-            }
+            self.create_branch(keyword, params);
             return
+        }
+
+        if create_case {
+            // TODO: check if inside switch as well 
+            if (self.in_struct_def && !self.in_func) || self.in_enum_def {
+                self.comp_err("can't use cases inside structs or enums");
+                exit(1);
+            }
+
+            self.create_case(&params);
         }
 
         if create_struct {
@@ -2092,6 +2146,16 @@ impl ExprWeights {
                         expr_params.push(self.check_intlit(intlit.to_owned()));
                     }
                 },
+                Token::Char(charlit) => {
+                    if nested_brack_rs > 0 {
+                        nested_params.push(param.clone());
+                    } else if square_rc > 0 {
+                        self.comp_err(&format!("expected integers inside [], found token {:?}", param));
+                        exit(1);
+                    } else {
+                        expr_params.push(Expr::CharLit(charlit.clone()));
+                    }
+                },
                 Token::Str(strlit) => {
                     if nested_brack_rs > 0 {
                         nested_params.push(param.clone());
@@ -2270,8 +2334,9 @@ impl ExprWeights {
                     }
                 },
                 Token::Quote => (),
+                Token::SingleQuote => (),
                 _ => {
-                    self.comp_err(&format!("unexpected token: {:?}", param));
+                    self.comp_err(&format!("this unexpected token: {:?}", param));
                     exit(1);
                 } 
             }

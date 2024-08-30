@@ -17,7 +17,7 @@ $T sine :: (typeid T $T x) {
         result: sine_f64(x);
     } else {
         println("type %s can't be used in sine function as it's not a decimal" type_to_cstr(T));
-        @c [exit(1);];
+        exitcode(1);
     }
     return result;
 }
@@ -36,7 +36,7 @@ $T cosine :: (typeid T $T x) {
         result: cosine_f64(x);
     } else {
         println("type %s can't be used in cosine function as it's not a decimal" type_to_cstr(T));
-        @c [exit(1);];
+        exitcode(1);
     }
     return result;
 }
@@ -55,7 +55,7 @@ $T square_rt :: (typeid T $T x) {
         result: sqrt_f64(x);
     } else {
         println("type %s can't be used in square_rt function as it's not a decimal" type_to_cstr(T));
-        @c [exit(1);];
+        exitcode(1);
     }
     return result;
 }
@@ -74,7 +74,7 @@ $T power :: (typeid T $T x $T y) {
         result: power_f64(x y);
     } else {
         println("type %s can't be used in power function as it's not a decimal" type_to_cstr(T));
-        @c [exit(1);];
+        exitcode(1);
     }
     return result;
 }
@@ -351,7 +351,7 @@ struct Matrix4x4f64 :: {
 
 @inline $T ease.sine_in :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_in function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_in function" type); exitcode(1);}
 
     $T inner: [t/d * [pi/2.0]];
     $T outer: cosine(T inner);
@@ -359,7 +359,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.sine_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_out function" type); exitcode(1);}
 
     $T inner: [t/d*[pi/2.0]];
     $T outer: sine(f32 inner);
@@ -367,7 +367,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.sine_in_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_in_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_in_out function" type); exitcode(1);}
 
     $T inner: [pi * t / d];
     $T outer: cosine(f32 inner);
@@ -376,7 +376,7 @@ struct Matrix4x4f64 :: {
 
 @inline $T ease.circ_in :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_in function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_in function" type); exitcode(1);];}
 
     $T tt: [t / d];
     f32 inner: [square_rt(f32 [1.0 - tt*tt]) - 1.0];
@@ -384,7 +384,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.circ_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_out function" type); exitcode(1);}
 
     $T tt: [t / d - 1.0];
     f32 inner: [1.0 - tt*tt];
@@ -393,7 +393,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.circ_in_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_in_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_in_out function" type); exitcode(1);}
 
     $T result;
     $T tt: [t / d / 2.0];
@@ -413,14 +413,14 @@ struct Matrix4x4f64 :: {
 
 @inline $T ease.cubic_in :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_in function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_in function" type); exitcode(1);}
 
     $T tt: [t / d];
     return [c*tt*tt*tt + b];
 }
 @inline $T ease.cubic_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_out function" type); exitcode(1);}
 
     $T tt: [t/d - 1.0];
     return [c*[tt*tt*tt + 1.0] + b];
@@ -428,7 +428,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.cubic_in_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_in_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.cubic_in_out function" type); exitcode(1);}
 
     $T result;
     $T tt: [t / d / 2.0];
@@ -445,21 +445,21 @@ struct Matrix4x4f64 :: {
 # Quadratic Easing functions
 @inline $T ease.quad_in :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_in function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_in function" type); exitcode(1);}
 
     $T tt: [t / d];
     return [c*tt*tt + b];
 }
 @inline $T ease.quad_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_out function" type); exitcode(1);}
     
     $T tt: [t / d];
     return [-c*tt*[tt - 2.0] + b];
 }
 @inline $T ease.quad_in_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_in_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.quad_in_out function" type); exitcode(1);}
 
     $T result;
     $T tt: [t / d / 2.0];
@@ -474,7 +474,7 @@ struct Matrix4x4f64 :: {
 # Exponential Easing functions
 @inline $T ease.expo_in :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.expo_in function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.expo_in function" type); exitcode(1);}
 
     $T result;
     if (t = 0.0) {
@@ -488,7 +488,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.expo_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.expo_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.expo_out function" type); exitcode(1);}
 
     $T result;
     if (t = d) {
@@ -502,7 +502,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.expo_in_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.expo_in_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.expo_in_out function" type); exitcode(1);}
     
     $T result;
     if (t = 0.0) {
@@ -528,7 +528,7 @@ struct Matrix4x4f64 :: {
 # Back Easing functions
 @inline $T ease.back_in :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.back_in function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.back_in function" type); exitcode(1);}
 
     $T s :: 1.90158;
     $T tt: [t / d];
@@ -537,7 +537,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.back_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.back_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.back_out function" type); exitcode(1);}
     
     $T s :: 1.70158;
     $T tt: [t/d - 1.0];
@@ -545,7 +545,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.back_in_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.back_in_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.back_in_out function" type); exitcode(1);}
 
     $T result;
     $T s: 1.70158;
@@ -566,7 +566,7 @@ struct Matrix4x4f64 :: {
 # Bounce Easing functions
 @inline $T ease.bounce_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_out function" type); exitcode(1);}
 
     $T result;
     $T tt: [t / d];
@@ -589,7 +589,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.bounce_in :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_in function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_in function" type); exitcode(1);}
 
     $T inner: [d - t];
     $T outer: ease.bounce_out(inner 0.0 c d);
@@ -597,7 +597,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.bounce_in_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_in_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.bounce_in_out function" type); exitcode(1);}
 
     $T result;
     if (t < [d/2.0]) {
@@ -615,7 +615,7 @@ struct Matrix4x4f64 :: {
 # Elastic Easing functions
 @inline $T ease.elastic_in :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.elastic_in function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.elastic_in function" type); exitcode(1);}
 
     $T result;
     if (t = 0.0) {
@@ -642,7 +642,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.elastice_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.elastic_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.elastic_out function" type); exitcode(1);}
     
     $T result;
     if (t = 0.0) {
@@ -664,7 +664,7 @@ struct Matrix4x4f64 :: {
 }
 @inline $T ease.elastic_in_out :: (typeid T $T t $T b $T c $T d) {
     ^char type: type_to_cstr(T);
-    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.elastic_out function" type); @c [exit(1);];}
+    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.elastic_out function" type); exitcode(1);}
 
     $T result;
     if (t = 0.0) {

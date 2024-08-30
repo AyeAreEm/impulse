@@ -92,6 +92,9 @@ pub enum Keyword {
     OrIf,
     Else,
 
+    Switch,
+    Case,
+
     Loop,
     For,
 

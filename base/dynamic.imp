@@ -36,7 +36,8 @@ struct[T] dyn :: {
     _ push :: (typeid T dyn[T] arr $T elem) {
         if ([arr.len + 1] >= arr.cap) {
             arr.cap: [[arr.cap + arr.len + 1] * 2];
-            @c [arr.data = realloc(arr.data, arr.cap * sizeof(T));];
+            usize T_size: size_of(T);
+            arr.data: mem.realloc(arr.data [arr.cap * T_size]);
         }
 
         arr.data[arr.len]: elem;
