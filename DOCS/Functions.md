@@ -1,5 +1,5 @@
 # Functions
-These are similar to Jai or Odin, as well as similar to defining a variable. `<type> <name> :: (<type+arg> <type+arg>) :: {}`
+These are similar to Jai or Odin, as well as similar to defining a variable. `<type> <name> :: (<type> <name>) :: {}`
 
 ```
 _ main :: () {
@@ -16,10 +16,10 @@ _ main :: () {
 The original syntax for functions were a little different but are still available for use in Impulse if it'll help you `grep` it easier. Might be a little hard to read tho
 ```
 _() main :: {
-    
+
 }
 
 string(^char) str.from :: {
-    
+
 }
 ```

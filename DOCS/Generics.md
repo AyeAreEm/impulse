@@ -7,7 +7,7 @@ struct[T] dyn :: {
     usize len;
     usize cap;
 
-    dyn new(typeid T) :: {
+    dyn new :: (typeid T) {
         dyn[T] new;
         new.len: 0;
         new.cap: 32;
@@ -25,12 +25,12 @@ The `$` is used to declare a field or variable of a generic type. If the generic
 Typeid makes a function a C macro, for the most part there is no difference except function parameters<br>
 ```
 # example, not the real function in standard lib
-dyn push(typeid T dyn[T] arr $T data) :: {
+_ push :: (typeid T dyn[T] arr $T data) {
     arr.data[arr.len]: data;
     arr.len: [arr.len + 1];
 }
 
-_ main() :: {
+_ main :: () {
     dyn[int] nums: dyn.new(int);
     dyn.push(int nums 10);
 }

@@ -12,8 +12,8 @@ uint acts the same way C's `unsigned int` acts. This means it can be interchange
 `i8 i16 i32 i64 int`<br>
 int acts the same way as C's `int` type
 
-### Os dependant
-`int usize char`<br>
+### OS dependant
+`uint int usize char`<br>
 `char` is either `u8` or `i8`, acts the same as C's `char` type
 
 ## Floats
@@ -37,7 +37,7 @@ To dereference, `<name>^`
 These are used to pass types to functions, used as generics, used in structs (although `typeid` keyword is implicit in structs)
 
 # Types "shipped" with Impulse
-`option result string dyn array`
+`option result str string dyn array`
 
 ## Options
 These work similar to Rust's Options.<br>
@@ -49,10 +49,15 @@ These work similar to Rust's Results.<br>
 `result[int] var;`<br>
 Result has two fields, a generic `value` and a cstr (^char) `error`
 
+## Str
+`str word: str.from("hello world");`<br>
+These are strings that are null terminated that carry the data and the length. `word.len` is to get the length of the string<br>
+Note: unlike the `string` type, these are not memory allocated
+
 ## String
-`string word: str.from("hello world");`<br>
+`string word: string.from("hello world");`<br>
 `mem.dealloc(word.data)`<br>
-Memory allocated string that contains a cstr (^char) `data`, a usize `len` and a usize `cap`<br>
+Memory allocated string that are null terminated. It contains a cstr (^char) `data`, a usize `len` and a usize `cap`<br>
 Note: all memory allocated data will be under a `data` field in the standard library
 
 ## Dyn

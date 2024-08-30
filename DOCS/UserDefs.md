@@ -7,7 +7,7 @@ struct vec2 :: {
     int x;
     int y;
 
-    vec2 new(int x int y) :: {
+    vec2 new :: (int x int y) {
         vec2 new;
         new.x: x;
         new.y: y;

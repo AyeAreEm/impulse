@@ -30,4 +30,3 @@ To generate just .c, `impulse -c hello.imp hello` (this will generate `hello.c`)
 Congrats, your first hello world in impulse... sorta, I know right now you need to use C Embedding but eventually there will be fmt support in the standard library<br>
 
 For more information, check the <a href="./Docs.md">Docs</a>, <a href="./Overview.md">Overview</a> and or <a href="../examples">Examples</a>. Happy Hacking
-
