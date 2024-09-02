@@ -915,11 +915,11 @@ impl Gen {
                     let mut varname = self.handle_varname(Expr::VariableName { typ: typ.clone(), name, reassign, constant, field_data });
                     let last_varname = varname.chars().last().unwrap();
                     if last_varname == 'A' {
-                        varname.pop();
                         match varname.find('{') {
                             Some(index) => {
-                                varname.truncate(index-1);
                                 if let Types::Arr { length, .. } = typ {
+                                    varname.pop();
+                                    varname.truncate(index-1);
                                     if self.in_macro_func {
                                         self.code.push_str(&format!("{varname} {{.len = {length}}};\\\n"));
                                     } else {
@@ -1049,17 +1049,66 @@ impl Gen {
 
                     self.code.push_str(&case_code);
                 },
-                Expr::If(conditions) => {
+                Expr::If(conditions, capture) => {
                     self.add_spaces(self.indent);
                     self.indent += 1;
+
+                    match (&conditions[0], *capture) {
+                        (Expr::VariableName { typ, name, .. }, Expr::Variable { info, value }) => {
+                            if let Types::TypeDef { type_name, .. } = typ {
+                                if type_name == &String::from("option") {
+                                    let if_code = if self.in_macro_func {
+                                        format!("if (!{name}.none) {{\\\n")
+                                    } else {
+                                        format!("if (!{name}.none) {{\n")
+                                    };
+                                    self.code.push_str(&if_code);
+                                    self.add_spaces(self.indent);
+
+                                    let varname = self.handle_varname(*info);
+                                    let varvalue = self.handle_value(*value);
+                                    
+                                    let capture_code = format!("{varname} = {varvalue};\n");
+                                    self.code.push_str(&capture_code);
+                                    continue;
+                                }
+                            }
+                        },
+                        _ => (),
+                    }
                     
                     let if_code = self.handle_branch(&String::from("if "), conditions);
                     // don't need to add \n, handle_branch does it
                     self.code.push_str(&if_code);
+
                 },
-                Expr::OrIf(conditions) => {
+                Expr::OrIf(conditions, capture) => {
                     self.add_spaces(self.indent);
                     self.indent += 1;
+
+                    match (&conditions[0], *capture) {
+                        (Expr::VariableName { typ, name, .. }, Expr::Variable { info, value }) => {
+                            if let Types::TypeDef { type_name, .. } = typ {
+                                if type_name == &String::from("option") {
+                                    let if_code = if self.in_macro_func {
+                                        format!("if (!{name}.none) {{\\\n")
+                                    } else {
+                                        format!("if (!{name}.none) {{\n")
+                                    };
+                                    self.code.push_str(&if_code);
+                                    self.add_spaces(self.indent);
+
+                                    let varname = self.handle_varname(*info);
+                                    let varvalue = self.handle_value(*value);
+                                    
+                                    let capture_code = format!("{varname} = {varvalue};\n");
+                                    self.code.push_str(&capture_code);
+                                    continue;
+                                }
+                            }
+                        },
+                        _ => (),
+                    }
                     
                     let orif_code = self.handle_branch(&String::from("else if "), conditions);
                     // don't need to add \n, handle_branch does it

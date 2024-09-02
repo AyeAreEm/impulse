@@ -20,12 +20,7 @@ _ main :: () {
     #switch (what.type) { case (whatever.Char) [ch] { println("%d" ch); } case (whatever.Short) { i16 val: union.as(i16 what); println("%d" val); } }
 
     option[int] num_op: |10 false|;
-
-    #if (num_op) [num] {
-    #    println("%d" num);
-    #}
-
-    if (!num_op.none) {
-        println("%d" num_op.value);
+    if (num_op) [num] {
+        println("%d" num);
     }
 }

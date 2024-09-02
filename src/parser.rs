@@ -33,8 +33,8 @@ pub enum Expr {
     DerefPointer(Box<Expr>),
     Address(Box<Expr>),
 
-    If(Vec<Expr>),
-    OrIf(Vec<Expr>),
+    If(Vec<Expr>, Box<Expr>), // last expr is for the capture
+    OrIf(Vec<Expr>, Box<Expr>),
     Else,
 
     Switch(Vec<Expr>),
@@ -1283,25 +1283,88 @@ impl ExprWeights {
         }
     }
 
-    fn create_branch(&mut self, branch_typ: Keyword, params: Vec<Token>) {
+    fn create_branch(&mut self, branch_typ: Keyword, params: Vec<Token>, capture: &String) {
         self.token_stack.clear();
-        self.new_scope(Expr::None);
+
+        let captured = if params.len() == 1 && !capture.is_empty() {
+            if let Token::Ident(variable) = &params[0] {
+                let found = self.find_variable(&variable);
+                match found {
+                    Expr::VariableName { typ, name, .. } => {
+                        if let Types::TypeDef { type_name, generics: generics_op } = typ {
+                            if type_name == String::from("option") {
+                                let generics = match generics_op {
+                                    Some(g) => g,
+                                    None => {
+                                        self.comp_err(&format!("{type_name} unsupported in for loops currently"));
+                                        exit(1);
+                                    },
+                                };
+
+                                let keyword_res = self.keyword_map.get(&generics[0]);
+                                let subtyp = match keyword_res {
+                                    Some(kw) => {
+                                        self.keyword_to_type(kw.clone())
+                                    },
+                                    // CAN BREAK
+                                    None => {
+                                        self.propagate_struct_fields(capture.to_owned(), generics[0].clone(), false, true);
+                                        Types::TypeDef { type_name: generics[0].clone(), generics: Some(vec![]) }
+                                    },
+                                };
+
+                                let value = self.find_variable(&format!("{name}.value"));
+                                if let Expr::None = value {
+                                    self.comp_err(&format!("expected variable {name}.value to exist when it doesn't. can't be used in if statement capture"));
+                                    exit(1);
+                                }
+
+                                Expr::Variable {
+                                    info: Box::new(Expr::VariableName {
+                                        typ: subtyp,
+                                        name: capture.to_owned(),
+                                        reassign: false,
+                                        constant: false,
+                                        field_data: (false, false)
+                                    }),
+                                    value: Box::new(value),
+                                }
+                            } else {
+                                self.comp_err(&format!("{type_name} unsupported in if statement capture"));
+                                exit(1);
+                            }
+                        } else {
+                            self.comp_err(&format!("{typ:?} unsupported in if statement capture"));
+                            exit(1);
+                        }
+                    },
+                    _ => unreachable!(),
+                }
+            } else {
+                self.comp_err(&format!("expected one identifier in condition, found {:?}", params[0]));
+                exit(1);
+            }
+        } else {
+            Expr::None
+        };
 
         match branch_typ {
             Keyword::If => {
                 let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
+                self.new_scope(captured.clone());
                 if self.in_defer {
-                    self.expr_stack.push(Expr::If(expr_params));
+                    self.expr_stack.push(Expr::If(expr_params, Box::new(captured)));
                 } else {
-                    self.program_push(Expr::If(expr_params));
+                    self.program_push(Expr::If(expr_params, Box::new(captured)));
                 }
             },
             Keyword::OrIf => {
                 let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
+                self.new_scope(captured.clone());
                 if self.in_defer {
-                    self.expr_stack.push(Expr::OrIf(expr_params));
+                    self.expr_stack.push(Expr::OrIf(expr_params, Box::new(captured)));
                 } else {
-                    self.program_push(Expr::OrIf(expr_params));
+                    self.program_push(Expr::OrIf(expr_params, Box::new(captured)));
                 }
             },
             Keyword::Else => {
@@ -1310,6 +1373,12 @@ impl ExprWeights {
                     exit(1);
                 }
 
+                if !capture.is_empty() {
+                    self.comp_err("expected no capture for else branch, got one");
+                    exit(1);
+                }
+
+                self.new_scope(Expr::None);
                 if self.in_defer {
                     self.expr_stack.push(Expr::Else);
                 } else {
@@ -1318,6 +1387,7 @@ impl ExprWeights {
             },
             Keyword::Switch => {
                 let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
+                self.new_scope(Expr::None);
                 if self.in_defer {
                     self.expr_stack.push(Expr::Switch(expr_params));
                 } else {
@@ -1722,6 +1792,8 @@ impl ExprWeights {
                         break;
                     } else if create_for {
                         loop_modifier = symbols.to_owned();
+                    } else if create_branch {
+                        loop_modifier = symbols.to_owned();
                     } else if in_bracks {
                         params.push(token.clone());
                     } else if create_struct {
@@ -1873,7 +1945,7 @@ impl ExprWeights {
                 exit(1);
             }
 
-            self.create_branch(keyword, params);
+            self.create_branch(keyword, params, &loop_modifier);
             return
         }
 
