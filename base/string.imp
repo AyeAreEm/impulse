@@ -229,9 +229,15 @@ struct string :: {
         return true;
     }
 
+
     #bool contains :: (string str ^char pattern) {}
     
-    _ dealloc :: (string word) {
+    _ clear :: (^string word) {
+        word.data[0]: '\0';
+        word.len: 0;
+    }
+
+    _ dealloc :: (^string word) {
         mem.dealloc(word.data);
         word.len: 0;
         word.cap: 0;

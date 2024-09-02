@@ -1792,7 +1792,7 @@ impl ExprWeights {
                         break;
                     } else if create_for {
                         loop_modifier = symbols.to_owned();
-                    } else if create_branch {
+                    } else if create_branch && !in_bracks {
                         loop_modifier = symbols.to_owned();
                     } else if in_bracks {
                         params.push(token.clone());

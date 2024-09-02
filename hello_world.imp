@@ -1,26 +1,69 @@
-#union whatever :: {
-#    char Char; 
-#    i16 Short;
-#    int Int;
-#}
+# THIS DOES NOT WORK, THIS IS JUST ME HALLUCINATING IDEAS
+@import "base/dynamic.imp";
 
-#_ union.new :: (typeid T int type_arg any value) {
-#    $T new;
-#    new.type: type_arg;
-#    new.data: value;
-#    return new;
-#}
+union Token :: {
+    Plus;
+    Minus;
+    Multiply;
+    Divide;
 
-#$T union.as :: (typeid T any item) {
-#    @c [(T*)item.data];
-#}
+    ^char Int;
+}
+
+# this is what an impulse union might transpile to
+#typedef union Token {
+#    enum {
+#        Plus,
+#        Minus,
+#        Multiply,
+#        Divide,
+#    } type;
+#    void* data; // ^char
+#} Token;
+
+_ union.new :: (typeid T int type_arg any value) {
+    $T new;
+    new.type: type_arg;
+    new.data: value;
+    return new;
+}
+
+$T union.as :: (typeid T any item) {
+    @c [(T*)item.data];
+}
 
 _ main :: () {
-    #whatever what: union.new(whatever whatever.Char 100);
-    #switch (what.type) { case (whatever.Char) [ch] { println("%d" ch); } case (whatever.Short) { i16 val: union.as(i16 what); println("%d" val); } }
+    dyn[Token] tokens: dyn.new();
+    string buffer: string.new();
+    defer { string.dealloc(&buffer); }
+    str words: str.from("5 + 10 / 2");
 
-    option[int] num_op: |10 false|;
-    if (num_op) [num] {
-        println("%d" num);
+    for (words) [word] {
+        if (word = ' ') {
+            string number_string: string.clone(buffer);
+            string.clear(&buffer);
+
+            Token number: union.new(Token Token.Int number_string.data);
+            dyn.push(Token tokens number);
+            continue;
+        } orif (word = '+') {
+            Token plus: union.new(Token Token.Plus 0);
+            dyn.push(Token tokens plus);
+            continue;
+        } orif (word = '-') {
+            Token minus: union.new(Token Token.Minus 0);
+            dyn.push(Token tokens minus);
+            continue;
+        } orif (word = '/') {
+            Token divide: union.new(Token Token.Divide 0);
+            dyn.push(Token tokens divide);
+            continue;
+        } orif (word = '*') {
+            Token mulitply: union.new(Token Token.Multiply 0);
+            dyn.push(Token tokens multiply);
+            continue;
+        }
+
+        string.push(buffer char word);
     }
 }
