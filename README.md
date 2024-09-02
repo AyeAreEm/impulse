@@ -78,6 +78,19 @@ Passing array at index to function parameter
 foo(bar.data[0]);
 ```
 
+Defer pasted in the wrong place when a code block is after it
+```
+{
+    defer {println("hello");}
+
+    if (true) {
+        # it will be placed directly below this comment
+        # right here
+    }
+    # instead of here
+}
+```
+
 ### Todos / Ideas
 ```
 default struct values -> so that there isn't a need for a constructor as its baked into the struct

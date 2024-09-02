@@ -1,69 +1,10 @@
-# THIS DOES NOT WORK, THIS IS JUST ME HALLUCINATING IDEAS
-@import "base/dynamic.imp";
-
-union Token :: {
-    Plus;
-    Minus;
-    Multiply;
-    Divide;
-
-    ^char Int;
-}
-
-# this is what an impulse union might transpile to
-#typedef union Token {
-#    enum {
-#        Plus,
-#        Minus,
-#        Multiply,
-#        Divide,
-#    } type;
-#    void* data; // ^char
-#} Token;
-
-_ union.new :: (typeid T int type_arg any value) {
-    $T new;
-    new.type: type_arg;
-    new.data: value;
-    return new;
-}
-
-$T union.as :: (typeid T any item) {
-    @c [(T*)item.data];
-}
+@import "base/string.imp";
 
 _ main :: () {
-    dyn[Token] tokens: dyn.new();
-    string buffer: string.new();
-    defer { string.dealloc(&buffer); }
-    str words: str.from("5 + 10 / 2");
+    string word: string.from("hello world");
+    defer { string.dealloc(&word); }
 
-    for (words) [word] {
-        if (word = ' ') {
-            string number_string: string.clone(buffer);
-            string.clear(&buffer);
-
-            Token number: union.new(Token Token.Int number_string.data);
-            dyn.push(Token tokens number);
-            continue;
-        } orif (word = '+') {
-            Token plus: union.new(Token Token.Plus 0);
-            dyn.push(Token tokens plus);
-            continue;
-        } orif (word = '-') {
-            Token minus: union.new(Token Token.Minus 0);
-            dyn.push(Token tokens minus);
-            continue;
-        } orif (word = '/') {
-            Token divide: union.new(Token Token.Divide 0);
-            dyn.push(Token tokens divide);
-            continue;
-        } orif (word = '*') {
-            Token mulitply: union.new(Token Token.Multiply 0);
-            dyn.push(Token tokens multiply);
-            continue;
-        }
-
-        string.push(buffer char word);
+    for (word) [ch] {
+        println("%c" ch);
     }
 }
