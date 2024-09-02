@@ -2352,7 +2352,7 @@ impl ExprWeights {
                 Token::Quote => (),
                 Token::SingleQuote => (),
                 _ => {
-                    self.comp_err(&format!("this unexpected token: {:?}", param));
+                    self.comp_err(&format!("unexpected token: {:?}", param));
                     exit(1);
                 } 
             }
@@ -3064,6 +3064,20 @@ impl ExprWeights {
                         continue;
                     }
                     expr_params.push(self.check_intlit(intlit.to_owned()));
+                },
+                Token::True => {
+                    if in_func_params {
+                        func_params.push(param.clone());
+                        continue;
+                    }
+                    expr_params.push(Expr::True);
+                },
+                Token::False => {
+                    if in_func_params {
+                        func_params.push(param.clone());
+                        continue;
+                    }
+                    expr_params.push(Expr::False);
                 },
                 Token::Lbrack => {
                     brack_rc += 1;

@@ -1,25 +1,31 @@
-enum Dir :: {
-    North;
-    South;
-    West;
-    East;
-}
+#union whatever :: {
+#    char Char; 
+#    i16 Short;
+#    int Int;
+#}
+
+#_ union.new :: (typeid T int type_arg any value) {
+#    $T new;
+#    new.type: type_arg;
+#    new.data: value;
+#    return new;
+#}
+
+#$T union.as :: (typeid T any item) {
+#    @c [(T*)item.data];
+#}
 
 _ main :: () {
-    Dir dir: Dir.West;
+    #whatever what: union.new(whatever whatever.Char 100);
+    #switch (what.type) { case (whatever.Char) [ch] { println("%d" ch); } case (whatever.Short) { i16 val: union.as(i16 what); println("%d" val); } }
 
-    switch (dir) {
-        case (Dir.North) {
-            println("vertical");
-        }
-        fall (Dir.West) {
-            println("horziontal");
-        }
-        case (Dir.East) {
-            println("horziontal");
-        }
-        case (Dir.South) {
-            println("vertical");
-        }
+    option[int] num_op: |10 false|;
+
+    #if (num_op) [num] {
+    #    println("%d" num);
+    #}
+
+    if (!num_op.none) {
+        println("%d" num_op.value);
     }
 }
