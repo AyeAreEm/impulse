@@ -86,11 +86,6 @@ group -> group of acceptable types. `group number: |u8 i8 i32 int usize|` (idk w
 
 pseudo methods -> struct function that takes a "self" as the first arg, variable can be used as the prefix (e.g. player.update() instead of Player.update(&player))
 
-character literals: the type exists but no way to really make them without C Embed. there are a few options here
-    - traditional literal: 'a' 'A' ' '
-    - Jai style char literals: @char "a" @char "A" @char " "
-    - implicit chars (if length is 0 or 1, it will be a char): "a" "A" " "
-
 constant func args by default -> since there isn't a "const" keyword, there is no way to tell if a function argument should be constant or not, so maybe it should be constant by default. (like in Odin)
 
 variable equal to expression -> similar to how Rust has "let val = if true { 10 } else { 5 };"
