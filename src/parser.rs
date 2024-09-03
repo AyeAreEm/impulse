@@ -110,6 +110,11 @@ pub enum Expr {
     None,
 }
 
+struct DeferInfo {
+    scope: usize,
+    exprs: Vec<Expr>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ExprWeights {
     token_stack: Vec<Token>,
@@ -1579,10 +1584,7 @@ impl ExprWeights {
         self.new_scope_vars(side_effects);
     }
 
-    fn create_defer(&mut self) {
-        let exprs = self.expr_stack.clone();
-        self.expr_stack.clear();
-
+    fn create_defer(&mut self, exprs: Vec<Expr>) {
         for expr in exprs {
             self.program_push(expr)
         }
@@ -4055,6 +4057,7 @@ impl ExprWeights {
 
         let mut defer_rc = 0;
         let mut defer_paste_next_time = false;
+        let mut stored_defers: Vec<DeferInfo> = Vec::new();
 
         while self.current_token < self.tokens.len() {
             match self.tokens[self.current_token] {
@@ -4072,12 +4075,41 @@ impl ExprWeights {
                     curl_rc -= 1;
                     self.prev_scope();
 
-                    // used to paste the next time there's a right curl but what there's a for loop
-                    // or another defer? it would paste it right after that scope when it should be
-                    // pasting at the end of its scope. this should fix it
-                    if defer_paste_next_time && self.defer_scope == self.current_scope && !self.in_defer {
-                        self.create_defer();
-                        defer_paste_next_time = false;
+                    if defer_paste_next_time && !self.in_defer {
+                        // need to specifically check because you can be in scope 0 while inside
+                        // and outside a function
+
+                        'pasting: loop {
+                            let defer_info = match stored_defers.pop() {
+                                Some(info) => {
+                                    info
+                                },
+                                None => {
+                                    self.comp_err("failed to paste defered expression.");
+                                    exit(1);
+                                }
+                            };
+
+                            let mut repeat_checking = false;
+                            if defer_info.scope == 0 && defer_info.scope == self.current_scope && !self.in_func {
+                                self.create_defer(defer_info.exprs);
+                                repeat_checking = true;
+                            } else if defer_info.scope > 0 && defer_info.scope == self.current_scope+1 {
+                                self.create_defer(defer_info.exprs);
+                                repeat_checking = true;
+                            } else {
+                                stored_defers.push(defer_info);
+                            }
+
+                            if stored_defers.is_empty() {
+                                defer_paste_next_time = false;
+                                repeat_checking = false;
+                            }
+
+                            if !repeat_checking {
+                                break 'pasting;
+                            }
+                        }
                     }
 
                     if self.in_struct_def && curl_rc == 0 {
@@ -4098,9 +4130,16 @@ impl ExprWeights {
                             self.in_defer = false;
 
                             if curl_rc == 0 {
-                                self.create_defer();
+                                self.create_defer(self.expr_stack.clone());
+                                self.expr_stack.clear();
                                 self.program_push(Expr::EndBlock);
                             } else if defer_rc == 0 {
+                                let defer_info = DeferInfo {
+                                    scope: self.defer_scope,
+                                    exprs: self.expr_stack.clone(),
+                                };
+                                self.expr_stack.clear();
+                                stored_defers.push(defer_info);
                                 defer_paste_next_time = true;
                             }
                         } else if include_rcurl {
