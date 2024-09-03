@@ -1,5 +1,5 @@
 use std::io::Write;
-use std::{env, fs, process::exit};
+use std::{path::Path, env, fs, process::exit};
 
 use fs_extra::copy_items;
 use fs_extra::dir;
@@ -15,7 +15,8 @@ mod generator;
 mod declare_types;
 
 fn initalise(dir: &String) {
-    let path_to_base = format!("{}/base", env::current_dir().unwrap().as_os_str().to_str().unwrap().to_string());
+    let path_to_base = Path::new("D:/Projects/rust projects/impulse/base");
+    // let path_to_base = format!("{}/base", env::current_dir().unwrap().as_os_str().to_str().unwrap().to_string());
 
     let options = dir::CopyOptions::new();
 
@@ -25,7 +26,7 @@ fn initalise(dir: &String) {
             fs_extra::error::ErrorKind::AlreadyExists => (),
             _ => {
                 println!("{e:?}");
-                println!("\x1b[91merror\x1b[0m: unable to copy base standard library during initalising");
+                println!("\x1b[91merror\x1b[0m: unable to copy base library during initalising");
                 exit(1);
             }
         }

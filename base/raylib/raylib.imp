@@ -963,7 +963,7 @@ enum rl.NPatchLayout :: {
 @inline _ rl.DrawCircleGradient :: (int centerX int centerY f32 radius rl.Color color1 rl.Color color2) {@c [DrawCircleGradient(centerX, centerY, radius, *(Color*)&color1, *(Color*)&color2);];}
 @inline _ rl.DrawCircleV :: (rl.Vector2 center f32 radius rl.Color color) {@c [DrawCircleV(*(Vector2*)&center, radius, *(Color*)&color);];}
 @inline _ rl.DrawCircleLines :: (int centerX int centerY f32 radius rl.Color color) {@c [DrawCircleLines(centerX, centerY, radius, *(Color*)&color);];}
-@inline _ rl.DrawCircleLinesV :: (rl.Vector2 center f32 radius rl.Color color) {@c [DrawCircleLinesV(*(Vector2*)&center, radius, color);];}
+@inline _ rl.DrawCircleLinesV :: (rl.Vector2 center f32 radius rl.Color color) {@c [DrawCircleLinesV(*(Vector2*)&center, radius, *(Color*)&color);];}
 @inline _ rl.DrawEllipse :: (int centerX int centerY f32 radiusH f32 radiusV rl.Color color) {@c [DrawEllipse(centerX, centerY, radiusH, radiusV, *(Color*)&color);];}
 @inline _ rl.DrawEllipseLines :: (int centerX int centerY f32 radiusH f32 radiusV rl.Color color) {@c [DrawEllipseLines(centerX, centerY, radiusH, radiusV, *(Color*)&color);];}
 #RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color); // Draw ring

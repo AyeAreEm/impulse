@@ -1,17 +1,1 @@
-@import "base/string.imp";
-
-_ main :: () {
-    string word: string.from("hello world");
-    defer { string.dealloc(&word); } # this is be last
-    defer { println("%s" word.data); } # this will be second last
-    # defers in the same scope are pasted in reverse
-
-    if (true) {
-        defer { println("2"); }
-        print("1 ");
-    }
-
-    for (word) [ch] {
-        println("%c" ch);
-    }
-}
+@import "base/math.imp";

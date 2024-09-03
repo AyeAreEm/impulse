@@ -137,7 +137,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             continue;
         }
 
-        if c == '\'' {
+        if c == '\'' && !in_quotes {
             in_single_quotes = !in_single_quotes;
 
             if !in_single_quotes {
@@ -153,7 +153,7 @@ pub fn tokeniser(file: String) -> Vec<Token> {
             continue;
         }
 
-        if c == '"' {
+        if c == '"' && !in_single_quotes {
             in_quotes = !in_quotes;
 
             if !in_quotes {

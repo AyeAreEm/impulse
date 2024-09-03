@@ -3587,7 +3587,7 @@ impl ExprWeights {
                 return Expr::Return(Box::new(Expr::None));
             }
 
-            self.comp_err(&format!("expected a token, got none."));
+            self.comp_err(&format!("expected a token, got none"));
             exit(1);
         }
 
