@@ -1,1 +1,1 @@
--I base/raylib/include/ -L base/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm
+-O2
