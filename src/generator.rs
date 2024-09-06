@@ -249,12 +249,10 @@ impl Gen {
                 if reassign == false {
                     let str_typ = self.handle_typ(typ.clone());
                     if !str_typ.1.is_empty() {
-                        if let Types::TypeDef { type_name, .. } = typ {
-                            if type_name == "array" {
-                                self.generate_new_struct(format!("{}", str_typ.0), &String::from("array"));
-                                vardec.push_str(&format!("array_{} {new_name} = {{.data = ({}{})A", str_typ.0, str_typ.0, str_typ.1));
-                                return vardec
-                            }
+                        if let Types::Arr { .. } = typ {
+                            self.generate_new_struct(str_typ.0.clone(), &String::from("array"));
+                            vardec.push_str(&format!("array_{} {new_name} = {{.data = ({}{})A", str_typ.0, str_typ.0, str_typ.1));
+                            return vardec
                         }
                     }
 

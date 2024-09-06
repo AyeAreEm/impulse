@@ -1,11 +1,3 @@
-@import "base/string.imp";
-
 _ main :: () {
-    string word: string.from("hello there");
-    defer string.dealloc(&word);
-
-    for (word) [ch i] {
-        defer println("%zu" i);
-        println("%c" ch);
-    }
+    @array int nums: |1 2 3|;
 }
