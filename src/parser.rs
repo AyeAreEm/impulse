@@ -140,7 +140,9 @@ pub struct ExprWeights {
     in_func: bool,
     in_struct_def: bool,
     in_enum_def: bool,
+
     in_defer: bool,
+    one_defer: bool,
     defer_scope: usize,
 
     line_num: u32,
@@ -241,6 +243,7 @@ impl ExprWeights {
             in_struct_def: false,
             in_enum_def: false,
             in_defer: false,
+            one_defer: false,
             defer_scope: 0,
 
             line_num: 1,
@@ -3213,6 +3216,8 @@ impl ExprWeights {
         let mut found_amper = false;
 
         let mut returning = false;
+        let mut defering = false;
+
         let mut create_generic = false;
         let mut is_constant = false;
 
@@ -3311,6 +3316,9 @@ impl ExprWeights {
                                 } else if let Keyword::Return = k {
                                     returning = true;
                                     continue;
+                                } else if let Keyword::Defer = k {
+                                    defering = true;
+                                    continue;
                                 } else if pointer_counter > 0 {
                                     (keyword, _) = self.create_keyword_pointer(self.keyword_to_type(k.clone()), pointer_counter);
                                 }
@@ -3404,21 +3412,18 @@ impl ExprWeights {
                                     }
 
                                     return self.create_define_var(k, last, slice)
-                                } else if let Expr::Func { .. } = found_ident {
-                                    if self.in_defer {
+                                } else if let Expr::Func { .. } | Expr::MacroFunc { .. } = found_ident {
+                                    if self.in_defer || defering {
+                                        if defering {
+                                            self.one_defer = true;
+                                            self.defer_scope = self.current_scope;
+                                        }
                                         let expr = self.create_func_call(&found_ident, value[i+1..].to_vec());
                                         self.expr_stack.push(expr);
                                         return Expr::None;
                                     }
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
-                                } else if let Expr::MacroFunc { .. } = found_ident {
-                                    if self.in_defer {
-                                        let expr = self.create_func_call(&found_ident, value[i+1..].to_vec());
-                                        self.expr_stack.push(expr);
-                                        return Expr::None;
-                                    }
-                                    return self.create_func_call(&found_ident, value[i+1..].to_vec());
-                                } else if let Expr::EnumDef { .. } = found_ident {
+                                }  else if let Expr::EnumDef { .. } = found_ident {
                                     let mut k = Keyword::TypeDef {
                                         type_name: ident.clone(), 
                                         generics: None,
@@ -4060,6 +4065,19 @@ impl ExprWeights {
         let mut stored_defers: Vec<DeferInfo> = Vec::new();
 
         while self.current_token < self.tokens.len() {
+            if self.one_defer {
+                self.one_defer = false;
+
+                let defer_info = DeferInfo {
+                    scope: self.defer_scope,
+                    exprs: self.expr_stack.clone(),
+                };
+
+                self.expr_stack.clear();
+                stored_defers.push(defer_info);
+                defer_paste_next_time = true;
+            }
+
             match self.tokens[self.current_token] {
                 Token::Lcurl => {
                     curl_rc += 1;

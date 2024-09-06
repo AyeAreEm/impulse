@@ -1,37 +1,11 @@
-@import "base/dynamic.imp";
 @import "base/string.imp";
 
-union Token :: {
-    Plus;
-    Minus;
-    Divide;
-    Mulitply;
-
-    string Int;
-}
-
 _ main :: () {
-    string buffer: string.new();
-    defer { string.dealloc(&buffer); }
+    string word: string.from("hello there");
+    defer string.dealloc(&word);
 
-    dyn[Token] tokens: dyn.new();
-    str words: str.from("5 + 10 / 2");
-
-    for (words) [ch] {
-        if (ch = ' ') {
-            string number: string.clone(buffer);
-            Token integer: union.set(Token Token.Int number);
-            dyn.push(Token tokens integer);
-            string.clear(&buffer);
-            continue;
-        }
-
-        if (ch = '+') {
-            Token plus: union.set(Token Token.Plus 0);
-            dyn.push(Token tokens plus);
-            continue;
-        }
-
-        string.push(&buffer char ch);
+    for (word) [ch i] {
+        defer println("%zu" i);
+        println("%c" ch);
     }
 }
