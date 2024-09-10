@@ -14,9 +14,12 @@ mod parser;
 mod generator;
 mod declare_types;
 
+
 fn initalise(dir: &String) {
-    let path_to_base = Path::new("D:/Projects/rust projects/impulse/base");
-    // let path_to_base = format!("{}/base", env::current_dir().unwrap().as_os_str().to_str().unwrap().to_string());
+    const CUR_PATH: &str = env!("current_path");
+
+    let str_to_base = format!("{}/base", CUR_PATH);
+    let path_to_base = Path::new(&str_to_base);
 
     let options = dir::CopyOptions::new();
 
