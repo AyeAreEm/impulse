@@ -4066,8 +4066,6 @@ impl ExprWeights {
         let mut stored_defers: Vec<DeferInfo> = Vec::new();
 
         while self.current_token < self.tokens.len() {
-            println!("current scope: {}, line num: {}", self.current_scope, self.line_num);
-
             if self.one_defer {
                 self.one_defer = false;
 
