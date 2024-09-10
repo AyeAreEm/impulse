@@ -1006,46 +1006,46 @@ impl Gen {
                 Expr::Case(conditions) => {
                     self.add_spaces(self.indent);
 
-                    let case_code: String;
                     // conditions[0] might be unsafe but oh wells, we'll see when it comes to
                     // that point
-                    if let Expr::None = conditions[0] {
-                        case_code = format!("default:\n");
+                    let case_code = if let Expr::None = conditions[0] {
+                        String::from("default: {\n")
                     } else {
                         let condition_str = self.handle_boolean_condition(&conditions);
-                        if first_case || fall_case {
-                            first_case = false;
-                            fall_case = false;
-                            case_code = format!("case {condition_str}:\n")
-                        } else {
-                            self.code.push_str("break;\n");
-                            self.add_spaces(self.indent);
-                            case_code = format!("case {condition_str}:\n")
-                        }
+                        format!("case {condition_str}: {{\n")
+                    };
+
+                    if first_case || fall_case {
+                        first_case = false;
+                        fall_case = false;
+                    } else {
+                        self.code.push_str("break;\n");
+                        self.add_spaces(self.indent);
                     }
 
                     self.code.push_str(&case_code);
+                    self.indent += 1;
                 },
                 Expr::Fall(conditions) => {
                     self.add_spaces(self.indent);
-                    fall_case = true;
 
-                    let case_code: String;
-                    if let Expr::None = conditions[0] {
-                        case_code = format!("default:\n");
+                    let case_code = if let Expr::None = conditions[0] {
+                        String::from("default: {\n")
                     } else {
                         let condition_str = self.handle_boolean_condition(&conditions);
-                        if first_case {
-                            first_case = false;
-                            case_code = format!("case {condition_str}:\n")
-                        } else {
-                            self.code.push_str("break;\n");
-                            self.add_spaces(self.indent);
-                            case_code = format!("case {condition_str}:\n")
-                        }
+                        format!("case {condition_str}: {{\n")
+                    };
+
+                    if first_case || fall_case {
+                        first_case = false;
+                    } else {
+                        self.code.push_str("break;\n");
+                        self.add_spaces(self.indent);
                     }
 
+                    fall_case = true; // maybe remove this since it wasn't made false
                     self.code.push_str(&case_code);
+                    self.indent += 1;
                 },
                 Expr::If(conditions, capture) => {
                     self.add_spaces(self.indent);
