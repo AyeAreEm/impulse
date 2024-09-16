@@ -678,6 +678,14 @@ impl ExprWeights {
                                                             }
 
                                                             if !found {
+                                                                let found_struc = self.find_structure(&name_buf);
+                                                                if let Expr::StructDef { struct_name, struct_fields } = found_struc {
+                                                                    pass_typs.push(name_buf.clone());
+                                                                    found = true;
+                                                                }
+                                                            }
+
+                                                            if !found {
                                                                 self.comp_err(&format!("expected a defined typeid, found undefined `{name_buf}`"));
                                                                 exit(1);
                                                             }
