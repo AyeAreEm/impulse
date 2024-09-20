@@ -1,10 +1,1 @@
-_ print_contents :: (array[str] words) {
-    for (words) [word] {
-        println("%s" word.data);
-    }
-}
-
-_ main :: () {
-    @array str fruits: |str.from("apple") str.from("cherry") str.from("banana")|;
-    print_contents(fruits);
-}
+typeid vec2 :: array[f32];

@@ -1,7 +1,7 @@
 @import "math.h";
 @import "base/string.imp";
 
-f64 pi :: 3.14159265358979323846;
+f64 PI :: 3.14159265358979323846;
 
 @inline f32 sine_f32 :: (f32 x) { @c [return sinf(x);]; }
 @inline f64 sine_f64 :: (f64 x) { @c [return sin(x);]; }
@@ -353,7 +353,7 @@ struct Matrix4x4f64 :: {
 #    ^char type: type_to_cstr(T);
 #    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_in function" type); exitcode(1);}
 #
-#    $T inner: [t/d * [pi/2.0]];
+#    $T inner: [t/d * [PI/2.0]];
 #    $T outer: cosine(T inner);
 #    return [-c * outer + c + b];
 #}
@@ -361,7 +361,7 @@ struct Matrix4x4f64 :: {
 #    ^char type: type_to_cstr(T);
 #    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_out function" type); exitcode(1);}
 #
-#    $T inner: [t/d*[pi/2.0]];
+#    $T inner: [t/d*[PI/2.0]];
 #    $T outer: sine(f32 inner);
 #    return [c * outer + b];
 #}
@@ -369,7 +369,7 @@ struct Matrix4x4f64 :: {
 #    ^char type: type_to_cstr(T);
 #    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.sine_in_out function" type); exitcode(1);}
 #
-#    $T inner: [pi * t / d];
+#    $T inner: [PI * t / d];
 #    $T outer: cosine(f32 inner);
 #    return [-c/2.0 * [outer - 1.0] + b];
 #}
@@ -633,7 +633,7 @@ struct Matrix4x4f64 :: {
 #            $T postFix_inner: power(f32 2.0 [10.0*tt]);
 #            $T postFix: [a*postFix_inner];
 #
-#            $T inner: [[tt*d-s]*[2.0*pi]/p];
+#            $T inner: [[tt*d-s]*[2.0*PI]/p];
 #            $T outer: sine(T inner);
 #            result: [-[postFix*outer] + b];
 #        }
@@ -656,7 +656,7 @@ struct Matrix4x4f64 :: {
 #            $T a: c;
 #            $T s: [p/4.0];
 #            $T powered: power(T 2.0 [-10.0 * tt]);
-#            $T sined: sine(T [[tt*d-s]*[2.0*pi]/p]);
+#            $T sined: sine(T [[tt*d-s]*[2.0*PI]/p]);
 #            result: [a*powered*sined+c+b];
 #        }
 #    }
@@ -682,12 +682,12 @@ struct Matrix4x4f64 :: {
 #            if (tt < 1.0) {
 #                $T postFix_powered: power(T 2.0 [10.0*tt]);
 #                $T postFix: [a*postFix_powered];
-#                $T sined: sine(T [[tt*d-s]*[2.0*pi]/p]);
+#                $T sined: sine(T [[tt*d-s]*[2.0*PI]/p]);
 #                result: [-0.5*[postFix*sined] + b];
 #            } else {
 #                $T postFix_powered: power(T 2.0 [-10.0*tt]);
 #                $T postFix: [a*postFix_powered];
-#                $T sined: sine(T [[tt*d-s]*[2.0*pi]/p]);
+#                $T sined: sine(T [[tt*d-s]*[2.0*PI]/p]);
 #                result: [postFix*sined*0.5 + c + b];
 #            }
 #        }

@@ -78,6 +78,11 @@ Passing array at index to function parameter
 foo(bar.data[0]);
 ```
 
+Making a new type with a generic struct
+```
+typeid vec2 :: array[f32];
+```
+
 ### Todos / Ideas
 #### Default struct values
 This could replace constructors or the `new` / `init` functions.
