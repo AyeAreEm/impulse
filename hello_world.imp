@@ -1,1 +1,23 @@
-typeid vec2 :: array[f32];
+# there is no way to tell how long this array is
+_ print_array :: (array[f32] nums) {
+    for (nums) [num] {
+        println("%f" num);
+    }
+}
+
+_ main :: () {
+    @array[2]f32 nums: |10.5 15|;
+    print_array(nums);
+}
+
+# new array syntax to be developed
+_ print_array :: ([2]f32 nums) {
+    for (nums) [num] {
+        println("%f" num);
+    }
+}
+
+_ main :: () {
+    [2]f32 nums: |10.5 15|;
+    print_array(nums);
+}

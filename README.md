@@ -84,6 +84,28 @@ typeid vec2 :: array[f32];
 ```
 
 ### Todos / Ideas
+#### Remove @array macro
+The current way to make an array is like this
+```
+@array[2]f32 pos: |10.5 15|;
+```
+This makes it annoying and not implemented as a type with a length but instead just a variable with a length meaning you'd use it like this in a struct
+```
+struct Player :: {
+    array[f32] pos; # note that there is no way to tell if the position is in 2d or 3d
+}
+```
+Solution / idea:
+```
+struct Player :: {
+    [2]f32 pos;
+}
+
+[2]f32 starting_pos: |10.5 15|;
+Player player;
+player.pos: starting_pos;
+```
+
 #### Default struct values
 This could replace constructors or the `new` / `init` functions.
 ```
