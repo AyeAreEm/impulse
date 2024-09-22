@@ -105,6 +105,11 @@ pub enum Keyword {
     Pointer(Types, Types),
     Address,
 
+    Arr {
+        typ: Box<Types>,
+        length: String,
+    },
+
     Struct,
     Enum,
     TypeDef {

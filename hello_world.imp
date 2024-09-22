@@ -1,15 +1,10 @@
-_ thing :: (@array[int] nums) {
-    loop (i < nums.len) [+] {
-        nums.data[i]: i;
-    }
-
+_ print_array :: ([10]int nums) {
     for (nums) [num] {
         println("%d" num);
     }
 }
 
 _ main :: () {
-    @array[10]int nums;
-
-    thing(nums);
+    [10]int nums: |1 2 3|;
+    print_array(nums);
 }

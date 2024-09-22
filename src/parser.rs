@@ -297,6 +297,7 @@ impl ExprWeights {
             Keyword::Generic(typ) => Types::Generic(typ),
             Keyword::TypeDef { type_name, generics } =>  Types::TypeDef { type_name, generics },
             Keyword::Pointer(pointer_to, _) => Types::Pointer(Box::new(pointer_to)),
+            Keyword::Arr { typ, length } => Types::Arr { typ, length },
             Keyword::Address => Types::Address,
             Keyword::None => {
                 if self.in_enum_def {
@@ -607,6 +608,8 @@ impl ExprWeights {
     fn create_func(&mut self, typ: Types, params: Vec<Token>, name: String, is_inline: bool) {
         let mut variables = Vec::new();
         let mut expr_param = Vec::new();
+        let mut array_lens: Vec<String> = Vec::new();
+
         let mut typeid_names: Vec<String> = Vec::new();
         let mut kw_buf = Keyword::None;
         let mut pointer_counter = 0;
@@ -620,12 +623,24 @@ impl ExprWeights {
                         let keyword_res = self.keyword_map.get(ident);
                         match keyword_res {
                             Some(kw) => {
+                                let mut updated_kw_buf = false;
+                                if !array_lens.is_empty() {
+                                    // TODO: make this support mutli-dimensional arrays
+                                    kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
+                                    updated_kw_buf = true;
+                                }
+
                                 if pointer_counter > 0 {
                                     (kw_buf, pointer_counter) = self.create_keyword_pointer(self.keyword_to_type(kw.clone()), pointer_counter);
-                                } else if is_generic {
+                                    updated_kw_buf = true;
+                                }
+
+                                if is_generic {
                                     self.comp_err(&format!("declaring generic but {} is already an identifier", ident));
                                     exit(1);
-                                } else {
+                                }
+
+                                if !updated_kw_buf {
                                     kw_buf = kw.clone();
                                     if let Keyword::TypeId | Keyword::Any = kw_buf {is_macro_func = true}
                                 }
@@ -679,7 +694,7 @@ impl ExprWeights {
 
                                                             if !found {
                                                                 let found_struc = self.find_structure(&name_buf);
-                                                                if let Expr::StructDef { struct_name, struct_fields } = found_struc {
+                                                                if let Expr::StructDef { .. } = found_struc {
                                                                     pass_typs.push(name_buf.clone());
                                                                     found = true;
                                                                 }
@@ -792,7 +807,15 @@ impl ExprWeights {
                 Token::Dollar => {
                     is_generic = true;
                 },
-                Token::Int(_) => (),
+                Token::Int(intlit_str) => {
+                    let intlit_res = intlit_str.parse::<f64>();
+                    match intlit_res {
+                        Ok(_) => {
+                            array_lens.push(intlit_str.clone());
+                        },
+                        Err(_) => continue,
+                    }
+                },
                 _ => {
                     self.comp_err(&format!("unexpected token in function argument: {param:?}"));
                     exit(1);
@@ -2808,39 +2831,17 @@ impl ExprWeights {
                     },
                 }
             },
-            Token::Macro => {
-                if var_info.len() < 4 {
+            Token::Lsquare => {
+                if var_info.len() < 5 {
                     self.comp_err(&format!("expected more tokens after macro"));
                     exit(1);
                 }
 
-                if let Token::Ident(ident) = &var_info[1] {
-                    let macro_res = self.macros_map.get(ident);
-                    let mac = match macro_res {
-                        Some(m) => m.clone(),
-                        None => {
-                            self.comp_err(&format!("expected macro, got {ident}"));
-                            exit(1);
-                        }
-                    };
-
-                    match mac {
-                        Macros::Arr => {
-                            if let Token::Int(intlit) = &var_info[3] {
-                                return self.handle_array_macro(intlit, var_info[5..].to_vec());
-                            } else {
-                                // TODO_TYPECHECK: RMBER TO CHECK THE ACTUAL LENGTH IN TYPE CHECKER
-                                // forgot about this. wtf man, I didn't need to handle this in the
-                                // type checker???
-                                // btw it was previously "&String::from("-1")" like BRUH
-                                return self.handle_array_macro(&String::from(""), var_info[2..].to_vec());
-                            }
-                        },
-                        unexpected => {
-                            self.comp_err(&format!("macro {unexpected:?} not reimplemented yet"));
-                            exit(1);
-                        }
-                    }
+                if let Token::Int(intlit) = &var_info[1] {
+                    return self.handle_array_macro(intlit, var_info[3..].to_vec());
+                } else {
+                    self.comp_err(&format!("unexpected token: {:?}", var_info[0]));
+                    exit(1);
                 }
             },
             Token::Underscore => {

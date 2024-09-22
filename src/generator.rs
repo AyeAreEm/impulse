@@ -876,10 +876,29 @@ impl Gen {
 
                     func_code.push_str(&format!(" {name}("));
                     for (i, param) in params.iter().enumerate() {
+                        let mut varname = self.handle_varname(param.clone());
+
+                        if varname.chars().last().unwrap() == 'A' {
+                            match param {
+                                Expr::VariableName { typ, .. } => {
+                                    if let Types::Arr { .. } = typ {
+                                        let varname_eq_index = varname.find("=");
+                                        match varname_eq_index {
+                                            Some(index) => {
+                                                varname.truncate(index-1);
+                                            },
+                                            None => (),
+                                        }
+                                    }
+                                },
+                                _ => (),
+                            }
+                        }
+
                         if i == 0 {
-                            func_code.push_str(&self.handle_varname(param.clone()));
+                            func_code.push_str(&varname);
                         } else {
-                            let comma_separated = format!(", {}", self.handle_varname(param.clone()));
+                            let comma_separated = format!(", {}", varname);
                             func_code.push_str(&comma_separated);
                         }
                     }
