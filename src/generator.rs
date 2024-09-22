@@ -789,7 +789,23 @@ impl Gen {
 
                     let mut fields = String::new();
                     for field in struct_fields {
-                        let varname = self.handle_varname(field);
+                        let mut varname = self.handle_varname(field.clone());
+                        if varname.chars().last().unwrap() == 'A' {
+                            match field {
+                                Expr::VariableName { typ, .. } => {
+                                    if let Types::Arr { .. } = typ {
+                                        let varname_eq_index = varname.find("=");
+                                        match varname_eq_index {
+                                            Some(index) => {
+                                                varname.truncate(index-1);
+                                            },
+                                            None => (),
+                                        }
+                                    }
+                                },
+                                _ => (),
+                            }
+                        }
                         fields.push_str(&format!("    {varname};\n"));
                     }
 

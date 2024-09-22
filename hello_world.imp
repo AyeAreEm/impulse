@@ -1,15 +1,18 @@
-_ times_ten :: ([]int nums) {
-    loop (i < nums.len) [+] {
-        int num: nums.data[i];
-        nums.data[i]: [num * 10];
-    }
+struct What :: {
+    [5]int nums;
 }
 
 _ main :: () {
-    []int nums: |1 2 3 4 5|;
-    times_ten(nums);
+    [5]int numbers: |1 2 3 4 5|;
+    What what;
+    what.nums: numbers;
 
-    for (nums) [num] {
+    loop (i < what.nums.len) [+] {
+        int num: what.nums.data[i];
+        what.nums.data[i]: [num * 10];
+    }
+
+    for (what.nums) [num] {
         println("%d" num);
     }
 }

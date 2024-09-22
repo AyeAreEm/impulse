@@ -3718,6 +3718,8 @@ impl ExprWeights {
                             };
                             if let Types::TypeDef { ref type_name, .. } = typ {
                                 self.propagate_struct_fields(new_name.clone(), type_name.to_string(), field_data.1, is_constant);
+                            } else if let Types::Arr { .. } = typ {
+                                self.propagate_struct_fields(new_name.clone(), String::from("array"), field_data.1, is_constant);
                             }
 
                             let new_expr = Expr::Variable {
