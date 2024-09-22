@@ -1,3 +1,15 @@
+_ times_ten :: ([]int nums) {
+    loop (i < nums.len) [+] {
+        int num: nums.data[i];
+        nums.data[i]: [num * 10];
+    }
+}
+
 _ main :: () {
-    [10]int nums;
+    []int nums: |1 2 3 4 5|;
+    times_ten(nums);
+
+    for (nums) [num] {
+        println("%d" num);
+    }
 }

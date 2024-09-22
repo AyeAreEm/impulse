@@ -213,9 +213,7 @@ impl ExprWeights {
         let macros_map: HashMap<String, Macros> = HashMap::from([
             ("c".to_string(), Macros::C),
             ("import".to_string(), Macros::Import),
-            ("array".to_string(), Macros::Arr),
             ("inline".to_string(), Macros::Inline),
-            // ("dynam".to_string(), Macros::Dynam),
         ]);
 
         ExprWeights {
@@ -626,7 +624,8 @@ impl ExprWeights {
                                 let mut updated_kw_buf = false;
                                 if !array_lens.is_empty() {
                                     // TODO: make this support mutli-dimensional arrays
-                                    kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
+                                    // kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
+                                    kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![ident.to_string()]) };
                                     array_lens.clear();
                                     updated_kw_buf = true;
                                 }
@@ -809,6 +808,11 @@ impl ExprWeights {
                     is_generic = true;
                 },
                 Token::Int(intlit_str) => {
+                    if intlit_str.is_empty() {
+                        array_lens.push(intlit_str.clone());
+                        continue;
+                    }
+
                     let intlit_res = intlit_str.parse::<f64>();
                     match intlit_res {
                         Ok(_) => {
@@ -2665,14 +2669,6 @@ impl ExprWeights {
                     exit(1);
                 }
             },
-            Macros::Arr => {
-                if let Token::Int(intlit) = &value[index+2] {
-                    return self.handle_array_macro(intlit, value[index+4..].to_vec());
-                } else {
-                    self.comp_err(&format!("expected [__num__] to specify length of array"));
-                    exit(1);
-                }
-            },
             _ => {
                 self.comp_err(&format!("macro {mac:?} not reimplemented yet"));
                 exit(1);
@@ -2833,6 +2829,7 @@ impl ExprWeights {
                 }
             },
             Token::Lsquare => {
+                // this is for arrays
                 if var_info.len() < 5 {
                     self.comp_err(&format!("expected more tokens after macro"));
                     exit(1);

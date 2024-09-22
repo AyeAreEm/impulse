@@ -125,7 +125,6 @@ pub enum Keyword {
 pub enum Macros {
     C,
     Import,
-    Arr,
     Inline,
     // Dynam,
     None,
