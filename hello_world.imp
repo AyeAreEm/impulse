@@ -1,18 +1,14 @@
-struct What :: {
-    [5]int nums;
-}
+@import "time.h";
+@import "base/random.imp";
 
-_ main :: () {
-    [5]int numbers: |1 2 3 4 5|;
-    What what;
-    what.nums: numbers;
+int main :: () {
+    @c [srand(time(NULL));];
 
-    loop (i < what.nums.len) [+] {
-        int num: what.nums.data[i];
-        what.nums.data[i]: [num * 10];
-    }
+    int min: 0;
+    int max: 100;
 
-    for (what.nums) [num] {
-        println("%d" num);
+    loop (i < 10) [+] {
+        int randnum: random.range(min max);
+        println("%d" randnum);
     }
 }

@@ -53,6 +53,7 @@ impl Gen {
             ("assert".to_string(), true),
             ("errno".to_string(), true),
             ("ctype".to_string(), true),
+            ("time".to_string(), true),
         ]);
 
         return Gen {

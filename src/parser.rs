@@ -614,6 +614,11 @@ impl ExprWeights {
         let mut is_macro_func = false;
         let mut is_generic = false;
 
+        match typ {
+            Types::Any | Types::TypeId => is_macro_func = true,
+            _ => (),
+        }
+
         for (i, param) in params.iter().enumerate() {
             match param {
                 Token::Ident(ident) => {
