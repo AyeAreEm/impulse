@@ -627,6 +627,7 @@ impl ExprWeights {
                                 if !array_lens.is_empty() {
                                     // TODO: make this support mutli-dimensional arrays
                                     kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
+                                    array_lens.clear();
                                     updated_kw_buf = true;
                                 }
 
@@ -3230,6 +3231,7 @@ impl ExprWeights {
 
         let mut create_generic = false;
         let mut is_constant = false;
+        let mut array_lens = Vec::new();
 
         for (i, token) in value.iter().enumerate() {
             // handle right bracket occurences
@@ -3287,7 +3289,11 @@ impl ExprWeights {
                 Token::Int(intlit) => {
                     // TODO: ARRAYS INDEXING WITH [i+1] WILL NOT WORK WITH THIS, edit: this might
                     // be wrong, double check later
-                    buffer.push(self.check_intlit(intlit.to_string()));
+                    if !is_right {
+                        array_lens.push(intlit.clone());
+                    } else {
+                        buffer.push(self.check_intlit(intlit.to_string()));
+                    }
                 },
                 Token::Char(charlit) => {
                     buffer.push(Expr::CharLit(charlit.clone()));
@@ -3315,10 +3321,20 @@ impl ExprWeights {
                     // check if this is an expr without a :
                     if !is_right {
                         let keyword_res = self.keyword_map.get(ident);
+
+                        if !array_lens.is_empty() {
+                            if (self.in_struct_def && !self.in_func) || self.in_defer {
+                                // TODO: make this work with multi dimensional arrays
+                                let mac = self.handle_array_macro(&array_lens[0], value[i..].to_vec());
+                                self.expr_stack.push(mac);
+                                return Expr::None;
+                            }
+                            return self.handle_array_macro(&array_lens[0], value[i..].to_vec());
+                        }
+
                         match keyword_res {
                             Some(k) => {
                                 let mut keyword = k.clone();
-
                                 if let Keyword::Break = k {
                                     return Expr::Break
                                 } else if let Keyword::Continue = k {
