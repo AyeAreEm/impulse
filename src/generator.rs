@@ -913,21 +913,12 @@ impl Gen {
                     let mut varname = self.handle_varname(Expr::VariableName { typ: typ.clone(), name, reassign, constant, field_data });
                     let last_varname = varname.chars().last().unwrap();
                     if last_varname == 'A' {
-                        match varname.find('{') {
-                            Some(index) => {
-                                if let Types::Arr { length, .. } = typ {
-                                    varname.pop();
-                                    varname.truncate(index-1);
-                                    if self.in_macro_func {
-                                        self.code.push_str(&format!("{varname} {{.len = {length}}};\\\n"));
-                                    } else {
-                                        self.code.push_str(&format!("{varname} {{.len = {length}}};\n"));
-                                    }
-                                }
-                            },
-                            None => {
-                                self.comp_err("failed to generate array");
-                                exit(1);
+                        if let Types::Arr { length, .. } = typ {
+                            varname.pop();
+                            if self.in_macro_func {
+                                self.code.push_str(&format!("{varname}{{}}, .len = {length}}};\\\n"));
+                            } else {
+                                self.code.push_str(&format!("{varname}{{}}, .len = {length}}};\n"));
                             }
                         }
                         continue;
