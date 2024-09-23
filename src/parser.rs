@@ -3291,7 +3291,7 @@ impl ExprWeights {
                 Token::Int(intlit) => {
                     // TODO: ARRAYS INDEXING WITH [i+1] WILL NOT WORK WITH THIS, edit: this might
                     // be wrong, double check later
-                    if !is_right {
+                    if !is_right && !returning {
                         array_lens.push(intlit.clone());
                     } else {
                         buffer.push(self.check_intlit(intlit.to_string()));

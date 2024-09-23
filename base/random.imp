@@ -1,10 +1,10 @@
 # Random library based off of C's rand() and srand() function, not to be used in cryptography
 
-_ random.seed :: (uint seed_value) {
+@inline _ random.seed :: (uint seed_value) {
     @c [return srand(seed_value);];
 }
 
-int random.rand :: () {
+@inline int random.rand :: () {
     @c [return rand();];
 }
 
@@ -16,7 +16,9 @@ int random.range :: (int min int max) {
         max: temp;
     }
 
-    @c [return (rand()% (max - min + 1)) + min;];
+    int random: random.rand();
+    int randomnum: [random % [max - min + 1]];
+    return [randomnum + min];
 }
 
 any random.choice :: ([]any arr) {
