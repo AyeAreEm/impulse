@@ -37,7 +37,7 @@ To dereference, `<name>^`
 These are used to pass types to functions, used as generics, used in structs (although `typeid` keyword is implicit in structs)
 
 # Types "shipped" with Impulse
-`option result str string dyn array`
+`option result str string dyn`
 
 ## Options
 These work similar to Rust's Options.<br>
@@ -66,6 +66,6 @@ Note: all memory allocated data will be under a `data` field in the standard lib
 Memory allocated dynamic array that contains a generic pointer `data`, a usize `len` and a usize `cap`
 
 ## Array
-`@array[100] int nums: |1 2 3 4 5|;`<br>
-`@array int nums: |1 2 3 4 5|;`<br>
+`[100] int nums: |1 2 3 4 5|;`<br>
+`[]int nums: |1 2 3 4 5|;`<br>
 Array's can also be represented through pointers but this one has a generic pointer `data` and a usize `len`.

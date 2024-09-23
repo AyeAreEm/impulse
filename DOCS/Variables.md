@@ -4,7 +4,7 @@ These work similarly to C where it's `<type> <name>: <value>`, also note that `:
 int x: [5 + 5];
 string word: str.from("hello");
 bool foo: true;
-@array[10] int arr: |0 1 2|;
+[10]int arr: |0 1 2|;
 dyn[int] nums: dyn.new(int);
 
 ^int pointer_to_x: &x;

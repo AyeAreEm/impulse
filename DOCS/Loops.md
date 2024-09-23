@@ -29,7 +29,7 @@ The modifier is optional. There are 3 modifiers: `[+]`, `[-]`, `[_]`. The plus a
 ## For
 Known as the For In or the For Each loop, similar to Zig's syntax
 ```
-@array str fruits: |str.from("apple") str.from("cherry") str.from("banana")|;
+[]str fruits: |str.from("apple") str.from("cherry") str.from("banana")|;
 
 for (fruits) [fruit] {
     println("%s" fruit.data);
