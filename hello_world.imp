@@ -1,14 +1,14 @@
-@import "time.h";
+@import "base/time.imp";
 @import "base/random.imp";
 
 int main :: () {
-    @c [srand(time(NULL));];
+    random.seed(Time.since_epoch());
 
-    int min: 0;
-    int max: 100;
+    []str greetings: |str.from("hello") str.from("hi") str.from("hey")|;
+    str greet: random.choice(greetings);
 
-    loop (i < 10) [+] {
-        int randnum: random.range(min max);
-        println("%d" randnum);
-    }
+    i64 since_epoch: Time.since_epoch();
+    Time current_time: Time.local(&since_epoch);
+
+    println("%s it's currently: %02d:%02d" greet.data [current_time.hour - 12] current_time.minute);
 }

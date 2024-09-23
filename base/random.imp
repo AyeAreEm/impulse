@@ -21,7 +21,7 @@ int random.range :: (int min int max) {
 
 any random.choice :: ([]any arr) {
     usize min: 0;
-    usize max: arr.len;
+    usize max: [arr.len - 1];
 
     int randnum: random.range(min max);
     @c [arr.data[randnum];];
