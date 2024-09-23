@@ -167,6 +167,19 @@ struct Vector3f32 :: {
         c.z: [a.z / b.z];
         return c;
     }
+
+    @inline Vector3f32 normalise :: (Vector3f32 vec) {
+        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z]);
+        if (mag > 0) {
+            Vector3f32 normalised;
+            normalised.x: [vec.x / mag];
+            normalised.y: [vec.y / mag];
+            normalised.z: [vec.z / mag];
+            return normalised;
+        }
+
+        return vec;
+    }
 }
 
 struct Vector4f32 :: {
@@ -210,6 +223,20 @@ struct Vector4f32 :: {
         c.w: [a.w / b.w];
         return c;
     }
+
+    @inline Vector4f32 normalise :: (Vector4f32 vec) {
+        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z + vec.w * vec.w]);
+        if (mag > 0) {
+            Vector4f32 normalised;
+            normalised.x: [vec.x / mag];
+            normalised.y: [vec.y / mag];
+            normalised.z: [vec.z / mag];
+            normalised.w: [vec.w / mag];
+            return normalised;
+        }
+
+        return vec;
+    }
 }
 
 typeid Quaternionf32 :: Vector4f32;
@@ -252,6 +279,18 @@ struct Vector2f64 :: {
         c.y: [a.y / b.y];
         return c;
     }
+
+    @inline Vector2f64 normalise :: (Vector2f64 vec) {
+        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y]);
+        if (mag > 0) {
+            Vector2f64 normalised;
+            normalised.x: [vec.x / mag];
+            normalised.y: [vec.y / mag];
+            return normalised;
+        }
+
+        return vec;
+    }
 }
 
 struct Vector3f64 :: {
@@ -289,6 +328,19 @@ struct Vector3f64 :: {
         c.y: [a.y / b.y];
         c.z: [a.z / b.z];
         return c;
+    }
+
+    @inline Vector3f64 normalise :: (Vector3f64 vec) {
+        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z]);
+        if (mag > 0) {
+            Vector3f64 normalised;
+            normalised.x: [vec.x / mag];
+            normalised.y: [vec.y / mag];
+            normalised.z: [vec.z / mag];
+            return normalised;
+        }
+
+        return vec;
     }
 }
 
@@ -332,6 +384,20 @@ struct Vector4f64 :: {
         c.z: [a.z / b.z];
         c.w: [a.w / b.w];
         return c;
+    }
+
+    @inline Vector4f64 normalise :: (Vector4f64 vec) {
+        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z + vec.w * vec.w]);
+        if (mag > 0) {
+            Vector4f64 normalised;
+            normalised.x: [vec.x / mag];
+            normalised.y: [vec.y / mag];
+            normalised.z: [vec.z / mag];
+            normalised.w: [vec.w / mag];
+            return normalised;
+        }
+
+        return vec;
     }
 }
 
