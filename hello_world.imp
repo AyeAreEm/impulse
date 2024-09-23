@@ -1,11 +1,4 @@
-@import "base/time.imp";
-@import "base/random.imp";
-
 _ main :: () {
-    random.seed(Time.since_epoch());
-
-    loop (i < 10) [+] {
-        int randnum: random.range(0 100);
-        println("%d" randnum);
-    }
+    int x: 15;
+    println("%d" x);
 }

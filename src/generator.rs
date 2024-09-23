@@ -302,8 +302,13 @@ impl Gen {
         match funccall {
             Expr::FuncCall { name, gave_params } => {
                 let mut funccall_code = String::new();
-                if name == String::from("print") || name == String::from("println") {
+                let mut add_newline = false;
+
+                if name == String::from("print")  {
                     funccall_code.push_str("printf(");
+                } else if name == String::from("println") {
+                    funccall_code.push_str("printf(");
+                    add_newline = true;
                 } else if name == String::from("string__format") {
                     funccall_code.push_str("__IMPULSE__STRING__FORMAT__(");
                 } else {
@@ -319,7 +324,7 @@ impl Gen {
                     match param {
                         Expr::IntLit(intlit) => {
                             if i == 0 {
-                                funccall_code.push_str(&intlit)
+                                funccall_code.push_str(&intlit);
                             } else {
                                 funccall_code.push_str(&format!(", {intlit}"))
                             }
@@ -355,10 +360,16 @@ impl Gen {
                             }
                         },
                         Expr::StrLit { .. } => {
+                            let mut string = self.handle_value(param.clone());
                             if i == 0 {
-                                funccall_code.push_str(&self.handle_value(param.clone()));
+                                if add_newline {
+                                    string.insert_str(string.len()-1, "\\n");
+                                    funccall_code.push_str(&string);
+                                } else {
+                                    funccall_code.push_str(&string);
+                                }
                             } else {
-                                funccall_code.push_str(&format!(", {}", self.handle_value(param.clone())));
+                                funccall_code.push_str(&format!(", {}", string));
                             }
                         },
                         Expr::CharLit(_) => {
@@ -407,11 +418,7 @@ impl Gen {
                     }
                 }
 
-                if name == String::from("println") {
-                    funccall_code.push_str("); printf(\"\\n\")");
-                } else {
-                    funccall_code.push(')');
-                }
+                funccall_code.push(')');
                 return funccall_code
             },
             unexpected => {
