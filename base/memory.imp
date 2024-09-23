@@ -12,8 +12,8 @@
     @c [ return memcpy(dest, src, n); ];
 }
 
-@inline ^_ mem.set :: (^_ str int c usize n) {
-    @c [ return memset(str, c, n); ];
+@inline ^_ mem.set :: (^_ s int c usize n) {
+    @c [ return memset(s, c, n); ];
 }
 
 @inline ^_ mem.move :: (^_ dest ^_ src usize n) {
