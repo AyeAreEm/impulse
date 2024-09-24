@@ -281,7 +281,7 @@ impl Gen {
         }
     }
 
-    fn handle_funccall(&mut self, funccall: Expr) -> String {
+    pub fn handle_funccall(&mut self, funccall: Expr) -> String {
         fn handle_local_pointer(this: &mut Gen, name: String, typ: Types) -> (String, bool) {
             if let Types::Pointer(subtyp) = typ {
                 let handled = handle_local_pointer(this, name, *subtyp);

@@ -1,5 +1,5 @@
 use std::{fs, collections::HashMap, process::exit};
-use crate::tokeniser::{tokeniser, Token}; use crate::declare_types::*;
+use crate::tokeniser::{tokeniser, Token}; use crate::{declare_types::*, Gen};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -460,9 +460,18 @@ impl ExprWeights {
                                 self.comp_err(&format!("found () without a function name. did you mean to use []?"));
                                 exit(1);
                             },
-                            // TODO: fix these, they aren't pushing to clean
-                            Expr::Func { .. } => self.create_func_call(&has_func, params.clone()),
-                            Expr::MacroFunc { .. } => self.create_func_call(&has_func, params.clone()),
+                            Expr::Func { .. } | Expr::MacroFunc { .. } => {
+                                let func_call = self.create_func_call(&has_func, params.clone());
+
+                                // we need to make a new generator instance and only call the
+                                // `handle_funccall` function to get back a clean string of this
+                                // func call, this does not affect the compilation except for maybe
+                                // error messages but not sure.
+                                let mut gen = Gen::new(self.filename.clone(), String::from("output.c"), true, false, Lang::C);
+                                let clean_func_call = gen.handle_funccall(func_call);
+                                params.clear();
+                                clean.push_str(&clean_func_call)
+                            },
                             ref unexpected => {
                                 self.comp_err(&format!("unexpected expression {unexpected:?} in integer literal: {:?}", has_func));
                                 exit(1);

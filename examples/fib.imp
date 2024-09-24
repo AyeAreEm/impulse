@@ -4,9 +4,9 @@ int fib :: (int nth) {
     if (nth = 0 or nth = 1) {return nth;}
     orif (nth = 2) {return 1;}
     else {
-        int next: fib([nth-1]);
-        int further: fib([nth-2]);
-        return [next + further];
+        int one_back: [nth-1];
+        int two_back: [nth-2];
+        return [fib(one_back) + fib(two_back)];
     }
 }
 

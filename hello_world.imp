@@ -1,4 +1,8 @@
+int add :: (int x int y) {
+    return [x + y];
+}
+
 _ main :: () {
-    int x: 15;
-    println("%d" x);
+    int thirty: [add(10 15) + 5];
+    println("%d" thirty);
 }
