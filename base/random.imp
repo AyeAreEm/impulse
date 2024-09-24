@@ -16,9 +16,7 @@ int random.range :: (int min int max) {
         max: temp;
     }
 
-    int random: random.rand();
-    int randomnum: [random % [max - min + 1]];
-    return [randomnum + min];
+    return [random.rand() % [max - min + 1] + min];
 }
 
 any random.choice :: ([]any arr) {

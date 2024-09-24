@@ -1,8 +1,7 @@
-int add :: (int x int y) {
+@inline int add :: (int x int y) {
     return [x + y];
 }
 
 _ main :: () {
-    int thirty: [add(10 15) + 5];
-    println("%d" thirty);
+    println("%d" add(10 15));
 }

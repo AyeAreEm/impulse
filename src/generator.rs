@@ -702,6 +702,7 @@ impl Gen {
         self.code.push_str("typedef double f64;\n");
         self.code.push_str("typedef size_t usize;\n");
         self.code.push_str("typedef unsigned int uint;\n");
+        self.code.push_str("#define $inline static inline __attribute__((always_inline))\n");
 
         let mut first_case = false;
         let mut fall_case = false;
@@ -888,7 +889,7 @@ impl Gen {
                     }
 
                     if is_inline {
-                        func_code.push_str("static inline __attribute__((always_inline)) ");
+                        func_code.push_str("$inline ");
                     }
 
                     if name == String::from("main") {
