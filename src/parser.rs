@@ -1739,7 +1739,7 @@ impl ExprWeights {
                                 None => Keyword::None,
                             };
 
-                            if let Expr::StructDef { .. } | Expr::MacroStructDef { .. } = self.find_structure(ident) {
+                            if let Expr::StructDef { .. } | Expr::MacroStructDef { .. } | Expr::EnumDef { .. } = self.find_ident(ident.clone()) {
                                 keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: Some(vec![]) };
                             }
 

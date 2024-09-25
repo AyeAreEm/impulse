@@ -1,16 +1,23 @@
-@import "base/io.imp";
-@import "base/string.imp";
+@import "base/env.imp";
 
 _ main :: () {
-    string word: string.from("hello");
-    defer string.dealloc(&word);
+    OS platform: OS.get();
 
-    print("enter name: ");
-    string name: io.input();
-    defer string.dealloc(&name);
-
-    string greet: string.format("%s %s" word.data name.data);
-    defer string.dealloc(&greet);
-
-    println("%s" greet.data);
+    switch (platform) {
+        fall (OS.Windows32) {
+            println("windows 32bit");
+        }
+        case (OS.Windows64) {
+            println("windows 64bit");
+        }
+        case (OS.MacOS) {
+            println("macos");
+        }
+        case (OS.Linux) {
+            println("linux");
+        }
+        case {
+            println("unknown os");
+        }
+    }
 }
