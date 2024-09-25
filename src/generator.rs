@@ -519,7 +519,7 @@ impl Gen {
                 }
             },
             unimpl => {
-                self.comp_err(&format!("this expression {unimpl:?} not implemented yet"));
+                self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                 exit(1);
             }
         }

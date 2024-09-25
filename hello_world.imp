@@ -1,8 +1,7 @@
-@import "base/string.imp";
+@import "base/time.imp";
 
 _ main :: () {
-    string word: string.from("hello world");
-
-    string.push(&word char '!');
-    println("%s" word.data);
+    i64 since_epoch: Time.since_epoch();
+    Time now: Time.local(&since_epoch);
+    println("%02d-%02d-%d" now.day [now.month + 1] [now.year + 1900]);
 }

@@ -2390,6 +2390,7 @@ impl ExprWeights {
                     square_rc -= 1;
                     if square_rc == 0 {
                         let intlit = self.check_intlit(intlit_buf.clone());
+                        intlit_buf.clear();
                         expr_params.push(intlit);
                     }
                 },
