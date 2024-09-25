@@ -4,6 +4,22 @@
 @import "string.h";
 @import "stdarg.h";
 
+@c [
+#ifdef _WIN64
+    bool win64 = true;
+    bool win32 = false;
+    bool linux = false;
+#elif _WIN32
+    bool win64 = false;
+    bool win32 = true;
+    bool linux = false;
+#elif __linux__
+    bool win64 = false;
+    bool win32 = false;
+    bool linux = true;
+#endif
+];
+
 @inline _ exitcode :: (int code) {
     @c [exit(code);];
 }

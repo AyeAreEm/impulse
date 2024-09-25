@@ -1,6 +1,14 @@
 # Time library
 @import "time.h";
 
+@c [
+#ifdef _WIN32
+    #include <windows.h>
+#elif __linux__
+    #include <unistd.h>
+#endif
+];
+
 struct Time :: {
     int second;
     int minute;
@@ -31,6 +39,16 @@ struct Time :: {
         ];
 
         return ret;
+    }
+
+    _ sleep :: (int milliseconds) {
+    @c [
+        #ifdef _WIN32
+            Sleep(milliseconds);
+        #elif __linux__
+            usleep(milliseconds * 1000);
+        #endif
+    ];
     }
 }
 

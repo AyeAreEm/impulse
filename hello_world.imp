@@ -1,19 +1,8 @@
-@import "base/dynamic.imp";
+@import "base/time.imp";
 
 _ main :: () {
-    dyn[int] nums: dyn.new(int);
-    loop (i < 5) [+] {
-        dyn.push(int nums [i * 10]);
-    }
-
-    option[int] removed_elem: dyn.pop(int nums);
-    if (removed_elem) [elem] {
-        println("%d" elem);
-    } else {
-        println("failed to pop");
-    }
-
-    for (nums) [num] {
-        println("%d" num);
+    loop (i < 10) [+] {
+        Time.sleep(1000);
+        println("running for %zu seconds" i);
     }
 }

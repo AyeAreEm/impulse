@@ -54,6 +54,7 @@ impl Gen {
             ("errno".to_string(), true),
             ("ctype".to_string(), true),
             ("time".to_string(), true),
+            ("unistd".to_string(), true),
         ]);
 
         return Gen {
