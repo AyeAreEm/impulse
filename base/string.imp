@@ -133,19 +133,18 @@ struct string :: {
     }
 
     _ push :: (^string dest typeid T $T src) {
-        ^char type: type_to_cstr(T);
         $T real_var: src;
 
-        if (cstr.compare(type "string")) {
+        if (type.compare(T string)) {
             string.push_string(dest cast(string real_var));
-        } orif (cstr.compare(type "char")) {
+        } orif (type.compare(T char)) {
             string.push_char(dest cast(char real_var));
-        } orif (cstr.compare(type "char*")) {
+        } orif (type.compare(T ^char)) {
             string.push_cstr(dest cast(^char real_var));
-        } orif (cstr.compare(type "str")) {
+        } orif (type.compare(T str)) {
             string.push_str(dest cast(str real_var));
         } else {
-            println("%s is not supported for pushing to a string" type);
+            println("%s is not supported for pushing to a string" type.to_cstr(T));
             exitcode(1);
         }
     }

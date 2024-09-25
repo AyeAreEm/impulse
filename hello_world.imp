@@ -1,8 +1,8 @@
-@import "base/time.imp";
+@import "base/string.imp";
 
 _ main :: () {
-    loop (i < 10) [+] {
-        Time.sleep(1000);
-        println("running for %zu seconds" i);
-    }
+    string word: string.from("hello world");
+
+    string.push(&word char '!');
+    println("%s" word.data);
 }
