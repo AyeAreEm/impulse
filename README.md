@@ -8,14 +8,16 @@ Impulse's main principles are interoperability with C while providing modern nic
 -- Note: Tested on Windows so tread with caution on other OS's --
 
 ## Features
-- Interopability with C
+- Seamless Interopability with C
 - Generics
-- Strings with length
-- Procedural with multi-paradigm features
-- Builtin functions
-- Manual memory management (no garbage collection)
-- Modern standard library
-- Zero initalised
+- Strings and Arrays with length
+- Cross Platform
+- Procedural with Multi-Paradigm Features
+- Manual Memory Management (no garbage collection)
+- Defer Statements
+- Modern Standard Library
+- Zero Initalised
+- True Constants
 
 ```
 @import "base/string.imp";
@@ -31,7 +33,7 @@ struct vector :: {
 }
 
 _ print_chars :: (string word) {
-    defer { string.dealloc(word); }
+    defer string.dealloc(word);
 
     for (word) [ch] {
         println("%c" ch);
