@@ -1,7 +1,3 @@
-@import "base/time.imp";
-
-_ main :: () {
-    i64 since_epoch: Time.since_epoch();
-    Time now: Time.local(&since_epoch);
-    println("%02d-%02d-%d" now.day [now.month + 1] [now.year + 1900]);
-}
+# updated most c functions used to c.<func_name>
+# updated raylib function GetFileExtension to actually return the result
+# updated Time.sleep function to use _sleep() vs Sleep() on windows to avoid name collisions with raylib

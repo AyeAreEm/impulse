@@ -2,9 +2,7 @@
 @import "time.h";
 
 @c [
-#ifdef _WIN32
-    #include <windows.h>
-#elif __linux__
+#ifdef __linux__
     #include <unistd.h>
 #endif
 ];
@@ -44,7 +42,7 @@ struct Time :: {
     _ sleep :: (int milliseconds) {
     @c [
         #ifdef _WIN32
-            Sleep(milliseconds);
+            _sleep(milliseconds);
         #elif __linux__
             usleep(milliseconds * 1000);
         #endif

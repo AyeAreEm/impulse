@@ -1,6 +1,6 @@
 @import "base/string.imp";
 
-@inline char c_getchar :: () {
+@inline char c.getchar :: () {
     @c [return getchar();];
 }
 
@@ -8,7 +8,7 @@ string io.input :: () {
     string word: string.new();
 
     loop (true) {
-        char ch: c_getchar();
+        char ch: c.getchar();
         if (ch = '\n') {
             break;
         }

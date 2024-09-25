@@ -1,16 +1,16 @@
 # TODO: change this to be OS dependant
 
-@c [#include "base/raylib/include/raylib.h"];
-@import "base/math.imp";
-
 # copy this in c_flags
 # -I base/raylib/include/ -L base/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm
 
+@import "base/math.imp";
+@c [ #include "base/raylib/include/raylib.h" ];
+
 @inline f32 deg_to_rad :: () {
-    return [pi / 180.0];
+    return [math.PI / 180.0];
 }
 @inline f32 rad_to_deg :: () {
-    return [180.0 / pi];
+    return [180.0 / math.PI];
 }
 
 # Colour, 4 components, R8G8B8A8 (32bits)
@@ -842,7 +842,7 @@ enum rl.NPatchLayout :: {
 @inline bool rl.DirectoryExists :: (^char dirPath) {@c [return DirectoryExists(dirPath);];}
 @inline bool rl.IsFileExtension :: (^char fileName ^char ext) {@c [return IsFileExtension(fileName, ext);];}
 @inline int rl.GetFileLength :: (^char fileName) {@c [return GetFileLength(fileName);];}
-@inline ^char rl.GetFileExtension :: (^char fileName) {@c [GetFileExtension(fileName);];}
+@inline ^char rl.GetFileExtension :: (^char fileName) {@c [return GetFileExtension(fileName);];}
 @inline ^char rl.GetFileName :: (^char filePath) {@c [return GetFileName(filePath);];}
 @inline ^char rl.GetFileNameWithoutExt :: (^char filePath) {@c [return GetFileNameWithoutExt(filePath);];}
 @inline ^char rl.GetDirectoryPath :: (^char filePath) {@c [return GetDirectoryPath(filePath);];}

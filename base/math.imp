@@ -1,24 +1,22 @@
 @import "math.h";
 @import "base/string.imp";
 
-f64 PI :: 3.14159265358979323846;
+f64 math.PI :: 3.14159265358979323846;
 
 @inline f32 sine_f32 :: (f32 x) { @c [return sinf(x);]; }
 @inline f64 sine_f64 :: (f64 x) { @c [return sin(x);]; }
 
 $T sine :: (typeid T $T x) {
     $T result;
-    ^char type: type_to_cstr(T);
-    ^char f32_str: type_to_cstr(f32);
-    ^char f64_str: type_to_cstr(f64);
-    if (cstr.compare(type f32_str)) {
+    if (type.compare(T f32)) {
         result: sine_f32(x);
-    } orif (cstr.compare(type f64_str)) {
+    } orif (type.compare(T f64)) {
         result: sine_f64(x);
     } else {
-        println("type %s can't be used in sine function as it's not a decimal" type_to_cstr(T));
+        println("type %s can't be used in sine function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
+
     return result;
 }
 
@@ -27,17 +25,15 @@ $T sine :: (typeid T $T x) {
 
 $T cosine :: (typeid T $T x) {
     $T result;
-    ^char type: type_to_cstr(T);
-    ^char f32_str: type_to_cstr(f32);
-    ^char f64_str: type_to_cstr(f64);
-    if (cstr.compare(type f32_str)) {
+    if (type.compare(T f32)) {
         result: cosine_f32(x);
-    } orif (cstr.compare(type f64_str)) {
+    } orif (type.compare(T f64)) {
         result: cosine_f64(x);
     } else {
-        println("type %s can't be used in cosine function as it's not a decimal" type_to_cstr(T));
+        println("type %s can't be used in cosine function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
+
     return result;
 }
 
@@ -46,17 +42,15 @@ $T cosine :: (typeid T $T x) {
 
 $T square_rt :: (typeid T $T x) {
     $T result;
-    ^char type: type_to_cstr(T);
-    ^char f32_str: type_to_cstr(f32);
-    ^char f64_str: type_to_cstr(f64);
-    if (cstr.compare(type f32_str)) {
+    if (type.compare(T f32)) {
         result: sqrt_f32(x);
-    } orif (cstr.compare(type f64_str)) {
+    } orif (type.compare(T f64)) {
         result: sqrt_f64(x);
     } else {
-        println("type %s can't be used in square_rt function as it's not a decimal" type_to_cstr(T));
+        println("type %s can't be used in square_rt function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
+
     return result;
 }
 
@@ -65,17 +59,15 @@ $T square_rt :: (typeid T $T x) {
 
 $T power :: (typeid T $T x $T y) {
     $T result;
-    ^char type: type_to_cstr(T);
-    ^char f32_str: type_to_cstr(f32);
-    ^char f64_str: type_to_cstr(f64);
-    if (cstr.compare(type f32_str)) {
+    if (type.compare(T f32)) {
         result: power_f32(x y);
-    } orif (cstr.compare(type f64_str)) {
+    } orif (type.compare(T f64)) {
         result: power_f64(x y);
     } else {
-        println("type %s can't be used in power function as it's not a decimal" type_to_cstr(T));
+        println("type %s can't be used in power function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
+
     return result;
 }
 

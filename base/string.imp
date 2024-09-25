@@ -3,7 +3,7 @@
 @import "base/builtin.imp";
 @import "base/memory.imp";
 
-@inline ^char cstr.copy :: (^char dest ^char src usize byte_size) {
+@inline ^char c.strncpy :: (^char dest ^char src usize byte_size) {
     # doubt i could write safe code that copies strings
     @c [ return strncpy(dest, src, byte_size); ];
 }
@@ -64,7 +64,7 @@ struct string :: {
 
     string from :: (^char word) {
         string new: string.new();
-        usize cstr_len: cstr.len(word);
+        usize cstr_len: c.strlen(word);
 
         if ([cstr_len + 1] >= new.cap) {
             string.resize(&new [cstr_len + 1]);
@@ -90,7 +90,7 @@ struct string :: {
     }
 
     _ push_cstr :: (^string dest ^char src) {
-        usize src_len: cstr.len(src);
+        usize src_len: c.strlen(src);
         usize new_len: [dest.len + src_len];
 
         if ([new_len + 1] >= dest.cap) {

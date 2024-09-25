@@ -514,11 +514,17 @@ impl ExprWeights {
                             self.comp_err(&format!("unknown identifier: {}", ident));
                             exit(1);
                         },
-                        Expr::VariableName { typ, name, .. } => {
+                        Expr::VariableName { typ, name, field_data, .. } => {
                             match typ {
                                 Types::I32 | Types::U32 | Types::U8 | Types::I8 | Types::UInt | Types::Int | Types::U16 | Types::I16 |
                                 Types::U64 | Types::I64 |Types::Usize | Types::Pointer(_) | Types::Generic(_) |
-                                Types::F32 | Types::F64 => clean.push_str(&name),
+                                Types::F32 | Types::F64 => {
+                                    let mut sanitised = name.clone();
+                                    if !field_data.0 && name.contains(".") {
+                                        sanitised = name.replace(".", "_");
+                                    }
+                                    clean.push_str(&sanitised)
+                                },
                                 _ => {
                                     self.comp_err(&format!("variable {name} is not an integer. {typ:?}:{name}"));
                                     exit(1);
