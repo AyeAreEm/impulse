@@ -1,3 +1,16 @@
-# updated most c functions used to c.<func_name>
-# updated raylib function GetFileExtension to actually return the result
-# updated Time.sleep function to use _sleep() vs Sleep() on windows to avoid name collisions with raylib
+@import "base/io.imp";
+@import "base/string.imp";
+
+_ main :: () {
+    string word: string.from("hello");
+    defer string.dealloc(&word);
+
+    print("enter name: ");
+    string name: io.input();
+    defer string.dealloc(&name);
+
+    string greet: string.format("%s %s" word.data name.data);
+    defer string.dealloc(&greet);
+
+    println("%s" greet.data);
+}

@@ -265,7 +265,7 @@ string __IMPULSE__STRING__FORMAT__(char* fmt, ...) {
         string__resize(&result, size + 1);
     }
 
-    vsnprintf(result.data, size, fmt, args);
+    vsnprintf(result.data, size + 1, fmt, args);
     va_end(args);
 
     result.len = size;
