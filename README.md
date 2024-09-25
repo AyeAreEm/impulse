@@ -68,11 +68,6 @@ _ main :: () {
 <a href="./examples">Examples</a>
 
 ### Known Bugs
-Error when doing math on two functions, only the `-` appears. not sure if the `return` is helping cause this error or it's just something with integer literals and function calls.
-```
-return [foo(num) - foo(num)];
-```
-
 Passing array at index to function parameter
 ```
 foo(bar.data[0]);
@@ -161,7 +156,7 @@ switch (t) {
 
 #### Standard library
 ```
-windows gui -> either natively or a mapping to raylib
+gui -> either natively or a mapping to raylib
 hashmaps -> hashmap / hash table / etc. maybe make it fairly efficient and fast
 cryptography -> random numbers, hashing, etc
 networks -> http 1.0

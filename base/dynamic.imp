@@ -44,9 +44,16 @@ struct[T] dyn :: {
         arr.len: [arr.len + 1];
     }
 
+    option[T] pop :: (typeid T dyn[T] arr) {
+        option[T] ret: dyn.at(T arr [arr.len - 1]);
+        if (!ret.none) {
+            arr.len: [arr.len - 1];
+        }
+        return ret;
+    }
+
     _ clear :: (typeid T dyn[T] arr) {
-        mem.dealloc(arr.data);
-        arr: dyn.new(T);
+        arr.len: 0;
     }
 
     _ remove :: (typeid T dyn[T] arr usize index) {

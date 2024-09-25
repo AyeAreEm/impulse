@@ -1,7 +1,19 @@
-@inline int add :: (int x int y) {
-    return [x + y];
-}
+@import "base/dynamic.imp";
 
 _ main :: () {
-    println("%d" add(10 15));
+    dyn[int] nums: dyn.new(int);
+    loop (i < 5) [+] {
+        dyn.push(int nums [i * 10]);
+    }
+
+    option[int] removed_elem: dyn.pop(int nums);
+    if (removed_elem) [elem] {
+        println("%d" elem);
+    } else {
+        println("failed to pop");
+    }
+
+    for (nums) [num] {
+        println("%d" num);
+    }
 }
