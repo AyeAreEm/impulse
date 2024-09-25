@@ -1,68 +1,67 @@
 @import "math.h";
-@import "base/string.imp";
 
 f64 math.PI :: 3.14159265358979323846;
 
-@inline f32 sine_f32 :: (f32 x) { @c [return sinf(x);]; }
-@inline f64 sine_f64 :: (f64 x) { @c [return sin(x);]; }
+@inline f32 math.sin_f32 :: (f32 x) { @c [return sinf(x);]; }
+@inline f64 math.sin_f64 :: (f64 x) { @c [return sin(x);]; }
 
-$T sine :: (typeid T $T x) {
+$T math.sin :: (typeid T $T x) {
     $T result;
     if (type.compare(T f32)) {
-        result: sine_f32(x);
+        result: math.sin_f32(x);
     } orif (type.compare(T f64)) {
-        result: sine_f64(x);
+        result: math.sin_f64(x);
     } else {
-        println("type %s can't be used in sine function as it's not a decimal" type.to_cstr(T));
+        println("type %s can't be used in sin function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
 
     return result;
 }
 
-@inline f32 cosine_f32 :: (f32 x) { @c [return cosf(x);]; }
-@inline f64 cosine_f64 :: (f64 x) { @c [return cos(x);]; }
+@inline f32 math.cos_f32 :: (f32 x) { @c [return cosf(x);]; }
+@inline f64 math.cos_f64 :: (f64 x) { @c [return cos(x);]; }
 
-$T cosine :: (typeid T $T x) {
+$T math.cos :: (typeid T $T x) {
     $T result;
     if (type.compare(T f32)) {
-        result: cosine_f32(x);
+        result: math.cos_f32(x);
     } orif (type.compare(T f64)) {
-        result: cosine_f64(x);
+        result: math.cos_f64(x);
     } else {
-        println("type %s can't be used in cosine function as it's not a decimal" type.to_cstr(T));
+        println("type %s can't be used in cos function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
 
     return result;
 }
 
-@inline f32 sqrt_f32 :: (f32 x) { @c [return sqrtf(x);]; }
-@inline f64 sqrt_f64 :: (f64 x) { @c [return sqrt(x);]; }
+@inline f32 math.sqrt_f32 :: (f32 x) { @c [return sqrtf(x);]; }
+@inline f64 math.sqrt_f64 :: (f64 x) { @c [return sqrt(x);]; }
 
-$T square_rt :: (typeid T $T x) {
+$T math.sqrt :: (typeid T $T x) {
     $T result;
     if (type.compare(T f32)) {
-        result: sqrt_f32(x);
+        result: math.sqrt_f32(x);
     } orif (type.compare(T f64)) {
-        result: sqrt_f64(x);
+        result: math.sqrt_f64(x);
     } else {
-        println("type %s can't be used in square_rt function as it's not a decimal" type.to_cstr(T));
+        println("type %s can't be used in sqrt function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
 
     return result;
 }
 
-@inline f32 power_f32 :: (f32 x f32 y) { @c [return powf(x, y);]; }
-@inline f64 power_f64 :: (f64 x f64 y) { @c [return pow(x, y);]; }
+@inline f32 math.pow_f32 :: (f32 x f32 y) { @c [return powf(x, y);]; }
+@inline f64 math.pow_f64 :: (f64 x f64 y) { @c [return pow(x, y);]; }
 
-$T power :: (typeid T $T x $T y) {
+$T math.pow :: (typeid T $T x $T y) {
     $T result;
     if (type.compare(T f32)) {
-        result: power_f32(x y);
+        result: math.pow_f32(x y);
     } orif (type.compare(T f64)) {
-        result: power_f64(x y);
+        result: math.pow_f64(x y);
     } else {
         println("type %s can't be used in power function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
@@ -111,7 +110,7 @@ struct Vector2f32 :: {
     }
 
     @inline Vector2f32 normalise :: (Vector2f32 vec) {
-        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y]);
+        f32 mag: math.sqrt(f32 [vec.x * vec.x + vec.y * vec.y]);
         if (mag > 0) {
             Vector2f32 normalised;
             normalised.x: [vec.x / mag];
@@ -161,7 +160,7 @@ struct Vector3f32 :: {
     }
 
     @inline Vector3f32 normalise :: (Vector3f32 vec) {
-        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z]);
+        f32 mag: math.sqrt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z]);
         if (mag > 0) {
             Vector3f32 normalised;
             normalised.x: [vec.x / mag];
@@ -217,7 +216,7 @@ struct Vector4f32 :: {
     }
 
     @inline Vector4f32 normalise :: (Vector4f32 vec) {
-        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z + vec.w * vec.w]);
+        f32 mag: math.sqrt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z + vec.w * vec.w]);
         if (mag > 0) {
             Vector4f32 normalised;
             normalised.x: [vec.x / mag];
@@ -273,7 +272,7 @@ struct Vector2f64 :: {
     }
 
     @inline Vector2f64 normalise :: (Vector2f64 vec) {
-        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y]);
+        f32 mag: math.sqrt(f32 [vec.x * vec.x + vec.y * vec.y]);
         if (mag > 0) {
             Vector2f64 normalised;
             normalised.x: [vec.x / mag];
@@ -323,7 +322,7 @@ struct Vector3f64 :: {
     }
 
     @inline Vector3f64 normalise :: (Vector3f64 vec) {
-        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z]);
+        f32 mag: math.sqrt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z]);
         if (mag > 0) {
             Vector3f64 normalised;
             normalised.x: [vec.x / mag];
@@ -379,7 +378,7 @@ struct Vector4f64 :: {
     }
 
     @inline Vector4f64 normalise :: (Vector4f64 vec) {
-        f32 mag: square_rt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z + vec.w * vec.w]);
+        f32 mag: math.sqrt(f32 [vec.x * vec.x + vec.y * vec.y + vec.z * vec.z + vec.w * vec.w]);
         if (mag > 0) {
             Vector4f64 normalised;
             normalised.x: [vec.x / mag];
@@ -437,7 +436,7 @@ struct Matrix4x4f64 :: {
 #    if (!cstr.compare(type "f32") and !cstr.compare(type "f64")) {println("type %s can't be used in ease.circ_in function" type); exitcode(1);];}
 #
 #    $T tt: [t / d];
-#    f32 inner: [square_rt(f32 [1.0 - tt*tt]) - 1.0];
+#    f32 inner: [math.sqrt(f32 [1.0 - tt*tt]) - 1.0];
 #    return [-c*inner + b];
 #}
 #@inline $T ease.circ_out :: (typeid T $T t $T b $T c $T d) {
@@ -446,7 +445,7 @@ struct Matrix4x4f64 :: {
 #
 #    $T tt: [t / d - 1.0];
 #    f32 inner: [1.0 - tt*tt];
-#    f32 outer: square_rt(f32 inner);
+#    f32 outer: math.sqrt(f32 inner);
 #    return [c * outer + b];
 #}
 #@inline $T ease.circ_in_out :: (typeid T $T t $T b $T c $T d) {
@@ -457,12 +456,12 @@ struct Matrix4x4f64 :: {
 #    $T tt: [t / d / 2.0];
 #    if (tt < 1.0) {
 #        f32 inner: [1.0 - tt*tt];
-#        f32 outer: square_rt(f32 inner);
+#        f32 outer: math.sqrt(f32 inner);
 #        result: [-c/2.0 * [outer - 1.0] + b];
 #    } else {
 #        tt: [tt - 2.0];
 #        f32 inner: [1.0 - tt*tt];
-#        f32 outer: square_rt(f32 inner);
+#        f32 outer: math.sqrt(f32 inner);
 #        result: [-c/2.0 * [outer - 1.0] + b];
 #    }
 #
