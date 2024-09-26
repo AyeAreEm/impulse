@@ -81,6 +81,49 @@ typeid vec2 :: array[f32];
 ```
 
 ### Todos / Ideas
+#### Remove "impulse_modules"
+When you run `$ impulse -init .`, it copies the `base` folder into the current directory.
+
+#### Import libraries
+Instead of just importing a file like `base/random.imp`<br>
+You'd import `random` or `dynamic`
+
+#### @package or @lib
+At the start of a file, you can give this file a package / library name. That then is used to prefix all functions and user definitions outside of the package
+```
+@lib random
+# OR 
+@package random
+
+any choice :: ([]any arr) {
+    # implementation
+}
+
+# in another file
+@import "base/random.imp";
+
+[]int nums: |1 2 3 4 5 6 7 8 9 10|;
+int randnum: random.choice(nums);
+```
+
+#### @windows, @linux, @macos, etc
+These macros would make a block of code that only exists on the specified platform. Ideas for the syntax:
+```
+@windows _ hello :: () {
+    println("hello from windows");
+}
+
+# OR
+
+@windows;
+_ hello :: () {
+    println("hello from windows");
+}
+@end;
+
+```
+The reason for the second option is it will be a whole block of code only on windows rather than only function
+
 #### Default struct values
 This could replace constructors or the `new` / `init` functions.
 ```
@@ -154,7 +197,6 @@ switch (t) {
     }
 }
 ```
-
 
 #### Standard library
 ```

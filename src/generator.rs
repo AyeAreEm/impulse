@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, process::{exit, Command}};
+use std::{ascii::AsciiExt, collections::HashMap, fs, process::{exit, Command}};
 use crate::declare_types::*;
 use crate::parser::*;
 use rand::Rng;
@@ -55,6 +55,7 @@ impl Gen {
             ("ctype".to_string(), true),
             ("time".to_string(), true),
             ("unistd".to_string(), true),
+            ("windows".to_string(), true),
         ]);
 
         return Gen {
@@ -1273,14 +1274,18 @@ impl Gen {
                     if cfg!(target_os = "windows") {
                         Command::new("cmd")
                             .args(["/C", &com])
-                            .output()
-                            .unwrap();
+                            .stdout(std::process::Stdio::inherit())
+                            .stderr(std::process::Stdio::inherit())
+                            .status()
+                            .expect("failed to run gcc to compile")
                     } else {
                         Command::new("sh")
                             .args(["-c", &com])
-                            .output()
-                            .unwrap();
-                    }
+                            .stdout(std::process::Stdio::inherit())
+                            .stderr(std::process::Stdio::inherit())
+                            .status()
+                            .expect("failed to run gcc to compile")
+                    };
                 } else {
                     match fs::write(&format!("./{}.c", self.out_file), c_code) {
                         Ok(_) => (),

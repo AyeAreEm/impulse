@@ -1,1 +1,3 @@
-@import "base/math.imp";
+_ main :: () {
+    str word: 10;
+}
