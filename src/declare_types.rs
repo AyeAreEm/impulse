@@ -126,6 +126,6 @@ pub enum Macros {
     C,
     Import,
     Inline,
-    // Dynam,
+    Shared,
     None,
 }

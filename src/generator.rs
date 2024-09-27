@@ -396,7 +396,7 @@ impl Gen {
                             }
                         },
                         Expr::StructDef { struct_name, .. } => {
-                            if let Expr::StructName(name) = *struct_name.clone() {
+                            if let Expr::StructName { name, .. } = *struct_name.clone() {
                                 if i == 0 {
                                     funccall_code.push_str(&format!("{name}"));
                                 } else {
@@ -513,7 +513,7 @@ impl Gen {
             },
             Expr::StructDef { struct_name, .. } => {
                 match *struct_name {
-                    Expr::StructName(structname) => {
+                    Expr::StructName { name: structname, .. } => {
                         return structname.replace(".", "__")
                     },
                     _ => unreachable!(),
@@ -792,8 +792,12 @@ impl Gen {
                 Expr::StructDef { struct_name, struct_fields } => {
                     let mut def_code = String::new();
                     match *struct_name {
-                        Expr::StructName(name) => {
-                            def_code.push_str(&format!("typedef struct {name} {{\n"));
+                        Expr::StructName { name, is_shared } => {
+                            if is_shared {
+                                def_code.push_str(&format!("typedef union {name} {{\n"));
+                            } else {
+                                def_code.push_str(&format!("typedef struct {name} {{\n"));
+                            }
                         },
                         _ => (),
                     }

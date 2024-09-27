@@ -1,3 +1,11 @@
+struct Union :: @shared {
+    i8 y;
+    i32 x;
+}
+
 _ main :: () {
-    str word: 10;
+    Union what;
+    what.y: 10;
+
+    println("%d" what.x);
 }

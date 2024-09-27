@@ -76,7 +76,10 @@ pub enum Expr {
     Break,
     Continue,
 
-    StructName(String),
+    StructName {
+        name: String,
+        is_shared: bool,
+    },
     StructDef {
         struct_name: Box<Expr>, // Expr = StructName
         struct_fields: Vec<Expr>, // Expr = VarName
@@ -214,6 +217,7 @@ impl ExprWeights {
             ("c".to_string(), Macros::C),
             ("import".to_string(), Macros::Import),
             ("inline".to_string(), Macros::Inline),
+            ("shared".to_string(), Macros::Shared),
         ]);
 
         ExprWeights {
@@ -957,7 +961,7 @@ impl ExprWeights {
     }
 
     // this starts defining a struct
-    fn create_struct_def(&mut self, name: String, generics: Expr) {
+    fn create_struct_def(&mut self, name: String, generics: Expr, is_shared: bool) {
         if self.in_func {
             self.comp_err(&format!("cannot make struct {name} inside a function"));
             exit(1);
@@ -1028,7 +1032,7 @@ impl ExprWeights {
         self.in_struct_def = true;
 
         if pass_generic.is_empty() {
-            self.expr_stack.push(Expr::StructName(name));
+            self.expr_stack.push(Expr::StructName{ name, is_shared});
         } else {
             self.expr_stack.push(Expr::MacroStructName{name, generics: pass_generic});
         }
@@ -1052,17 +1056,17 @@ impl ExprWeights {
         let sanitised_name: String;
         let sanitised_expr = match expr {
             Expr::StructDef { ref struct_name, ref struct_fields } => {
-                if let Expr::StructName(sname) = *struct_name.clone() {
+                if let Expr::StructName { name: sname, is_shared } = *struct_name.clone() {
                     sanitised_name = sname.replace(".", "__");
-                    Expr::StructDef { struct_name: Box::new(Expr::StructName(sanitised_name.clone())), struct_fields: struct_fields.to_vec() }
+                    Expr::StructDef { struct_name: Box::new(Expr::StructName{name: sanitised_name.clone(), is_shared}), struct_fields: struct_fields.to_vec() }
                 } else {
                     unreachable!()
                 }
             },
             Expr::MacroStructDef { ref struct_name, ref struct_fields } => {
-                if let Expr::StructName(sname) = *struct_name.clone() {
+                if let Expr::StructName {name: sname, is_shared} = *struct_name.clone() {
                     sanitised_name = sname.replace(".", "__");
-                    Expr::MacroStructDef { struct_name: Box::new(Expr::StructName(sanitised_name.clone())), struct_fields: struct_fields.to_vec() }
+                    Expr::MacroStructDef { struct_name: Box::new(Expr::StructName { name: sanitised_name.clone(), is_shared }), struct_fields: struct_fields.to_vec() }
                 } else if let Expr::MacroStructName { name: sname, generics } = *struct_name.clone() {
                     sanitised_name = sname.replace(".", "__");
                     Expr::MacroStructDef { struct_name: Box::new(Expr::MacroStructName { name: sanitised_name.clone(), generics }), struct_fields: struct_fields.to_vec() }
@@ -1075,7 +1079,7 @@ impl ExprWeights {
 
         self.program_push(sanitised_expr);
         match name {
-            Expr::StructName(struct_name) => {
+            Expr::StructName {name: struct_name, .. } => {
                 self.program_push(Expr::EndStruct(sanitised_name));
                 self.func_to_vars.remove(&struct_name);
             },
@@ -1653,6 +1657,7 @@ impl ExprWeights {
         let mut typ: Types = Types::None;
         let mut name = String::new();
         let mut keyword = Keyword::None;
+
         let mut is_inline = false;
 
         let mut brack_rc = 0;
@@ -1674,6 +1679,7 @@ impl ExprWeights {
         let mut create_defer = false;
 
         let mut create_struct = false;
+        let mut is_shared = false;
         let mut create_generic = false;
         let mut generic_subtype = Expr::None;
 
@@ -1700,20 +1706,22 @@ impl ExprWeights {
                     if in_bracks {
                         params.push(token.clone());
                     } else {
-                        if name.is_empty() || pointer_counter > 0 {
-                            typ = Types::Void;
+                        typ = Types::Void;
+                        if pointer_counter > 0 {
 
                             if pointer_counter > 0 {
                                 let tmp_kw = self.create_keyword_pointer(Types::Void, pointer_counter).0;
                                 typ = self.keyword_to_type(tmp_kw);
                             }
-                        } else if let Token::Ident(_) = self.token_stack[i+1] {
-                            name.push('_');
                         }
                     }
                 },
                 Token::Ident(ident) => {
                     if is_inline {
+                        if let Token::Macro = self.token_stack[i-1] {
+                            continue;
+                        }
+                    } else if is_shared {
                         if let Token::Macro = self.token_stack[i-1] {
                             continue;
                         }
@@ -1904,7 +1912,7 @@ impl ExprWeights {
                                         let found_typ = self.find_structure(&name_buf);
                                         if let Expr::StructDef { struct_name, .. } |
                                             Expr::MacroStructDef { struct_name, .. } = found_typ {
-                                                if let Expr::StructName(name) = *struct_name {
+                                                if let Expr::StructName { name, .. } = *struct_name {
                                                     pass_typs.push(name);
                                                     name_buf.clear();
                                                     continue;
@@ -1932,7 +1940,7 @@ impl ExprWeights {
                 Token::Lsquare => (),
                 Token::Rsquare => (), // these might break stuff idk
                 Token::Macro => {
-                    if self.token_stack.len() < 8 {
+                    if self.token_stack.len() < i + 1 {
                         self.comp_err(&format!("expected more tokens after macro"));
                         exit(1);
                     }
@@ -1950,6 +1958,10 @@ impl ExprWeights {
 
                             if let Macros::Inline = mac {
                                 is_inline = true;
+                            }
+
+                            if let Macros::Shared = mac {
+                                is_shared = true;
                             }
                         },
                         _ => (),
@@ -2031,7 +2043,7 @@ impl ExprWeights {
                 self.comp_err(&format!("expected assigment operator `:`. did you mean `struct {name} :: {{`?"));
                 exit(1);
             } else {
-                self.create_struct_def(name.clone(), generic_subtype);
+                self.create_struct_def(name.clone(), generic_subtype, is_shared);
                 return
             }
         }
@@ -2156,7 +2168,7 @@ impl ExprWeights {
             match struc {
                 Expr::StructDef { struct_name, .. } => {
                     match *struct_name.clone() {
-                        Expr::StructName(acc_name) => {
+                        Expr::StructName { name: acc_name, .. } => {
                             if &acc_name == ident {
                                 return struc.clone()
                             }
@@ -2171,7 +2183,7 @@ impl ExprWeights {
                                 return struc.clone()
                             }
                         },
-                        Expr::StructName(acc_name) => {
+                        Expr::StructName { name: acc_name, .. } => {
                             if &acc_name == ident {
                                 return struc.clone()
                             }
@@ -2370,7 +2382,7 @@ impl ExprWeights {
                         }
                     } else if let Expr::StructDef { ref struct_name, .. } = expr {
                         if pointer_counter > 0 {
-                            let name = if let Expr::StructName(n) = *struct_name.clone() { n } else { unreachable!() };
+                            let name = if let Expr::StructName { name: n, .. } = *struct_name.clone() { n } else { unreachable!() };
                             let (kw, _) = self.create_keyword_pointer(Types::TypeDef {
                                 type_name: name.clone(),
                                 generics: None,
@@ -2739,7 +2751,7 @@ impl ExprWeights {
                                                     let found_typ = self.find_structure(&name_buf);
                                                     if let Expr::StructDef { struct_name, .. } |
                                                         Expr::MacroStructDef { struct_name, .. } = found_typ {
-                                                            if let Expr::StructName(name) = *struct_name {
+                                                            if let Expr::StructName { name, .. } = *struct_name {
                                                                 pass_typs.push(name);
                                                                 continue;
                                                             } else if let Expr::MacroStructName { .. } = *struct_name {
@@ -2884,7 +2896,7 @@ impl ExprWeights {
                             match self.find_structure(ident) {
                                 Expr::StructDef { struct_name, .. } => {
                                     match *struct_name {
-                                        Expr::StructName(name) => {
+                                        Expr::StructName { name, .. } => {
                                             let tmp = Types::TypeDef { type_name: name.clone(), generics: Some(vec![]) };
                                             keyword = Keyword::Pointer(tmp.clone(), tmp);
                                         },
@@ -2972,7 +2984,7 @@ impl ExprWeights {
                                         match self.find_structure(ident) {
                                             Expr::StructDef { struct_name, .. } => {
                                                 match *struct_name {
-                                                    Expr::StructName(name) => {
+                                                    Expr::StructName { name, .. } => {
                                                         (keyword, pointer_counter) = self.create_keyword_pointer(Types::TypeDef {
                                                             type_name: name.clone(),
                                                             generics: Some(vec![]),
@@ -3422,7 +3434,7 @@ impl ExprWeights {
                                 } else if let Expr::StructDef { .. } = found_ident {
                                     let mut k = Keyword::TypeDef {
                                         type_name: ident.clone(), 
-                                        generics: Some(vec![])
+                                        generics: None, // watch this, changed from Some(vec![])
                                     };
 
                                     if pointer_counter > 0 {
@@ -3805,7 +3817,7 @@ impl ExprWeights {
                                     let found_typ = self.find_structure(&name_buf);
                                     if let Expr::StructDef { struct_name, .. } |
                                         Expr::MacroStructDef { struct_name, .. } = found_typ {
-                                            if let Expr::StructName(name) = *struct_name {
+                                            if let Expr::StructName { name, .. } = *struct_name {
                                                 pass_typs.push(name);
                                                 name_buf.clear();
                                                 continue;
@@ -3901,9 +3913,13 @@ impl ExprWeights {
 
     fn handle_type_mask(&mut self, type_name: String, masked_type: Expr) {
         match masked_type {
-            Expr::StructDef { struct_fields, .. } => {
+            Expr::StructDef { struct_fields, struct_name } => {
+                let is_shared = match *struct_name {
+                    Expr::StructName { is_shared, .. } => is_shared,
+                    _ => false,
+                };
                 let expr = Expr::StructDef {
-                    struct_name: Box::new(Expr::StructName(type_name)),
+                    struct_name: Box::new(Expr::StructName { name: type_name, is_shared }),
                     struct_fields
                 };
                 self.structures.push(expr);
@@ -3945,7 +3961,7 @@ impl ExprWeights {
                         self.handle_type_mask(name.to_owned(), right_expr.clone());
                     } else if let Expr::IntLit(_) = right_expr {
                         self.structures.push(Expr::StructDef {
-                            struct_name: Box::new(Expr::StructName(name.to_owned())),
+                            struct_name: Box::new(Expr::StructName { name: name.to_owned(), is_shared: false }),
                             struct_fields: vec![]
                         });
                     }
@@ -3986,7 +4002,7 @@ impl ExprWeights {
                                 self.handle_type_mask(name.to_owned(), right_expr.clone());
                             } else if let Expr::IntLit(_) = right_expr {
                                 self.structures.push(Expr::StructDef {
-                                    struct_name: Box::new(Expr::StructName(name.to_owned())),
+                                    struct_name: Box::new(Expr::StructName { name: name.to_owned(), is_shared: false }),
                                     struct_fields: vec![]
                                 });
                             }
