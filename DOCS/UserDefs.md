@@ -24,6 +24,13 @@ struct[T] option :: {
 The syntax is `struct<[<generic>]> <name> :: {}`. Struct fields are declared the same as variable definitions.<br>
 Make sure to also check the <a href="./Generics.md">Generics</a> doc for more information
 
+### Macros / Decorators
+`struct` has `@shared`.
+```
+struct vec2 :: @shared {}
+```
+This makes it a C style union, note: this is not a tagged union. Tagged unions are not currently in Impulse but they will be added in the future
+
 ## Enum
 These are not tagged unions like in Rust, They are enumerations
 Similar syntax to C
