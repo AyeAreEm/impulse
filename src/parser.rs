@@ -95,6 +95,7 @@ pub enum Expr {
     MacroStructName {
         name: String,
         generics: Vec<Expr>,
+        is_shared: bool,
     },
     MacroStructDef {
         struct_name: Box<Expr>, // Expr = StructName
@@ -1032,9 +1033,9 @@ impl ExprWeights {
         self.in_struct_def = true;
 
         if pass_generic.is_empty() {
-            self.expr_stack.push(Expr::StructName{ name, is_shared});
+            self.expr_stack.push(Expr::StructName{ name, is_shared });
         } else {
-            self.expr_stack.push(Expr::MacroStructName{name, generics: pass_generic});
+            self.expr_stack.push(Expr::MacroStructName { name, generics: pass_generic, is_shared });
         }
         self.token_stack.clear();
     }
@@ -1067,9 +1068,9 @@ impl ExprWeights {
                 if let Expr::StructName {name: sname, is_shared} = *struct_name.clone() {
                     sanitised_name = sname.replace(".", "__");
                     Expr::MacroStructDef { struct_name: Box::new(Expr::StructName { name: sanitised_name.clone(), is_shared }), struct_fields: struct_fields.to_vec() }
-                } else if let Expr::MacroStructName { name: sname, generics } = *struct_name.clone() {
+                } else if let Expr::MacroStructName { name: sname, generics, is_shared } = *struct_name.clone() {
                     sanitised_name = sname.replace(".", "__");
-                    Expr::MacroStructDef { struct_name: Box::new(Expr::MacroStructName { name: sanitised_name.clone(), generics }), struct_fields: struct_fields.to_vec() }
+                    Expr::MacroStructDef { struct_name: Box::new(Expr::MacroStructName { name: sanitised_name.clone(), generics, is_shared }), struct_fields: struct_fields.to_vec() }
                 } else {
                     unreachable!()
                 }
@@ -1079,7 +1080,7 @@ impl ExprWeights {
 
         self.program_push(sanitised_expr);
         match name {
-            Expr::StructName {name: struct_name, .. } => {
+            Expr::StructName { name: struct_name, .. } => {
                 self.program_push(Expr::EndStruct(sanitised_name));
                 self.func_to_vars.remove(&struct_name);
             },
@@ -3925,13 +3926,14 @@ impl ExprWeights {
                 self.structures.push(expr);
             },
             Expr::MacroStructDef { struct_name, struct_fields } => {
-                let generics = if let Expr::MacroStructName { generics, .. } = *struct_name {
-                    generics
-                } else {vec![]};
+                let (generics, is_shared) = if let Expr::MacroStructName { generics, is_shared, .. } = *struct_name {
+                    (generics, is_shared) 
+                } else {(vec![], false)};
                 let expr = Expr::MacroStructDef {
                     struct_name: Box::new(Expr::MacroStructName {
                         name: type_name,
-                        generics
+                        generics,
+                        is_shared
                     }),
                     struct_fields
                 };

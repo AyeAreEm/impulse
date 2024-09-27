@@ -1,10 +1,12 @@
-struct Union :: @shared {
-    i8 y;
+@import "base/random.imp";
+
+struct[T] Union :: @shared {
+    $T y;
     i32 x;
 }
 
 _ main :: () {
-    Union what;
+    Union[i16] what;
     what.y: 10;
 
     println("%d" what.x);

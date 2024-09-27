@@ -836,7 +836,7 @@ impl Gen {
 
                     let mut def_code = String::new();
                     match *struct_name {
-                        Expr::MacroStructName { name, generics } => {
+                        Expr::MacroStructName { name, generics, is_shared } => {
                             def_code.push_str(&format!("#define {name}("));
                             for (i, generic) in generics.iter().enumerate() {
                                 match generic {
@@ -857,7 +857,11 @@ impl Gen {
                                 }
                             }
                             def_code.push_str(&format!(")\\\n"));
-                            def_code.push_str("typedef struct {\\\n");
+                            if is_shared {
+                                def_code.push_str("typedef union {\\\n");
+                            } else {
+                                def_code.push_str("typedef struct {\\\n");
+                            }
                         },
                         _ => (),
                     }
