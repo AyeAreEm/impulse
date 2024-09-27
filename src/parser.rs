@@ -3832,6 +3832,7 @@ impl ExprWeights {
                                     }
                                 },
                             }
+                            name_buf.clear();
                         } else {
                             name_buf.push(ch);
                         }

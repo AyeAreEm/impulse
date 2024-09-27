@@ -1,13 +1,8 @@
-@import "base/random.imp";
-
-struct[T] Union :: @shared {
-    $T y;
-    i32 x;
+struct[T K] tuple :: {
+    $T first;
+    $K second;
 }
 
 _ main :: () {
-    Union[i16] what;
-    what.y: 10;
-
-    println("%d" what.x);
+    tuple[f32 f32] pos;
 }
