@@ -3397,6 +3397,7 @@ impl ExprWeights {
                             },
                             None => {
                                 let found_ident = self.find_ident(ident.to_owned());
+                                println!("{found_ident:?}, line num: {}", self.line_num);
                                 if returning {}
                                 else if create_generic {
                                     if let Expr::VariableName { typ, name, .. } = found_ident {
@@ -3499,7 +3500,7 @@ impl ExprWeights {
                                     return self.create_define_var(k, value[i+1].clone(), vec![]);
                                 } else {
                                     // if in struct it reference it's own name
-                                    if self.in_struct_def && !self.current_func.is_empty() && ident == &self.current_func {
+                                    if self.in_struct_def && ident == &self.current_func {
                                         let mut k = Keyword::TypeDef {
                                             type_name: format!("struct {}", self.current_func), 
                                             generics: Some(vec![])
@@ -3508,6 +3509,7 @@ impl ExprWeights {
                                             k = self.create_keyword_pointer(self.keyword_to_type(k), pointer_counter).0;
                                         }
 
+                                            println!("running");
                                         let expr = self.create_define_var(k, value[i+1].clone(), vec![]);
                                         self.expr_stack.push(expr);
                                         return Expr::None
@@ -3897,11 +3899,17 @@ impl ExprWeights {
             Keyword::None => (),
             Keyword::Generic(_) => (),
             Keyword::Pointer(.., last) => {
+                if self.in_struct_def && !self.in_func {
+                    return expr;
+                }
                 if let Types::TypeDef { type_name: user_def, .. } = last {
                     self.propagate_struct_fields(fname, user_def.to_string(), true, false);
                 }
             },
             Keyword::TypeDef { type_name: ref user_def, .. } => {
+                if self.in_struct_def && !self.in_func {
+                    return expr;
+                }
                 self.propagate_struct_fields(fname, user_def.to_string(), false, false);
             },
             _ => {

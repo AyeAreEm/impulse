@@ -1,4 +1,4 @@
-use std::{ascii::AsciiExt, collections::HashMap, fs, process::{exit, Command}};
+use std::{collections::HashMap, fs, process::{exit, Command}};
 use crate::declare_types::*;
 use crate::parser::*;
 use rand::Rng;
@@ -834,20 +834,27 @@ impl Gen {
                 Expr::MacroStructDef { struct_name, struct_fields } => {
                     self.in_macro_func = true;
 
+                    let mut og_name = String::new();
                     let mut def_code = String::new();
+                    let mut def_name = String::new();
                     match *struct_name {
                         Expr::MacroStructName { name, generics, is_shared } => {
+                            og_name = name.clone();
                             def_code.push_str(&format!("#define {name}("));
+
+                            def_name = name.clone();
                             for (i, generic) in generics.iter().enumerate() {
                                 match generic {
                                     Expr::Variable { info, .. } => {
                                         match *info.clone() {
-                                            Expr::VariableName { name, .. } => {
-                                                struct_generics.push(name.clone());
+                                            Expr::VariableName { name: generic_name, .. } => {
+                                                struct_generics.push(generic_name.clone());
                                                 if i == 0 {
-                                                    def_code.push_str(&format!("{name}"));
+                                                    def_code.push_str(&format!("{generic_name}"));
+                                                    def_name.push_str(&format!("_##{generic_name}"));
                                                 } else {
-                                                    def_code.push_str(&format!(", {name}"));
+                                                    def_code.push_str(&format!(", {generic_name}"));
+                                                    def_name.push_str(&format!("##{generic_name}"));
                                                 }
                                             },
                                             _ => (),
@@ -858,9 +865,9 @@ impl Gen {
                             }
                             def_code.push_str(&format!(")\\\n"));
                             if is_shared {
-                                def_code.push_str("typedef union {\\\n");
+                                def_code.push_str(&format!("typedef union {def_name} {{\\\n"));
                             } else {
-                                def_code.push_str("typedef struct {\\\n");
+                                def_code.push_str(&format!("typedef struct {def_name} {{\\\n"));
                             }
                         },
                         _ => (),
@@ -869,6 +876,11 @@ impl Gen {
                     let mut fields = String::new();
                     for field in struct_fields {
                         let varname = self.handle_varname(field);
+                        if varname.contains(&og_name) {
+                            let generic_varname = varname.replace(&og_name, &def_name);
+                            fields.push_str(&format!("    {generic_varname};\\\n"));
+                            continue;
+                        }
                         fields.push_str(&format!("    {varname};\\\n"));
                     }
 

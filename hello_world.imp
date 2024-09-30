@@ -1,8 +1,17 @@
-struct[T K] tuple :: {
-    $T first;
-    $K second;
+struct[T] Node :: {
+    $T value;
+    ^Node next;
 }
 
 _ main :: () {
-    tuple[f32 f32] pos;
+    Node[int] first;
+    Node[int] second;
+    second.value: 15;
+
+    first.value: 10;
+    first.next: &second;
+
+    ^Node[int] n: first.next;
+    int sv: n.value;
+    println("%d" sv);
 }
