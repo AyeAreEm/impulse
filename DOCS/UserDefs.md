@@ -32,7 +32,7 @@ struct vec2 :: @shared {}
 This makes it a C style union, note: this is not a tagged union. Tagged unions are not currently in Impulse but they will be added in the future
 
 ## Enum
-These are not tagged unions like in Rust, They are enumerations
+These are not tagged unions like in Rust, they are enumerations
 Similar syntax to C
 ```
 enum Day :: {
@@ -50,4 +50,8 @@ _ main() :: {
 }
 ```
 
-Enum fields are namespaced with the name of the enum
+Enum fields are namespaced with the name of the enum. These have some runtime reflections.
+
+### Field Count
+To get the number of fields in an enum, you can do `<namespace>.field_count`. This is a `usize`.<br>
+Note: if you plan to continue working in C after using Impulse, you'll have to manually update this variable everytime you add a new enum field
