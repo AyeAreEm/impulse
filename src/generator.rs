@@ -780,7 +780,8 @@ impl Gen {
                                 fields.push_str(&format!("    {varname} = {varvalue},\n"));
                             },
                             Expr::VariableName { .. } => {
-                                let varname = self.handle_varname(field).replace(".", "_");
+                                let mut varname = self.handle_varname(field).replace(".", "_");
+                                varname = varname.strip_prefix("const  ").unwrap().to_owned();
                                 fields.push_str(&format!("    {varname},\n"));
                             },
                             _ => (),

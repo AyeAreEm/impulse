@@ -1,17 +1,44 @@
-struct[T] Node :: {
-    $T value;
-    ^Node next;
+enum Day :: {
+    Mon;
+    Tue;
+    Wed;
+    Thur;
+    Fri;
+    Sat;
+    Sun;
+}
+
+^char Day.as_cstr :: (int num) {
+    switch (num) {
+        case (Day.Mon) {
+            return "Day.Mon";
+        }
+        case (Day.Tue) {
+            return "Day.Tue";
+        }
+        case (Day.Wed) {
+            return "Day.Wed";
+        }
+        case (Day.Thur) {
+            return "Day.Thur";
+        }
+        case (Day.Fri) {
+            return "Day.Fri";
+        }
+        case (Day.Sat) {
+            return "Day.Sat";
+        }
+        case (Day.Sun) {
+            return "Day.Sun";
+        }
+        case {
+            return "WHAT";
+        }
+    }
 }
 
 _ main :: () {
-    Node[int] first;
-    Node[int] second;
-    second.value: 15;
-
-    first.value: 10;
-    first.next: &second;
-
-    ^Node[int] n: first.next;
-    int sv: n.value;
-    println("%d" sv);
+    loop (i < Day.field_count) [+] {
+        println("%s" Day.as_cstr(i));
+    }
 }

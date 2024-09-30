@@ -945,9 +945,10 @@ impl ExprWeights {
             enum_fields: exprs.clone()
         });
 
+
         match name {
             Expr::EnumName(ref enum_name) => {
-                self.program_push(Expr::EndStruct(sanitised_name));
+                self.program_push(Expr::EndStruct(sanitised_name.clone()));
                 self.func_to_vars.remove(enum_name);
             },
             _ => {
@@ -957,8 +958,21 @@ impl ExprWeights {
         }
 
         self.in_enum_def = false;
-        let expr = Expr::EnumDef { enum_name: Box::new(name.clone()), enum_fields: exprs };
+        let expr = Expr::EnumDef { enum_name: Box::new(name.clone()), enum_fields: exprs.clone() };
         self.enums.push(expr);
+
+        let field_count = Expr::Variable {
+            info: Box::new(Expr::VariableName {
+                typ: Types::Usize,
+                name: format!("{sanitised_name}.field_count"),
+                reassign: false,
+                constant: true,
+                field_data: (false, false),
+            }),
+            value: Box::new(Expr::IntLit(format!("{}", exprs.len()))),
+        };
+        self.enums_fields.push(field_count.clone());
+        self.program_push(field_count);
     }
 
     // this starts defining a struct
@@ -3877,7 +3891,11 @@ impl ExprWeights {
                         if let Types::TypeDef { ref mut generics, .. } = typ {
                             *generics = Some(pass_typs);
                         }
-                        expr = Expr::VariableName { typ, name: word, reassign: false, constant: false, field_data: (false, false) };
+                        expr = if self.in_enum_def {
+                            Expr::VariableName { typ, name: word, reassign: false, constant: true, field_data: (false, false) }
+                        } else {
+                            Expr::VariableName { typ, name: word, reassign: false, constant: false, field_data: (false, false) }
+                        };
                     },
                     _ => {
                         self.comp_err(&format!("identifier {:?} already declared", word));

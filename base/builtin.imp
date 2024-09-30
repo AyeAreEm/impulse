@@ -168,7 +168,7 @@ struct str :: {
     @c [*(T*)&val;];
 }
 
-# these are only here to claim the definition, these function is made in the compiler
+# these are only here to claim the definition, these functions are made in the compiler
 _ print :: () {} # args: (^char fmt variadic[any] args) also note that "variadic" does not exist lol soz
 _ println :: () {} # args: (^char fmt variadic[any] args)
 
