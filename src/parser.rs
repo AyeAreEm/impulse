@@ -3397,7 +3397,6 @@ impl ExprWeights {
                             },
                             None => {
                                 let found_ident = self.find_ident(ident.to_owned());
-                                println!("{found_ident:?}, line num: {}", self.line_num);
                                 if returning {}
                                 else if create_generic {
                                     if let Expr::VariableName { typ, name, .. } = found_ident {
@@ -3509,7 +3508,6 @@ impl ExprWeights {
                                             k = self.create_keyword_pointer(self.keyword_to_type(k), pointer_counter).0;
                                         }
 
-                                            println!("running");
                                         let expr = self.create_define_var(k, value[i+1].clone(), vec![]);
                                         self.expr_stack.push(expr);
                                         return Expr::None
