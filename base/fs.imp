@@ -1,0 +1,64 @@
+# File System library
+@import "base/string.imp";
+
+option[^_] fs.open_file :: (^char filename ^char mode) {
+    option[^_] ret;
+
+@c [
+    FILE* fptr = fopen(filename, mode);
+    if (fptr == NULL) {
+        ret.none = true;
+        return ret;
+    }
+
+    ret.value = fptr;
+    return ret;
+];
+}
+
+int fs.close_file :: (^_ file) {
+    @c [return fclose(file);];
+}
+
+int c.SEEK.SET :: @c[SEEK_SET];
+int c.SEEK.CUR :: @c[SEEK_CUR];
+int c.SEEK.END :: @c[SEEK_END];
+
+int c.fseek :: (^_ file i64 offset int position) {
+    @c [return fseek(file, offset, position);];
+}
+
+i64 c.ftell :: (^_ file) {
+    @c [return ftell(file);];
+}
+
+usize c.fread :: (^_ buffer usize size usize count ^_ file) {
+    @c [return fread(buffer, size, count, file);];
+}
+
+i64 fs.file_size :: (^_ file) {
+    c.fseek(file 0 c.SEEK.END);
+    int filesize: c.ftell(file);
+    c.fseek(file 0 c.SEEK.SET);
+
+    return filesize;
+}
+
+# returns an empty string if file couldn't open
+string fs.read_file_string :: (^char filename) {
+    string content: string.new();
+
+    option[^_] file_op: fs.open_file(filename "rb");
+    if (file_op) [file] {
+        i64 filesize: fs.file_size(file);
+        string.resize(&content filesize);
+
+        c.fread(content.data size_of(char) filesize file);
+        content.len: filesize;
+        content.data[filesize]: '\0';
+        
+        fs.close_file(file);
+    }
+
+    return content;
+}

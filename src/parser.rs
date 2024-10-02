@@ -283,15 +283,21 @@ impl ExprWeights {
             Keyword::U8 => Types::U8,
             Keyword::I8 => Types::I8,
             Keyword::Char => Types::Char,
+
             Keyword::U16 => Types::U16,
             Keyword::I16 => Types::I16,
+
             Keyword::U32 => Types::U32,
             Keyword::I32 => Types::I32,
+
             Keyword::U64 => Types::U64,
             Keyword::I64 => Types::I64,
-            Keyword::Usize => Types::Usize,
-            Keyword::Int => Types::Int,
+
             Keyword::UInt => Types::UInt,
+            Keyword::Int => Types::Int,
+
+            Keyword::Usize => Types::Usize,
+
             Keyword::F32 => Types::F32,
             Keyword::F64 => Types::F64,
             Keyword::Bool => Types::Bool,
@@ -650,7 +656,8 @@ impl ExprWeights {
                                 if !array_lens.is_empty() {
                                     // TODO: make this support mutli-dimensional arrays
                                     // kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
-                                    kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![ident.to_string()]) };
+                                    let typ = self.keyword_to_type(kw.clone());
+                                    kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![typ]) };
                                     array_lens.clear();
                                     updated_kw_buf = true;
                                 }
@@ -704,14 +711,16 @@ impl ExprWeights {
                                                     let keyword_rs = self.keyword_map.get(&name_buf);
                                                     match keyword_rs {
                                                         Some(keyword) => {
-                                                            let _ = self.keyword_to_type(keyword.clone());
-                                                            pass_typs.push(name_buf.clone());
+                                                            let typ = self.keyword_to_type(keyword.clone());
+                                                            pass_typs.push(typ);
                                                         },
                                                         None => {
                                                             let mut found = false;
                                                             for name in &typeid_names {
                                                                 if name == &name_buf {
-                                                                    pass_typs.push(name_buf.clone());
+                                                                    // WATCH THIS, might not work
+                                                                    // as expected
+                                                                    pass_typs.push(Types::TypeDef { type_name: name_buf.clone(), generics: None });
                                                                     found = true;
                                                                     break;
                                                                 }
@@ -720,7 +729,7 @@ impl ExprWeights {
                                                             if !found {
                                                                 let found_struc = self.find_structure(&name_buf);
                                                                 if let Expr::StructDef { .. } = found_struc {
-                                                                    pass_typs.push(name_buf.clone());
+                                                                    pass_typs.push(Types::TypeDef { type_name: name_buf.clone(), generics: None });
                                                                     found = true;
                                                                 }
                                                             }
@@ -1384,17 +1393,12 @@ impl ExprWeights {
                                     },
                                 };
 
-                                let keyword_res = self.keyword_map.get(&generics[0]);
-                                let subtyp = match keyword_res {
-                                    Some(kw) => {
-                                        self.keyword_to_type(kw.clone())
-                                    },
-                                    // CAN BREAK
-                                    None => {
-                                        self.propagate_struct_fields(capture.to_owned(), generics[0].clone(), false, true);
-                                        Types::TypeDef { type_name: generics[0].clone(), generics: Some(vec![]) }
-                                    },
-                                };
+                                let subtyp = generics[0].clone();
+
+                                match subtyp {
+                                    Types::TypeDef { ref type_name, .. } => self.propagate_struct_fields(capture.to_owned(), type_name.to_string(), false, true),
+                                    _ => (),
+                                }
 
                                 let value = self.find_variable(&format!("{name}.value"));
                                 if let Expr::None = value {
@@ -1556,17 +1560,11 @@ impl ExprWeights {
                     };
 
                     if type_name == &String::from("dyn") || type_name == &String::from("array") {
-                        let keyword_res = self.keyword_map.get(&generics[0]);
-                        let subtyp = match keyword_res {
-                            Some(kw) => {
-                                self.keyword_to_type(kw.clone())
-                            },
-                            // CAN BREAK
-                            None => {
-                                self.propagate_struct_fields(new_varnames[0].to_owned(), generics[0].clone(), false, *constant);
-                                Types::TypeDef { type_name: generics[0].clone(), generics: Some(vec![]) }
-                            },
-                        };
+                        let subtyp = generics[0].clone();
+                        match subtyp {
+                            Types::TypeDef { ref type_name, .. } => self.propagate_struct_fields(new_varnames[0].to_owned(), type_name.to_string(), false, *constant),
+                            _ => (),
+                        }
                         subtyp
                     } else if type_name == &String::from("string") || type_name == &String::from("str") {
                         Types::Char
@@ -1891,17 +1889,32 @@ impl ExprWeights {
                                 if i == symbols.len() - 1 {
                                     name_buf.push(ch);
                                 }
+
                                 let keyword_rs = self.keyword_map.get(&name_buf);
                                 match keyword_rs {
                                     Some(keyword) => {
-                                        let _ = self.keyword_to_type(keyword.clone());
-                                        pass_typs.push(name_buf.clone());
+                                        let typ = self.keyword_to_type(keyword.clone());
+                                        pass_typs.push(typ);
+                                        name_buf.clear();
+                                        continue;
                                     },
                                     None => {
+                                        if name_buf.chars().last().unwrap() == '_' {
+                                            if pointer_counter > 0 {
+                                                let kw; (kw, pointer_counter) = self.create_keyword_pointer(Types::Void, pointer_counter);
+                                                pass_typs.push(self.keyword_to_type(kw));
+                                                name_buf.clear();
+                                                continue;
+                                            } else {
+                                                self.comp_err("can't have a _ (void) generic parameter, did you mean ^_ (void pointer)?");
+                                                exit(1);
+                                            }
+                                        }
+
                                         let found_var = self.find_variable(&name_buf);
-                                        if let Expr::VariableName { typ, .. } = found_var {
+                                        if let Expr::VariableName { typ, name, .. } = found_var {
                                             if let Types::TypeId = typ {
-                                                pass_typs.push(name_buf.clone());
+                                                pass_typs.push(Types::TypeDef { type_name: name, generics: None });
                                                 name_buf.clear();
                                                 continue;
                                             }
@@ -1914,9 +1927,9 @@ impl ExprWeights {
                                                 self.current_func = self.previous_func.clone();
                                                 let found_var_again = self.find_variable(&name_buf);
                                                 self.current_func = temp;
-                                                if let Expr::VariableName { typ, .. } = found_var_again {
+                                                if let Expr::VariableName { typ, name, .. } = found_var_again {
                                                     if let Types::TypeId = typ {
-                                                        pass_typs.push(name_buf.clone());
+                                                        pass_typs.push(Types::TypeDef { type_name: name, generics: None });
                                                         name_buf.clear();
                                                         continue;
                                                     }
@@ -1928,7 +1941,7 @@ impl ExprWeights {
                                         if let Expr::StructDef { struct_name, .. } |
                                             Expr::MacroStructDef { struct_name, .. } = found_typ {
                                                 if let Expr::StructName { name, .. } = *struct_name {
-                                                    pass_typs.push(name);
+                                                    pass_typs.push(Types::TypeDef { type_name: name, generics: None });
                                                     name_buf.clear();
                                                     continue;
                                                 } else if let Expr::MacroStructName { .. } = *struct_name {
@@ -1941,12 +1954,14 @@ impl ExprWeights {
                                         }
                                     },
                                 }
+                            } else if ch == '^' {
+                                pointer_counter += 1;
                             } else {
                                 name_buf.push(ch);
                             }
                         }
 
-                        typ = Types::TypeDef { type_name: type_name.clone(), generics: Some(pass_typs) }
+                        typ = Types::TypeDef { type_name: type_name.clone(), generics: Some(pass_typs) };
                     } else {
                         self.comp_err(&format!("unexpected integer literal in block definition: {symbols}"));
                         exit(1);
@@ -2726,6 +2741,8 @@ impl ExprWeights {
 
     fn handle_left_assign(&mut self, var_info: Vec<Token>, is_constant: bool) -> Expr {
         let mut keyword = Keyword::None;
+        let mut pointer_counter = 0;
+
         match &var_info[0] {
             Token::Ident(ident) => {
                 let keyword_res = self.keyword_map.get(ident);
@@ -2751,14 +2768,26 @@ impl ExprWeights {
                                             let keyword_rs = self.keyword_map.get(&name_buf);
                                             match keyword_rs {
                                                 Some(keyword) => {
-                                                    let _ = self.keyword_to_type(keyword.clone());
-                                                    pass_typs.push(name_buf.clone());
+                                                    let typ = self.keyword_to_type(keyword.clone());
+                                                    pass_typs.push(typ);
                                                 },
                                                 None => {
+                                                    if name_buf.chars().last().unwrap() == '_' {
+                                                        if pointer_counter > 0 {
+                                                            let kw; (kw, pointer_counter) = self.create_keyword_pointer(Types::Void, pointer_counter);
+                                                            pass_typs.push(self.keyword_to_type(kw));
+                                                            name_buf.clear();
+                                                            continue;
+                                                        } else {
+                                                            self.comp_err("can't have a _ (void) generic parameter, did you mean ^_ (void pointer)?");
+                                                            exit(1);
+                                                        }
+                                                    }
+
                                                     let found_var = self.find_variable(&name_buf);
-                                                    if let Expr::VariableName { typ, .. } = found_var {
+                                                    if let Expr::VariableName { typ, name, .. } = found_var {
                                                         if let Types::TypeId = typ {
-                                                            pass_typs.push(name_buf.clone());
+                                                            pass_typs.push(Types::TypeDef { type_name: name, generics: None });
                                                             continue;
                                                         }
                                                     }
@@ -2767,7 +2796,7 @@ impl ExprWeights {
                                                     if let Expr::StructDef { struct_name, .. } |
                                                         Expr::MacroStructDef { struct_name, .. } = found_typ {
                                                             if let Expr::StructName { name, .. } = *struct_name {
-                                                                pass_typs.push(name);
+                                                                pass_typs.push(Types::TypeDef { type_name: name, generics: None });
                                                                 continue;
                                                             } else if let Expr::MacroStructName { .. } = *struct_name {
                                                                 self.comp_err("generic struct with type of a generic struct not supported yet");
@@ -2780,6 +2809,8 @@ impl ExprWeights {
                                             }
 
                                             name_buf.clear();
+                                        } else if ch == '^' {
+                                            pointer_counter += 1;
                                         } else {
                                             name_buf.push(ch);
                                         }
@@ -2940,14 +2971,14 @@ impl ExprWeights {
                                                         let keyword_rs = self.keyword_map.get(&name_buf);
                                                         match keyword_rs {
                                                             Some(keyword) => {
-                                                                let _ = self.keyword_to_type(keyword.clone());
-                                                                pass_typs.push(name_buf.clone());
+                                                                let typ = self.keyword_to_type(keyword.clone());
+                                                                pass_typs.push(typ);
                                                             },
                                                             None => {
                                                                 let found_var = self.find_variable(&name_buf);
-                                                                if let Expr::VariableName { typ, .. } = found_var {
+                                                                if let Expr::VariableName { typ, name, .. } = found_var {
                                                                     if let Types::TypeId = typ {
-                                                                        pass_typs.push(name_buf.clone());
+                                                                        pass_typs.push(Types::TypeDef { type_name: name, generics: None });
                                                                         continue;
                                                                     }
                                                                 }
@@ -3800,7 +3831,8 @@ impl ExprWeights {
     fn create_define_var(&mut self, kw: Keyword, ident: Token, generics: Vec<Token>) -> Expr {
         let expr: Expr;
         let fname: String;
-        let mut pass_typs: Vec<String> = Vec::new();
+        let mut pointer_counter = 0;
+        let mut pass_typs: Vec<Types> = Vec::new();
 
         for gen in generics {
             match gen {
@@ -3816,14 +3848,26 @@ impl ExprWeights {
                             let keyword_rs = self.keyword_map.get(&name_buf);
                             match keyword_rs {
                                 Some(keyword) => {
-                                    let _ = self.keyword_to_type(keyword.clone());
-                                    pass_typs.push(name_buf.clone());
+                                    let typ = self.keyword_to_type(keyword.clone());
+                                    pass_typs.push(typ);
                                 },
                                 None => {
+                                    if name_buf.chars().last().unwrap() == '_' {
+                                        if pointer_counter > 0 {
+                                            let kw; (kw, pointer_counter) = self.create_keyword_pointer(Types::Void, pointer_counter);
+                                            pass_typs.push(self.keyword_to_type(kw));
+                                            name_buf.clear();
+                                            continue;
+                                        } else {
+                                            self.comp_err("can't have a _ (void) generic parameter, did you mean ^_ (void pointer)?");
+                                            exit(1);
+                                        }
+                                    }
+
                                     let found_var = self.find_variable(&name_buf);
-                                    if let Expr::VariableName { typ, .. } = found_var {
+                                    if let Expr::VariableName { typ, name, .. } = found_var {
                                         if let Types::TypeId = typ {
-                                            pass_typs.push(name_buf.clone());
+                                            pass_typs.push(Types::TypeDef { type_name: name, generics: None });
                                             name_buf.clear();
                                             continue;
                                         }
@@ -3833,7 +3877,7 @@ impl ExprWeights {
                                     if let Expr::StructDef { struct_name, .. } |
                                         Expr::MacroStructDef { struct_name, .. } = found_typ {
                                             if let Expr::StructName { name, .. } = *struct_name {
-                                                pass_typs.push(name);
+                                                pass_typs.push(Types::TypeDef { type_name: name, generics: None });
                                                 name_buf.clear();
                                                 continue;
                                             } else if let Expr::MacroStructName { .. } = *struct_name {
@@ -3847,6 +3891,8 @@ impl ExprWeights {
                                 },
                             }
                             name_buf.clear();
+                        } else if ch == '^' {
+                            pointer_counter += 1;
                         } else {
                             name_buf.push(ch);
                         }

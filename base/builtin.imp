@@ -177,8 +177,7 @@ _ panic :: (^char msg) {
     exitcode(1);
 }
 
-# runtime assert
-_ rt_assert :: (bool expression ^char msg) {
+_ runtime.assert :: (bool expression ^char msg) {
     if (expression) {
         return;
     }
@@ -187,7 +186,6 @@ _ rt_assert :: (bool expression ^char msg) {
     exitcode(1);
 }
 
-# comptime assert
-_ ct_assert :: (bool expression ^char msg) {
+_ comptime.assert :: (bool expression ^char msg) {
     # no clue how to do this rn
 }

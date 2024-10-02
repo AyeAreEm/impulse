@@ -38,7 +38,7 @@ fn initalise(dir: &String) {
     let file_res = fs::File::create(format!("{dir}/c_flags.txt"));
     match file_res {
         Ok(mut file) => {
-            let _ = file.write_all(b"-O2");
+            let _ = file.write_all(b"-O -Wall -Wextra -Wfloat-equal");
         },
         Err(e) => {
             println!("{e:?}");
@@ -66,9 +66,9 @@ fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool
     }
 
     let expressions = parse.parser();
-    // for expr in &expressions {
-    //     println!("{:?}", expr.0);
-    // }
+    for expr in &expressions {
+        println!("{:?}", expr.0);
+    }
 
     let mut gen = Gen::new(filename.to_string(), out_filename.clone(), compile, keep_gen, lang);
     gen.generate(expressions);

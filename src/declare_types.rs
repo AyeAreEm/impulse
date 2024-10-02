@@ -18,9 +18,10 @@ pub enum Types {
     U64,
     I64,
 
-    Usize,
-    Int,
     UInt,
+    Int,
+
+    Usize,
 
     F32,
     F64,
@@ -47,7 +48,7 @@ pub enum Types {
 
     TypeDef {
         type_name: String,
-        generics: Option<Vec<String>>,
+        generics: Option<Vec<Types>>,
     },
     None,
 }
@@ -68,8 +69,9 @@ pub enum Keyword {
     I64,
 
     Usize,
-    Int,
+
     UInt,
+    Int,
 
     F32,
     F64,
@@ -114,7 +116,7 @@ pub enum Keyword {
     Enum,
     TypeDef {
         type_name: String,
-        generics: Option<Vec<String>>,
+        generics: Option<Vec<Types>>,
     },
 
     Defer,

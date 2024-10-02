@@ -261,7 +261,7 @@ string __IMPULSE__STRING__FORMAT__(char* fmt, ...) {
         return result;
     }
 
-    if (size + 1 >= result.cap) {
+    if ((usize)size + 1 >= result.cap) {
         string__resize(&result, size + 1);
     }
 

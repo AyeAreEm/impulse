@@ -99,24 +99,25 @@ impl Gen {
         }
     }
 
-    fn generate_new_struct(&mut self, fullname: String, og_name: &String) {
+    fn generate_new_struct(&mut self, struct_name: &String, type_names: String, types: Vec<String>) {
+        let fullname = format!("{struct_name}_{type_names}");
+
         for gen_struct in &self.generated_structs {
-            if gen_struct == &format!("{og_name}_{fullname}") {
+            if gen_struct == &fullname {
                 return;
             }
         }
 
-        let parts: Vec<&str> = fullname.split("_").collect();
-
-        let mut gen_code = format!("{og_name}(");
-        for (i, part) in parts.iter().enumerate() {
+        let mut gen_code = format!("{struct_name}(");
+        for (i, typ) in types.iter().enumerate() {
             if i == 0 {
-                gen_code.push_str(part);
+                gen_code.push_str(typ);
             } else {
-                gen_code.push_str(&format!(", {part}"));
+                gen_code.push_str(&format!(", {typ}"));
             }
         }
-        gen_code.push_str(");\n");
+
+        gen_code.push_str(&format!(", {type_names});\n"));
 
         let index_op = self.defs_location.last();
         let index = match index_op {
@@ -129,7 +130,7 @@ impl Gen {
 
         self.code.insert_str(index, &gen_code);
         self.update_struct_definitions(index, gen_code.len());
-        self.generated_structs.push(format!("{og_name}_{fullname}"));
+        self.generated_structs.push(fullname);
     }
 
     fn handle_typ(&mut self, typ: Types) -> (String, String) {
@@ -151,7 +152,7 @@ impl Gen {
                 if !self.imports.contains("#include <stddef.h>\n") {
                     self.imports.push_str("#include <stddef.h>\n");
                 }
-                (String::from("size_t"), String::new())
+                (String::from("usize"), String::new())
             },
             Types::Bool => {
                 if !self.imports.contains("#include <stdbool.h>\n") {
@@ -166,17 +167,19 @@ impl Gen {
                 match generics_op {
                     Some(generics) => {
                         for (i, generic) in generics.iter().enumerate() {
+                            let mut gen_typ = self.handle_typ(generic.clone()).0;
+                            gen_typ = gen_typ.replace("*", "ptr");
                             if self.in_macro_func {
                                 if i == 0 {
-                                    typ.push_str(&format!("_##{generic}"));
+                                    typ.push_str(&format!("_##{gen_typ}"));
                                 } else {
-                                    typ.push_str(&format!("##{generic}"));
+                                    typ.push_str(&format!("##{gen_typ}"));
                                 }
                             } else {
                                 if i == 0 {
-                                    typ.push_str(&format!("_{generic}"));
+                                    typ.push_str(&format!("_{gen_typ}"));
                                 } else {
-                                    typ.push_str(&format!("{generic}"));
+                                    typ.push_str(&format!("{gen_typ}"));
                                 }
                             }
                         }
@@ -227,21 +230,27 @@ impl Gen {
                 if let Types::ArrIndex { index_at, .. } = typ {
                     vardec.push_str(&format!("{new_name}[{index_at}]"));
                     return vardec
-                } else if let Types::TypeDef { type_name, generics: generics_op } = typ {
+                } else if let Types::TypeDef { type_name: struct_name, generics: generics_op } = typ {
                     match generics_op {
                         Some(generics) => {
                             if !generics.is_empty() {
-                                let mut fullname = String::new();
+                                let mut type_names = String::new();
+                                let mut types = Vec::new();
+
                                 for (i, generic) in generics.iter().enumerate() {
+                                    let mut gen_typ = self.handle_typ(generic.clone()).0;
+                                    types.push(gen_typ.clone());
+
+                                    gen_typ = gen_typ.replace("*", "ptr");
                                     if i == 0 {
-                                        fullname.push_str(&format!("{generic}"));
+                                        type_names.push_str(&format!("{gen_typ}"));
                                     } else {
-                                        fullname.push_str(&format!("_{generic}"));
+                                        type_names.push_str(&format!("_{gen_typ}"));
                                     }
                                 }
 
                                 if !self.in_macro_func {
-                                    self.generate_new_struct(fullname, type_name);
+                                    self.generate_new_struct(struct_name, type_names, types);
                                 }
                             }
                         },
@@ -250,16 +259,19 @@ impl Gen {
                 }
 
                 if reassign == false {
-                    let str_typ = self.handle_typ(typ.clone());
-                    if !str_typ.1.is_empty() {
+                    let mut subtyp = self.handle_typ(typ.clone());
+                    if !subtyp.1.is_empty() {
                         if let Types::Arr { .. } = typ {
-                            self.generate_new_struct(str_typ.0.clone(), &String::from("array"));
-                            vardec.push_str(&format!("array_{} {new_name} = {{.data = ({}{})A", str_typ.0, str_typ.0, str_typ.1));
+                            let types = vec![subtyp.0.clone()];
+                            subtyp.0 = subtyp.0.replace("*", "ptr");
+
+                            self.generate_new_struct(&String::from("array"), subtyp.0.clone(), types);
+                            vardec.push_str(&format!("array_{} {new_name} = {{.data = ({}{})A", subtyp.0, subtyp.0, subtyp.1));
                             return vardec
                         }
                     }
 
-                    vardec.push_str(&format!("{} {new_name}{}", str_typ.0, str_typ.1));
+                    vardec.push_str(&format!("{} {new_name}{}", subtyp.0, subtyp.1));
                     return vardec
                 } else {
                     vardec.push_str(&format!("{new_name}"));
@@ -519,6 +531,7 @@ impl Gen {
                     _ => unreachable!(),
                 }
             },
+            Expr::CEmbed(code) => code,
             unimpl => {
                 self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                 exit(1);
@@ -700,9 +713,9 @@ impl Gen {
         self.code.push_str("typedef int32_t i32;\n");
         self.code.push_str("typedef uint64_t u64;\n");
         self.code.push_str("typedef int64_t i64;\n");
+        self.code.push_str("typedef size_t usize;\n");
         self.code.push_str("typedef float f32;\n");
         self.code.push_str("typedef double f64;\n");
-        self.code.push_str("typedef size_t usize;\n");
         self.code.push_str("typedef unsigned int uint;\n");
         self.code.push_str("#define $inline static inline __attribute__((always_inline))\n");
 
@@ -843,7 +856,7 @@ impl Gen {
                             og_name = name.clone();
                             def_code.push_str(&format!("#define {name}("));
 
-                            def_name = name.clone();
+                            def_name = format!("{name}_##imp_struct_type_name");
                             for (i, generic) in generics.iter().enumerate() {
                                 match generic {
                                     Expr::Variable { info, .. } => {
@@ -852,10 +865,10 @@ impl Gen {
                                                 struct_generics.push(generic_name.clone());
                                                 if i == 0 {
                                                     def_code.push_str(&format!("{generic_name}"));
-                                                    def_name.push_str(&format!("_##{generic_name}"));
+                                                    // def_name.push_str(&format!("_##{generic_name}"));
                                                 } else {
                                                     def_code.push_str(&format!(", {generic_name}"));
-                                                    def_name.push_str(&format!("##{generic_name}"));
+                                                    // def_name.push_str(&format!("##{generic_name}"));
                                                 }
                                             },
                                             _ => (),
@@ -864,6 +877,7 @@ impl Gen {
                                     _ => (),
                                 }
                             }
+                            def_code.push_str(", imp_struct_type_name");
                             def_code.push_str(&format!(")\\\n"));
                             if is_shared {
                                 def_code.push_str(&format!("typedef union {def_name} {{\\\n"));
@@ -889,14 +903,14 @@ impl Gen {
                     self.code.push_str(&format!("{def_code}{fields}"));
                 },
                 Expr::MacroEndStruct(name) => {
-                    self.code.push_str(&format!("}} {name}"));
-                    for (i, generic) in struct_generics.iter().enumerate() {
-                        if i == 0 {
-                            self.code.push_str(&format!("_##{generic}"));
-                        } else {
-                            self.code.push_str(&format!("##{generic}"));
-                        }
-                    }
+                    self.code.push_str(&format!("}} {name}_##imp_struct_type_name"));
+                    // for (i, generic) in struct_generics.iter().enumerate() {
+                    //     if i == 0 {
+                    //         self.code.push_str(&format!("_##{generic}"));
+                    //     } else {
+                    //         self.code.push_str(&format!("##{generic}"));
+                    //     }
+                    // }
 
                     self.code.push_str(";\n");
                     self.defs_location.push(self.code.len());
