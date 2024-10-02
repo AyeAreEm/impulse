@@ -200,13 +200,13 @@ struct string :: {
 
     _ to_lowercase :: (string word) {
         for (word) [ch i] {
-            @c [word.data[i] = tolower(ch);];
+            word.data[i]: @c [tolower(ch)];
         }
     }
     
     _ to_uppercase :: (string word) {
         for (word) [ch i] {
-            @c [word.data[i] = toupper(ch);];
+            word.data[i]: @c [toupper(ch)];
         }
     }
 
