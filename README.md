@@ -64,9 +64,9 @@ _ main :: () {
 ```
 
 ## Resources
-<a href="./Docs/QuickStart.md">Quick Start</a><br>
-<a href="./Docs/Overview.md">Overview</a><br>
-<a href="./Docs/Docs.md">Docs</a><br>
+<a href="./DOCS/QuickStart.md">Quick Start</a><br>
+<a href="./DOCS/Overview.md">Overview</a><br>
+<a href="./DOCS/Docs.md">Docs</a><br>
 <a href="./examples">Examples</a>
 
 ### Known Bugs
