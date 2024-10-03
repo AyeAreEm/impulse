@@ -1,4 +1,4 @@
-# TODO: change this to be OS dependant
+# TODO: change this to work on other OS's
 
 # copy this in c_flags
 # -I base/raylib/include/ -L base/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm

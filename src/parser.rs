@@ -1,6 +1,8 @@
 use std::{fs, collections::HashMap, process::exit};
 use crate::tokeniser::{tokeniser, Token}; use crate::{declare_types::*, Gen};
 
+const CUR_PATH: &str = env!("current_path");
+
 #[derive(Debug, Clone)]
 pub enum Expr {
     Func {
@@ -718,8 +720,6 @@ impl ExprWeights {
                                                             let mut found = false;
                                                             for name in &typeid_names {
                                                                 if name == &name_buf {
-                                                                    // WATCH THIS, might not work
-                                                                    // as expected
                                                                     pass_typs.push(Types::TypeDef { type_name: name_buf.clone(), generics: None });
                                                                     found = true;
                                                                     break;
@@ -2547,7 +2547,7 @@ impl ExprWeights {
         }
     }
 
-    pub fn handle_import_macro(&mut self, path: &String) -> Expr {
+    pub fn handle_import_macro(&mut self, mut path: String) -> Expr {
         if path.chars().nth(path.len()-1).unwrap() == 'h' {
             self.imports.push(path.to_string());
             let no_extension = path.split_at(path.len()-2);
@@ -2556,7 +2556,7 @@ impl ExprWeights {
 
         if !self.imports.is_empty() {
             for imp in &self.imports {
-                if imp == path {
+                if imp == &path {
                     return Expr::None
                 }
             }
@@ -2566,7 +2566,11 @@ impl ExprWeights {
             self.imports.push(path.to_string());
         }
 
-        let file_res = fs::read_to_string(path);
+        if path.starts_with("base/") {
+            path = format!("{CUR_PATH}/{path}");
+        }
+
+        let file_res = fs::read_to_string(path.clone());
         let content = match file_res {
             Ok(content) => content,
             Err(err) => {
@@ -2576,7 +2580,7 @@ impl ExprWeights {
         };
 
         let tokens = tokeniser(content);
-        let mut parse = ExprWeights::new(tokens, path);
+        let mut parse = ExprWeights::new(tokens, &path);
         // REMEMBER TO DO ADD THIS IF YOU NEED INFO TO CARRY OVER FROM OTHER FILES
         parse.functions = self.functions.clone();
         parse.imports = self.imports.clone();
@@ -2726,7 +2730,7 @@ impl ExprWeights {
             },
             Macros::Import => {
                 if let Token::Str(path) = &value[index+2] {
-                    return self.handle_import_macro(path);
+                    return self.handle_import_macro(path.to_string());
                 } else {
                     self.comp_err(&format!("expected \"path_to_file\", got {:?}", value[index+2]));
                     exit(1);

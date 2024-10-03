@@ -81,12 +81,9 @@ typeid vec2 :: array[f32];
 ```
 
 ### Todos / Ideas
-#### Remove "impulse_modules"
-When you run `$ impulse -init .`, it copies the `base` folder into the current directory.
-
 #### Import libraries
 Instead of just importing a file like `base/random.imp`<br>
-You'd import `random` or `dynamic`
+You'd import `base/random` or `base/dynamic`
 
 #### @package or @lib
 At the start of a file, you can give this file a package / library name. That then is used to prefix all functions and user definitions outside of the package

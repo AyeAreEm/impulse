@@ -1,14 +1,3 @@
-# what happened this commit:
-
-# refactored generics to be actual types instead of strings. no difference in how you write the code, just better for the compiler
-# start work on a file system library `base/fs.imp`
-# allow for CEmbeds as values. `int int_max :: @c [INT_MAX];`. This is new, will refactor base to use this more
-
-@import "base/fs.imp";
-
 _ main :: () {
-    string content: fs.read_file_string("./test.txt");
-    defer string.dealloc(&content);
-
-    println("%s" content.data);
+    println("hello world");
 }

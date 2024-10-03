@@ -1,9 +1,5 @@
 use std::io::Write;
-use std::{path::Path, env, fs, process::exit};
-
-use fs_extra::copy_items;
-use fs_extra::dir;
-
+use std::{env, fs, process::exit};
 use crate::tokeniser::*;
 use crate::parser::*;
 use crate::generator::*;
@@ -14,27 +10,7 @@ mod parser;
 mod generator;
 mod declare_types;
 
-
 fn initalise(dir: &String) {
-    const CUR_PATH: &str = env!("current_path");
-
-    let str_to_base = format!("{}/base", CUR_PATH);
-    let path_to_base = Path::new(&str_to_base);
-
-    let options = dir::CopyOptions::new();
-
-    match copy_items(&vec![path_to_base], dir, &options) {
-        Ok(_) => (),
-        Err(e) => match e.kind {
-            fs_extra::error::ErrorKind::AlreadyExists => (),
-            _ => {
-                println!("{e:?}");
-                println!("\x1b[91merror\x1b[0m: unable to copy base library during initalising");
-                exit(1);
-            }
-        }
-    }
-
     let file_res = fs::File::create(format!("{dir}/c_flags.txt"));
     match file_res {
         Ok(mut file) => {
@@ -62,7 +38,7 @@ fn build(filename: &String, out_filename: &String, compile: bool, keep_gen: bool
     let mut parse = ExprWeights::new(tokens, filename);
 
     if !content.contains("@import \"base/builtin.imp\";") {
-        parse.handle_import_macro(&String::from("base/builtin.imp"));
+        parse.handle_import_macro(String::from("base/builtin.imp"));
     }
 
     let expressions = parse.parser();
