@@ -1,3 +1,12 @@
+@import "vendor/raylib/raylib.imp";
+
 _ main :: () {
-    println("hello world");
+    rl.InitWindow(800 600 "raylib test");
+    defer rl.CloseWindow();
+
+    loop (!rl.WindowShouldClose()) {
+        rl.BeginDrawing();
+        rl.ClearBackground(rl.BLACK);
+        rl.EndDrawing();
+    }
 }

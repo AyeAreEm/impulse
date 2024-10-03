@@ -1,10 +1,10 @@
 # TODO: change this to work on other OS's
 
 # copy this in c_flags
-# -I base/raylib/include/ -L base/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm
+# -I vendor/raylib/include/ -L vendor/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm
 
 @import "base/math.imp";
-@c [ #include "base/raylib/include/raylib.h" ];
+@c [ #include "vendor/raylib/include/raylib.h" ];
 
 @inline f32 deg_to_rad :: () {
     return [math.PI / 180.0];
@@ -23,33 +23,33 @@ struct rl.Color :: {
 
 # Some Basic Colors
 # NOTE: Custom raylib color palette for amazing visuals on WHITE background
-rl.Color rl.LIGHTGRAY  :: @c [LIGHTGRAY];
-rl.Color rl.GRAY       :: @c [GRAY];
-rl.Color rl.DARKGRAY   :: @c [DARKGRAY];
-rl.Color rl.YELLOW     :: @c [YELLOW];
-rl.Color rl.GOLD       :: @c [GOLD];
-rl.Color rl.ORANGE     :: @c [ORANGE];
-rl.Color rl.PINK       :: @c [PINK];
-rl.Color rl.RED        :: @c [RED];
-rl.Color rl.MAROON     :: @c [MAROON];
-rl.Color rl.GREEN      :: @c [GREEN]:
-rl.Color rl.LIME       :: @c [LIME]:
-rl.Color rl.DARKGREEN  :: @c [DARKGREEN];
-rl.Color rl.SKYBLUE    :: @c [SKYBLUE];
-rl.Color rl.BLUE       :: @c [BLUE]:
-rl.Color rl.DARKBLUE   :: @c [DARKBLUE]:
-rl.Color rl.PURPLE     :: @c [PURPLE];
-rl.Color rl.VIOLET     :: @c [VIOLET];
-rl.Color rl.DARKPURPLE :: @c [DARKPURPLE];
-rl.Color rl.BEIGE      :: @c [BEIGE];
-rl.Color rl.BROWN      :: @c [BROWN];
-rl.Color rl.DARKBROWN  :: @c [DARKBROWN];
+rl.Color rl.LIGHTGRAY  :: |200 200 200 255|;
+rl.Color rl.GRAY       :: |130 130 130 255|;
+rl.Color rl.DARKGRAY   :: |80 80 80 255|;
+rl.Color rl.YELLOW     :: |253 249 0 255|;
+rl.Color rl.GOLD       :: |255 203 0 255|;
+rl.Color rl.ORANGE     :: |255 161 0 255|;
+rl.Color rl.PINK       :: |255 109 194 255|;
+rl.Color rl.RED        :: |230 41 55 255|;
+rl.Color rl.MAROON     :: |190 33 55 255|;
+rl.Color rl.GREEN      :: |0 228 48 255|;
+rl.Color rl.LIME       :: |0 158 47 255|;
+rl.Color rl.DARKGREEN  :: |0 117 44 255|;
+rl.Color rl.SKYBLUE    :: |102 191 255 255|;
+rl.Color rl.BLUE       :: |0 121 241 255|;
+rl.Color rl.DARKBLUE   :: |0 82 172 255|;
+rl.Color rl.PURPLE     :: |200 122 255 255|;
+rl.Color rl.VIOLET     :: |135 60 190 255|;
+rl.Color rl.DARKPURPLE :: |112 31 126 255|;
+rl.Color rl.BEIGE      :: |211 176 131 255|;
+rl.Color rl.BROWN      :: |127 106 79 255|;
+rl.Color rl.DARKBROWN  :: |76 63 47 255|;
 
-rl.Color rl.WHITE      :: @c [WHITE];
-rl.Color rl.BLACK      :: @c [BLACK]:
-rl.Color rl.BLANK      :: @c [BLANK] # Blank (Transparent)
-rl.Color rl.MAGENTA    :: @c [MAGENTA];
-rl.Color rl.RAYWHITE   :: @c [RAYWHITE]; # (raylib logo)
+rl.Color rl.WHITE      :: |255 255 255 255|;
+rl.Color rl.BLACK      :: |0 0 0 255|;
+rl.Color rl.BLANK      :: |0 0 0 0|; # Blank (Transparent)
+rl.Color rl.MAGENTA    :: |255 0 255 255|;
+rl.Color rl.RAYWHITE   :: |245 245 245 255|; # (raylib logo)
 
 typeid rl.Vector2 :: Vector2f32;
 typeid rl.Vector3 :: Vector3f32;

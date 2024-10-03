@@ -10,3 +10,4 @@ name = "impulse"
 
 [dependencies]
 rand = "0.8.5"
+fs_extra = "1.3.0"

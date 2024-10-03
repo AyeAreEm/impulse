@@ -1,5 +1,6 @@
-use std::{fs, collections::HashMap, process::exit};
+use std::{path::Path, fs, collections::HashMap, process::exit};
 use crate::tokeniser::{tokeniser, Token}; use crate::{declare_types::*, Gen};
+use fs_extra::{dir::CopyOptions, copy_items};
 
 const CUR_PATH: &str = env!("current_path");
 
@@ -2568,13 +2569,46 @@ impl ExprWeights {
 
         if path.starts_with("base/") {
             path = format!("{CUR_PATH}/{path}");
+        } else if path.starts_with("vendor/") {
+            let mut split_path = path.splitn(3, '/');
+            let which_vendor = if let (Some(first), Some(second)) = (split_path.next(), split_path.next()) {
+                format!("{first}/{second}")
+            } else {
+                self.comp_err(&format!("unknown vendor target in import: {path}"));
+                exit(1);
+            };
+            let str_to_vendor = format!("{CUR_PATH}/{which_vendor}");
+            let path_to_vendor = Path::new(&str_to_vendor);
+            let copy_options = CopyOptions::new();
+
+            if !Path::new("./vendor").exists() {
+                match fs::create_dir("./vendor") {
+                    Ok(_) => (),
+                    Err(e) => {
+                        self.comp_err(&format!("unable to to create vendor folder in current path with error: {e:?}"));
+                        exit(1);
+                    }
+                }
+            }
+
+            match copy_items(&vec![path_to_vendor], "./vendor", &copy_options) {
+                Ok(_) => (),
+                Err(e) => match e.kind {
+                    fs_extra::error::ErrorKind::AlreadyExists => (),
+                    _ => {
+                        self.comp_err(&format!("unable to copy vendor {path} to current path with error: {e:?}"));
+                        exit(1);
+                    }
+                }
+
+            }
         }
 
         let file_res = fs::read_to_string(path.clone());
         let content = match file_res {
             Ok(content) => content,
             Err(err) => {
-                self.comp_err(&format!("unable to read file with error: {err:?}"));
+                self.comp_err(&format!("unable to read file {path} with error: {err:?}"));
                 exit(1);
             },
         };

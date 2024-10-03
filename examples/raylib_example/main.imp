@@ -1,4 +1,4 @@
-@import "base/raylib/raylib.imp";
+@import "vendor/raylib/raylib.imp";
 
 f32 SPEED :: 20.0;
 
