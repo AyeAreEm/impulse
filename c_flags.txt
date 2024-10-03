@@ -1,1 +1,1 @@
--I vendor/raylib/include/ -L vendor/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm
+-O -Wall -Wextra -Wfloat-equal

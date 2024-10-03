@@ -11,26 +11,7 @@ mod parser;
 mod generator;
 mod declare_types;
 
-const CUR_PATH: &str = env!("current_path");
-
 fn initalise(dir: &String) {
-    // let str_to_base = format!("{}/base", CUR_PATH);
-    // let path_to_base = Path::new(&str_to_base);
-    //
-    // let options = dir::CopyOptions::new();
-    //
-    // match copy_items(&vec![path_to_base], dir, &options) {
-    //     Ok(_) => (),
-    //     Err(e) => match e.kind {
-    //         fs_extra::error::ErrorKind::AlreadyExists => (),
-    //         _ => {
-    //             println!("{e:?}");
-    //             println!("\x1b[91merror\x1b[0m: unable to copy base library during initalising");
-    //             exit(1);
-    //         }
-    //     }
-    // }
-
     let file_res = fs::File::create(format!("{dir}/c_flags.txt"));
     match file_res {
         Ok(mut file) => {

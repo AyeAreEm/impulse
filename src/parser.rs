@@ -684,7 +684,16 @@ impl ExprWeights {
                                 let found_ident = self.find_ident(ident.to_string());
                                 match found_ident {
                                     Expr::StructDef { .. } => {
-                                        if pointer_counter > 0 {
+                                        if !array_lens.is_empty() {
+                                            // TODO: make this support mutli-dimensional arrays
+                                            // kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
+                                            let typ = Types::TypeDef {
+                                                type_name: ident.to_string(),
+                                                generics: None,
+                                            };
+                                            kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![typ]) };
+                                            array_lens.clear();
+                                        } else if pointer_counter > 0 {
                                             (kw_buf, pointer_counter) = self.create_keyword_pointer(Types::TypeDef {
                                                 type_name: ident.to_owned(),
                                                 generics: Some(vec![]),

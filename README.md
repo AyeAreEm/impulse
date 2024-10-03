@@ -80,6 +80,18 @@ Making a new type with a generic struct
 typeid vec2 :: array[f32];
 ```
 
+Pointers and Arrays<br>
+this compiles but the pointers aren't picked up.
+```
+_ edit_len :: (^[]int nums) {
+    nums.len: 5;
+}
+```
+also this won't work
+```
+_ edit_len :: ([]^int nums) {}
+```
+
 ### Todos / Ideas
 #### Import libraries
 Instead of just importing a file like `base/random.imp`<br>

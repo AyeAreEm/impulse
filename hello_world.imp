@@ -1,12 +1,10 @@
-@import "vendor/raylib/raylib.imp";
+_ edit_len :: (^[]str word) {
+    word.len: 3;
+}
 
 _ main :: () {
-    rl.InitWindow(800 600 "raylib test");
-    defer rl.CloseWindow();
+    []str words: |str.from("hello") str.from("grapes")|;
+    edit_len(words);
 
-    loop (!rl.WindowShouldClose()) {
-        rl.BeginDrawing();
-        rl.ClearBackground(rl.BLACK);
-        rl.EndDrawing();
-    }
+    println("%zu" words.len);
 }
