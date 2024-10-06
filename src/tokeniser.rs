@@ -27,7 +27,7 @@ pub enum Token {
 
     Plus,
     Minus,
-    Multiple,
+    Multiply,
     Divide,
     Mod,
 

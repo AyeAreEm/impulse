@@ -392,7 +392,7 @@ impl ExprWeights {
             (']', Token::Rsquare),
             ('+', Token::Plus),
             ('-', Token::Minus),
-            ('*', Token::Multiple),
+            ('*', Token::Multiply),
             ('/', Token::Divide),
             ('|', Token::Pipe),
             ('%', Token::Mod),
@@ -504,7 +504,7 @@ impl ExprWeights {
             match token {
                 Token::Plus => clean.push('+'),
                 Token::Minus => clean.push('-'),
-                Token::Multiple => clean.push('*'),
+                Token::Multiply => clean.push('*'),
                 Token::Divide => clean.push('/'),
                 Token::Lsquare => clean.push('('),
                 Token::Rsquare => clean.push(')'),
@@ -2517,7 +2517,7 @@ impl ExprWeights {
                         exit(1);
                     }
                 },
-                Token::Multiple => {
+                Token::Multiply => {
                     if square_rc > 0 {
                         intlit_buf.push('*');
                     } else {
