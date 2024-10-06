@@ -1,10 +1,8 @@
-_ edit_len :: (^[]str word) {
-    word.len: 3;
+option[^int] something :: () {
+    option[^int] ret;
+    return ret;
 }
 
 _ main :: () {
-    []str words: |str.from("hello") str.from("grapes")|;
-    edit_len(words);
-
-    println("%zu" words.len);
+    option[^int] num_op: something();
 }

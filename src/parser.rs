@@ -587,6 +587,117 @@ impl ExprWeights {
         Expr::IntLit(clean)
     }
 
+    fn parse_generics_to_pass(&mut self, typs: &String) -> Vec<Types> {
+        let mut name_buf = String::new();
+        let mut pass_typs = Vec::new();
+        let mut pointer_counter = 0;
+
+        for (i, ch) in typs.chars().enumerate() {
+            if ch == ' ' || ch == '\n' || i == typs.len()-1 {
+                if i == typs.len() - 1 {
+                    name_buf.push(ch);
+                }
+
+                let keyword_rs = self.keyword_map.get(&name_buf);
+                match keyword_rs {
+                    Some(keyword) => {
+                        let typ = self.keyword_to_type(keyword.clone());
+                        if pointer_counter > 0 {
+                            let kw; (kw, pointer_counter) = self.create_keyword_pointer(typ, pointer_counter);
+                            pass_typs.push(self.keyword_to_type(kw));
+                        } else {
+                            pass_typs.push(typ);
+                        }
+                    },
+                    None => {
+                        if name_buf.chars().last().unwrap() == '_' {
+                            if pointer_counter > 0 {
+                                let kw; (kw, pointer_counter) = self.create_keyword_pointer(Types::Void, pointer_counter);
+                                pass_typs.push(self.keyword_to_type(kw));
+                                name_buf.clear();
+                                continue;
+                            } else {
+                                self.comp_err("can't have a _ (void) generic parameter, did you mean ^_ (void pointer)?");
+                                exit(1);
+                            }
+                        }
+
+                        let found_var = self.find_variable(&name_buf);
+                        if let Expr::VariableName { typ, name, .. } = found_var {
+                            if let Types::TypeId = typ {
+                                let typedef = Types::TypeDef { type_name: name, generics: None };
+                                if pointer_counter > 0 {
+                                    let kw; (kw, pointer_counter) = self.create_keyword_pointer(typedef, pointer_counter);
+                                    pass_typs.push(self.keyword_to_type(kw));
+                                    name_buf.clear();
+                                    continue;
+                                }
+                                pass_typs.push(typedef);
+                                name_buf.clear();
+                                continue;
+                            }
+                        } else {
+                            // this is done for the second function declared in a
+                            // struct that uses a generic type. like option[T] at :: () {}
+                            // the "T" is defined by the struct above it in the scope
+                            if !self.previous_func.is_empty() {
+                                let temp = self.current_func.clone();
+                                self.current_func = self.previous_func.clone();
+                                let found_var_again = self.find_variable(&name_buf);
+                                self.current_func = temp;
+                                if let Expr::VariableName { typ, name, .. } = found_var_again {
+                                    if let Types::TypeId = typ {
+                                        let typedef = Types::TypeDef { type_name: name, generics: None };
+                                        if pointer_counter > 0 {
+                                            let kw; (kw, pointer_counter) = self.create_keyword_pointer(typedef, pointer_counter);
+                                            pass_typs.push(self.keyword_to_type(kw));
+                                            name_buf.clear();
+                                            continue;
+                                        }
+                                        pass_typs.push(typedef);
+                                        name_buf.clear();
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+
+                        let found_typ = self.find_structure(&name_buf);
+                        if let Expr::StructDef { struct_name, .. } |
+                            Expr::MacroStructDef { struct_name, .. } = found_typ {
+                                if let Expr::StructName { name, .. } = *struct_name {
+                                    let typedef = Types::TypeDef { type_name: name, generics: None };
+                                    if pointer_counter > 0 {
+                                        let kw; (kw, pointer_counter) = self.create_keyword_pointer(typedef, pointer_counter);
+                                        pass_typs.push(self.keyword_to_type(kw));
+                                        name_buf.clear();
+                                        continue;
+                                    }
+                                    pass_typs.push(typedef);
+                                    name_buf.clear();
+                                    continue;
+                                } else if let Expr::MacroStructName { .. } = *struct_name {
+                                    self.comp_err("generic struct with type of a generic struct not supported yet");
+                                    exit(1);
+                                }
+                        } else {
+                            self.comp_err(&format!("expected type, got {name_buf}"));
+                            exit(1);
+                        }
+                    },
+                }
+
+                name_buf.clear();
+            } else if ch == '^' {
+                pointer_counter += 1;
+            } else {
+                name_buf.push(ch);
+            }
+        }
+
+        pass_typs
+    }
+
     fn create_keyword_pointer(&self, typ: Types, pointer_counter: i32) -> (Keyword, i32) {
         let mut tmp = typ.clone();
 
@@ -1708,7 +1819,7 @@ impl ExprWeights {
 
         let mut create_enum = false;
 
-        for (i, token) in self.token_stack.iter().enumerate() {
+        for (i, token) in self.token_stack.clone().iter().enumerate() {
             match token {
                 Token::Dollar => {
                     if in_bracks {
@@ -1891,85 +2002,7 @@ impl ExprWeights {
                     } else if create_struct {
                         generic_subtype = Expr::IntLit(symbols.to_string());
                     } else if let Types::TypeDef { type_name, .. } = typ {
-                        let mut pass_typs = Vec::new();
-                        let mut name_buf = String::new();
-
-                        for (i, ch) in symbols.chars().enumerate() {
-                            if ch == ' ' || ch == '\n' || i == symbols.len()-1 {
-                                if i == symbols.len() - 1 {
-                                    name_buf.push(ch);
-                                }
-
-                                let keyword_rs = self.keyword_map.get(&name_buf);
-                                match keyword_rs {
-                                    Some(keyword) => {
-                                        let typ = self.keyword_to_type(keyword.clone());
-                                        pass_typs.push(typ);
-                                        name_buf.clear();
-                                        continue;
-                                    },
-                                    None => {
-                                        if name_buf.chars().last().unwrap() == '_' {
-                                            if pointer_counter > 0 {
-                                                let kw; (kw, pointer_counter) = self.create_keyword_pointer(Types::Void, pointer_counter);
-                                                pass_typs.push(self.keyword_to_type(kw));
-                                                name_buf.clear();
-                                                continue;
-                                            } else {
-                                                self.comp_err("can't have a _ (void) generic parameter, did you mean ^_ (void pointer)?");
-                                                exit(1);
-                                            }
-                                        }
-
-                                        let found_var = self.find_variable(&name_buf);
-                                        if let Expr::VariableName { typ, name, .. } = found_var {
-                                            if let Types::TypeId = typ {
-                                                pass_typs.push(Types::TypeDef { type_name: name, generics: None });
-                                                name_buf.clear();
-                                                continue;
-                                            }
-                                        } else {
-                                            // this is done for the second function declared in a
-                                            // struct that uses a generic type. like option[T] at :: () {}
-                                            // the "T" is defined by the struct above it in the scope
-                                            if !self.previous_func.is_empty() {
-                                                let temp = self.current_func.clone();
-                                                self.current_func = self.previous_func.clone();
-                                                let found_var_again = self.find_variable(&name_buf);
-                                                self.current_func = temp;
-                                                if let Expr::VariableName { typ, name, .. } = found_var_again {
-                                                    if let Types::TypeId = typ {
-                                                        pass_typs.push(Types::TypeDef { type_name: name, generics: None });
-                                                        name_buf.clear();
-                                                        continue;
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        let found_typ = self.find_structure(&name_buf);
-                                        if let Expr::StructDef { struct_name, .. } |
-                                            Expr::MacroStructDef { struct_name, .. } = found_typ {
-                                                if let Expr::StructName { name, .. } = *struct_name {
-                                                    pass_typs.push(Types::TypeDef { type_name: name, generics: None });
-                                                    name_buf.clear();
-                                                    continue;
-                                                } else if let Expr::MacroStructName { .. } = *struct_name {
-                                                    self.comp_err("generic struct with type of a generic struct not supported yet");
-                                                    exit(1);
-                                                }
-                                        } else {
-                                            self.comp_err(&format!("expected type, got {name_buf}"));
-                                            exit(1);
-                                        }
-                                    },
-                                }
-                            } else if ch == '^' {
-                                pointer_counter += 1;
-                            } else {
-                                name_buf.push(ch);
-                            }
-                        }
+                        let pass_typs = self.parse_generics_to_pass(symbols);
 
                         typ = Types::TypeDef { type_name: type_name.clone(), generics: Some(pass_typs) };
                     } else {
@@ -2804,68 +2837,12 @@ impl ExprWeights {
                                 keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: Some(vec![]) }
                             },
                             Expr::MacroStructDef { .. } => {
-                                let mut pass_typs = Vec::new();
-                                if let Token::Int(typs) = &var_info[2] {
-                                    let mut name_buf = String::new();
-                                    for (i, ch) in typs.chars().enumerate() {
-                                        if ch == ' ' || ch == '\n' || i == typs.len()-1 {
-                                            if i == typs.len() - 1 {
-                                                name_buf.push(ch);
-                                            }
-                                            let keyword_rs = self.keyword_map.get(&name_buf);
-                                            match keyword_rs {
-                                                Some(keyword) => {
-                                                    let typ = self.keyword_to_type(keyword.clone());
-                                                    pass_typs.push(typ);
-                                                },
-                                                None => {
-                                                    if name_buf.chars().last().unwrap() == '_' {
-                                                        if pointer_counter > 0 {
-                                                            let kw; (kw, pointer_counter) = self.create_keyword_pointer(Types::Void, pointer_counter);
-                                                            pass_typs.push(self.keyword_to_type(kw));
-                                                            name_buf.clear();
-                                                            continue;
-                                                        } else {
-                                                            self.comp_err("can't have a _ (void) generic parameter, did you mean ^_ (void pointer)?");
-                                                            exit(1);
-                                                        }
-                                                    }
-
-                                                    let found_var = self.find_variable(&name_buf);
-                                                    if let Expr::VariableName { typ, name, .. } = found_var {
-                                                        if let Types::TypeId = typ {
-                                                            pass_typs.push(Types::TypeDef { type_name: name, generics: None });
-                                                            continue;
-                                                        }
-                                                    }
-                                                    
-                                                    let found_typ = self.find_structure(&name_buf);
-                                                    if let Expr::StructDef { struct_name, .. } |
-                                                        Expr::MacroStructDef { struct_name, .. } = found_typ {
-                                                            if let Expr::StructName { name, .. } = *struct_name {
-                                                                pass_typs.push(Types::TypeDef { type_name: name, generics: None });
-                                                                continue;
-                                                            } else if let Expr::MacroStructName { .. } = *struct_name {
-                                                                self.comp_err("generic struct with type of a generic struct not supported yet");
-                                                                exit(1);
-                                                            }
-                                                    }
-                                                    self.comp_err(&format!("expected type, got {name_buf}"));
-                                                    exit(1);
-                                                },
-                                            }
-
-                                            name_buf.clear();
-                                        } else if ch == '^' {
-                                            pointer_counter += 1;
-                                        } else {
-                                            name_buf.push(ch);
-                                        }
-                                    }
+                                let pass_typs = if let Token::Int(typs) = &var_info[2] {
+                                    self.parse_generics_to_pass(typs)
                                 } else {
                                     self.comp_err(&format!("expected type for generic struct"));
                                     exit(1);
-                                }
+                                };
                                 keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: Some(pass_typs) }
                             },
                             _ => (),
@@ -3878,7 +3855,6 @@ impl ExprWeights {
     fn create_define_var(&mut self, kw: Keyword, ident: Token, generics: Vec<Token>) -> Expr {
         let expr: Expr;
         let fname: String;
-        let mut pointer_counter = 0;
         let mut pass_typs: Vec<Types> = Vec::new();
 
         for gen in generics {
@@ -3886,64 +3862,7 @@ impl ExprWeights {
                 Token::Lsquare => (),
                 Token::Rsquare => (),
                 Token::Int(typs) => {
-                    let mut name_buf = String::new();
-                    for (i, ch) in typs.chars().enumerate() {
-                        if ch == ' ' || ch == '\n' || i == typs.len()-1 {
-                            if i == typs.len() - 1 {
-                                name_buf.push(ch);
-                            }
-                            let keyword_rs = self.keyword_map.get(&name_buf);
-                            match keyword_rs {
-                                Some(keyword) => {
-                                    let typ = self.keyword_to_type(keyword.clone());
-                                    pass_typs.push(typ);
-                                },
-                                None => {
-                                    if name_buf.chars().last().unwrap() == '_' {
-                                        if pointer_counter > 0 {
-                                            let kw; (kw, pointer_counter) = self.create_keyword_pointer(Types::Void, pointer_counter);
-                                            pass_typs.push(self.keyword_to_type(kw));
-                                            name_buf.clear();
-                                            continue;
-                                        } else {
-                                            self.comp_err("can't have a _ (void) generic parameter, did you mean ^_ (void pointer)?");
-                                            exit(1);
-                                        }
-                                    }
-
-                                    let found_var = self.find_variable(&name_buf);
-                                    if let Expr::VariableName { typ, name, .. } = found_var {
-                                        if let Types::TypeId = typ {
-                                            pass_typs.push(Types::TypeDef { type_name: name, generics: None });
-                                            name_buf.clear();
-                                            continue;
-                                        }
-                                    }
-
-                                    let found_typ = self.find_structure(&name_buf);
-                                    if let Expr::StructDef { struct_name, .. } |
-                                        Expr::MacroStructDef { struct_name, .. } = found_typ {
-                                            if let Expr::StructName { name, .. } = *struct_name {
-                                                pass_typs.push(Types::TypeDef { type_name: name, generics: None });
-                                                name_buf.clear();
-                                                continue;
-                                            } else if let Expr::MacroStructName { .. } = *struct_name {
-                                                self.comp_err("generic struct with type of a generic struct not supported yet");
-                                                exit(1);
-                                            }
-                                    } else {
-                                        self.comp_err(&format!("expected type, got {name_buf}"));
-                                        exit(1);
-                                    }
-                                },
-                            }
-                            name_buf.clear();
-                        } else if ch == '^' {
-                            pointer_counter += 1;
-                        } else {
-                            name_buf.push(ch);
-                        }
-                    }
+                    pass_typs = self.parse_generics_to_pass(&typs);
                 },
                 unexpected => {
                     self.comp_err(&format!("unexpected token {unexpected:?}. expecting `typedef[__type__] varname;`"));
