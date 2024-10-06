@@ -1,8 +1,5 @@
-option[^int] something :: () {
-    option[^int] ret;
-    return ret;
-}
+@import "base/memory.imp";
 
 _ main :: () {
-    option[^int] num_op: something();
+    option[^int] numptr: mem.alloc(int 1);
 }

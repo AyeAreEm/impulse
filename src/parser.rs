@@ -587,7 +587,7 @@ impl ExprWeights {
         Expr::IntLit(clean)
     }
 
-    fn parse_generics_to_pass(&mut self, typs: &String) -> Vec<Types> {
+    fn parse_generics_to_pass(&mut self, typs: &String, generic_not_defined_yet: bool) -> Vec<Types> {
         let mut name_buf = String::new();
         let mut pass_typs = Vec::new();
         let mut pointer_counter = 0;
@@ -636,6 +636,17 @@ impl ExprWeights {
                                 name_buf.clear();
                                 continue;
                             }
+                        } else if generic_not_defined_yet {
+                            let typedef = Types::TypeDef { type_name: name_buf.clone(), generics: None };
+                            if pointer_counter > 0 {
+                                let kw; (kw, pointer_counter) = self.create_keyword_pointer(typedef, pointer_counter);
+                                pass_typs.push(self.keyword_to_type(kw));
+                                name_buf.clear();
+                                continue;
+                            }
+                            pass_typs.push(typedef);
+                            name_buf.clear();
+                            continue;
                         } else {
                             // this is done for the second function declared in a
                             // struct that uses a generic type. like option[T] at :: () {}
@@ -1841,12 +1852,10 @@ impl ExprWeights {
                         params.push(token.clone());
                     } else {
                         typ = Types::Void;
-                        if pointer_counter > 0 {
 
-                            if pointer_counter > 0 {
-                                let tmp_kw = self.create_keyword_pointer(Types::Void, pointer_counter).0;
-                                typ = self.keyword_to_type(tmp_kw);
-                            }
+                        if pointer_counter > 0 {
+                            let tmp_kw = self.create_keyword_pointer(Types::Void, pointer_counter).0;
+                            typ = self.keyword_to_type(tmp_kw);
                         }
                     }
                 },
@@ -2002,7 +2011,7 @@ impl ExprWeights {
                     } else if create_struct {
                         generic_subtype = Expr::IntLit(symbols.to_string());
                     } else if let Types::TypeDef { type_name, .. } = typ {
-                        let pass_typs = self.parse_generics_to_pass(symbols);
+                        let pass_typs = self.parse_generics_to_pass(symbols, true);
 
                         typ = Types::TypeDef { type_name: type_name.clone(), generics: Some(pass_typs) };
                     } else {
@@ -2838,7 +2847,7 @@ impl ExprWeights {
                             },
                             Expr::MacroStructDef { .. } => {
                                 let pass_typs = if let Token::Int(typs) = &var_info[2] {
-                                    self.parse_generics_to_pass(typs)
+                                    self.parse_generics_to_pass(typs, false)
                                 } else {
                                     self.comp_err(&format!("expected type for generic struct"));
                                     exit(1);
@@ -3862,7 +3871,7 @@ impl ExprWeights {
                 Token::Lsquare => (),
                 Token::Rsquare => (),
                 Token::Int(typs) => {
-                    pass_typs = self.parse_generics_to_pass(&typs);
+                    pass_typs = self.parse_generics_to_pass(&typs, false);
                 },
                 unexpected => {
                     self.comp_err(&format!("unexpected token {unexpected:?}. expecting `typedef[__type__] varname;`"));

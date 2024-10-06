@@ -168,14 +168,15 @@ impl Gen {
                     Some(generics) => {
                         for (i, generic) in generics.iter().enumerate() {
                             let mut gen_typ = self.handle_typ(generic.clone()).0;
-                            gen_typ = gen_typ.replace("*", "ptr");
                             if self.in_macro_func {
+                                gen_typ = gen_typ.replace("*", "##ptr");
                                 if i == 0 {
                                     typ.push_str(&format!("_##{gen_typ}"));
                                 } else {
                                     typ.push_str(&format!("##{gen_typ}"));
                                 }
                             } else {
+                                gen_typ = gen_typ.replace("*", "ptr");
                                 if i == 0 {
                                     typ.push_str(&format!("_{gen_typ}"));
                                 } else {
