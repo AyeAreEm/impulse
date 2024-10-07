@@ -1,3 +1,6 @@
+# Dynamic array library, these functions run IN PLACE and therefore
+# the arguments don't need to be passed by reference
+
 @import "base/memory.imp";
 
 struct[T] dyn :: {
@@ -20,6 +23,7 @@ struct[T] dyn :: {
         return new;
     }
 
+    # get elemet at index
     option[T] at :: (typeid T dyn[T] arr usize index) {
         option[T] ret;
         ret.none: false;
@@ -52,6 +56,8 @@ struct[T] dyn :: {
         return ret;
     }
 
+    # this doesn't actually clear data but instead
+    # allows for the data to be overwritten
     _ clear :: (typeid T dyn[T] arr) {
         arr.len: 0;
     }
@@ -59,5 +65,11 @@ struct[T] dyn :: {
     _ remove :: (typeid T dyn[T] arr usize index) {
         @c [mem__move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
         arr.len: [arr.len - 1];
+    }
+
+    _ dealloc :: (dyn[any] arr) {
+        mem.dealloc(arr.data);
+        arr.len: 0;
+        arr.cap: 0;
     }
 }

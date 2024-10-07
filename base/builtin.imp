@@ -150,7 +150,7 @@ struct str :: {
 }
 
 @inline ^char type.to_cstr :: (typeid T) {
-    @c [#T;];
+    return @c [#T;];
 }
 
 @inline bool type.compare :: (typeid T typeid K) {

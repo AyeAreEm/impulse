@@ -1,18 +1,7 @@
 @import "string.h";
 
-@inline ^_ c.calloc :: (usize len usize type) {
-    @c [ return calloc(len, type); ];
-}
-
-@inline option[^T] mem.alloc :: (typeid T usize len) {
-    option[^T] ret;
-    ret.value: c.calloc(len size_of(T));
-@c [
-    if (ret.value == NULL) {
-        ret.none = true;
-    }
-];
-    return ret;
+@inline ^$T mem.alloc :: (typeid T usize len) {
+    return @c [ (T*)calloc(len, size_of(T));];
 }
 
 @inline ^_ mem.realloc :: (^_ address usize new_size) {

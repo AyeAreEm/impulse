@@ -1,4 +1,5 @@
 # Time library
+
 @import "time.h";
 
 @c [

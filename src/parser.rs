@@ -847,6 +847,7 @@ impl ExprWeights {
                                                         Some(keyword) => {
                                                             let typ = self.keyword_to_type(keyword.clone());
                                                             pass_typs.push(typ);
+                                                            if let Keyword::TypeId | Keyword::Any = keyword {is_macro_func = true}
                                                         },
                                                         None => {
                                                             let mut found = false;
