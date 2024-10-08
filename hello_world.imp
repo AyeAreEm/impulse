@@ -1,14 +1,5 @@
-@import "base/dynamic.imp";
-
 _ main :: () {
-    dyn[int] nums: dyn.new(int);
-    defer dyn.dealloc(nums);
+    ^char word: "Привет";
 
-    loop (i < 10) [+] {
-        dyn.push(int nums [i * 10]);
-    }
-
-    for (nums) [n] {
-        println("%d" n);
-    }
+    println("%s" word);
 }

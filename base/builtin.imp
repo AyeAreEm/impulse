@@ -10,7 +10,7 @@
 #    bool win32 = false;
 #    bool linux = false;
 #elif _WIN32
-#    bool win64 = false;
+#    bool win64 = true;
 #    bool win32 = true;
 #    bool linux = false;
 #elif __linux__
@@ -19,6 +19,13 @@
 #    bool linux = true;
 #endif
 #];
+
+# this is to display utf8
+@c [
+#ifdef __linux__
+    #include <locale.h>
+#endif
+];
 
 @inline _ exitcode :: (int code) {
     @c [exit(code);];
@@ -186,6 +193,6 @@ _ runtime.assert :: (bool expression ^char msg) {
     exitcode(1);
 }
 
-_ comptime.assert :: (bool expression ^char msg) {
+#_ comptime.assert :: (bool expression ^char msg) {
     # no clue how to do this rn
-}
+#}

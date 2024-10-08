@@ -56,6 +56,7 @@ impl Gen {
             ("time".to_string(), true),
             ("unistd".to_string(), true),
             ("windows".to_string(), true),
+            ("locale".to_string(), true),
         ]);
 
         return Gen {
@@ -921,6 +922,8 @@ impl Gen {
                 Expr::Func { typ, params, name, is_inline } => {
                     self.indent += 1;
                     let mut func_code = String::new();
+                    let mut main_func = false;
+
                     if is_inline && name == String::from("main") {
                         self.comp_err("can't make main function inline");
                         exit(1);
@@ -931,6 +934,7 @@ impl Gen {
                     }
 
                     if name == String::from("main") {
+                        main_func = true;
                         func_code.push_str("int");
                     } else {
                         // fix this to allow array returns
@@ -966,6 +970,13 @@ impl Gen {
                         }
                     }
                     func_code.push_str(") {\n");
+
+                    if main_func {
+                        func_code.push_str("    #ifdef _WIN32\n    system(\"chcp 65001 >nul\");\n");
+                        func_code.push_str("    #elif __linux__\n    setlocale(LC_ALL, \"\");\n");
+                        func_code.push_str("    #endif\n");
+                    }
+    
                     self.defs_location.push(self.code.len());
                     self.code.push_str(&func_code);
                 },
