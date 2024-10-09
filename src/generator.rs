@@ -972,9 +972,9 @@ impl Gen {
                     func_code.push_str(") {\n");
 
                     if main_func {
-                        func_code.push_str("    #ifdef _WIN32\n    system(\"chcp 65001 >nul\");\n");
-                        func_code.push_str("    #elif __linux__\n    setlocale(LC_ALL, \"\");\n");
-                        func_code.push_str("    #endif\n");
+                        func_code.push_str("#ifdef _WIN32\n    system(\"chcp 65001 >nul\");\n");
+                        func_code.push_str("#elif __linux__\n    setlocale(LC_ALL, \"\");\n");
+                        func_code.push_str("#endif\n");
                     }
     
                     self.defs_location.push(self.code.len());

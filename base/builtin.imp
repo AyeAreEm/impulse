@@ -71,6 +71,14 @@ struct str :: {
         return value;
     }
 
+    str with_len :: (usize len) {
+        @c [char tmp[len];];
+        str value;
+        value.data: @c [tmp];
+        value.len: len;
+        return value;
+    }
+
     bool compare :: (str first str second) {
         if (first.len != second.len) {
             return false;

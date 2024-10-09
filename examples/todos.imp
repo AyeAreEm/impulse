@@ -26,38 +26,32 @@ _ main :: () {
 
     loop (!quit) {
         usize input_num;
-        @c [
-            printf("1. show todos\n");
-            printf("2. add todo\n");
-            printf("3. delete todo\n");
-            printf("4. quit\n");
-            scanf_s("%zu", &input_num);
-        ];
+        println("1. show todos");
+        println("2. add todo");
+        println("3. delete todo");
+        println("4. quit");
+        @c [ scanf_s("%zu", &input_num); ];
 
         if (input_num = 1) {
             for (todos) [todo i] {
-                @c [
-                    printf("\n");
-                    printf("%zu: ", i+1);
-                ];
-                println("%s" todo.data);
-                @c [printf("\n");];
+                println("");
+                print("%zu: %s" [i+1] todo.data);
+                println("");
             }
         } orif (input_num = 2) {
-            @c [printf("enter todo: ");];
+            print("enter todo: ");
             string todo: readin();
             dyn.push(string todos todo);
         } orif (input_num = 3) {
-            @c [
-                printf("enter todo number: ");
-                scanf_s("%zu", &input_num);
-            ];
+            print("enter todo number: ");
+            @c [ scanf_s("%zu", &input_num); ];
+
             input_num: [input_num - 1];
             dyn.remove(string todos input_num);
         } orif (input_num = 4) {
             break;
         } else {
-            @c [printf("that is not an option");];
+            println("that is not an option");
         }
     }
 }

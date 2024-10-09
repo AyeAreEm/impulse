@@ -22,9 +22,9 @@ int check_rule :: (int left int curr int right) {
 
 _ display :: (int cell) {
     if (cell = 1) {
-        @c [printf("#");];
+        print("#");
     } else {
-        @c [printf(" ");];
+        print(" ");
     }
 }
 
@@ -36,8 +36,8 @@ _ copy :: (^int dest ^int src int len) {
 
 _ main :: () {
     int gens: 100;
-    @array[80] int cells: |1 1 0 0 1 0 1 0|;
-    @array[80] int next_gen;
+    [80]int cells: |1 1 0 0 1 0 1 0|;
+    [80]int next_gen;
 
     loop (gen < gens) [+] {
         loop (i < 80) [+] {
@@ -59,7 +59,7 @@ _ main :: () {
             display(new_cell);
         }
 
-        @c [printf("\n");];
+        println("");
 
         copy(cells next_gen 80);
     }

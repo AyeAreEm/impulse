@@ -3845,7 +3845,9 @@ impl ExprWeights {
                                 }),
                                 value: Box::new(Expr::None),
                             };
-                            if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
+                            if !self.in_enum_def && !self.in_func && !self.in_struct_def {
+                                self.global_vars.push(new_expr.clone());
+                            } else if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
                                 vars[self.current_scope].push(new_expr);
                             }
                         },
@@ -3954,6 +3956,10 @@ impl ExprWeights {
                 self.comp_err(&format!("unexpected keyword: {kw:?}"));
                 exit(1);
             },
+        }
+
+        if !self.in_enum_def && !self.in_func && !self.in_struct_def {
+            self.global_vars.push(Expr::Variable { info: Box::new(expr.clone()), value: Box::new(Expr::None) });
         }
 
         expr
