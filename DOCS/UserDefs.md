@@ -24,6 +24,26 @@ struct[T] option :: {
 The syntax is `struct<[<generic>]> <name> :: {}`. Struct fields are declared the same as variable definitions.<br>
 Make sure to also check the <a href="./Generics.md">Generics</a> doc for more information
 
+### Default values
+The example from earlier could also be written as this
+```
+struct vec2 :: {
+    int x: 0;
+    int y: 10;
+}
+
+_ main :: () {
+    vec2 a: @default; # this will be 0, 10
+
+    vec2 b: |10|; # this will be 10, 0 because using || overides the default
+
+    vec2 c: @default;
+    c.x: 10; # this will be 10, 10
+
+    vec2 d; # this will be 0, 0
+}
+```
+
 ### Macros / Decorators
 `struct` has `@shared`.
 ```

@@ -20,7 +20,8 @@ pub struct Gen {
     libc_map: HashMap<String, bool>,
     defs_location: Vec<usize>,
 
-    generated_structs: Vec<String>,
+    generated_structs: Vec<String>, // for macro structs
+    default_structs: Vec<String>, // structs that have a <name>_default that has initialised values
 
     in_macro_func: bool,
     curl_rc: i32,
@@ -73,6 +74,7 @@ impl Gen {
             defs_location: Vec::new(),
             indent: 0,
             generated_structs: Vec::new(),
+            default_structs: Vec::new(),
             in_macro_func: false,
             curl_rc: 0,
         }
@@ -90,6 +92,16 @@ impl Gen {
                 self.code.push(' ');
             }
         }
+    }
+
+    fn has_default_struct(&mut self, typename: &String) -> bool {
+        for name in &self.default_structs {
+            if name == typename {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     fn update_struct_definitions(&mut self, mut line_num: usize, offset: usize) {
@@ -221,6 +233,9 @@ impl Gen {
 
     fn handle_varname(&mut self, varname: Expr) -> String {
         match varname {
+            Expr::Variable { info, .. } => {
+                return self.handle_varname(*info);
+            },
             Expr::VariableName { ref typ, reassign, constant, .. } => {
                 let mut vardec = if constant && !reassign {
                     String::from("const ")
@@ -289,7 +304,7 @@ impl Gen {
                     value.pop();
                 }
                 return value;
-            }
+            },
             unexpected => {
                 self.comp_err(&format!("unexpected expression: {unexpected:?}"));
                 exit(1);
@@ -492,6 +507,9 @@ impl Gen {
             Expr::StrLit { content, .. } => format!("\"{content}\""),
             Expr::True => String::from("true"),
             Expr::False => String::from("false"),
+            Expr::Variable { value, .. } => {
+                return self.handle_value(*value);
+            },
             Expr::VariableName { ref typ, .. } => {
                 let new_name = self.handle_sanitise_varname(value.clone());
                 if let Types::ArrIndex { index_at, .. } = typ {
@@ -534,6 +552,7 @@ impl Gen {
                 }
             },
             Expr::CEmbed(code) => code,
+            Expr::DefaultValue => String::new(),
             unimpl => {
                 self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                 exit(1);
@@ -703,7 +722,6 @@ impl Gen {
     }
 
     fn generate_c(&mut self, expressions: Vec<(Expr, String, u32)>) {
-        let mut struct_generics = Vec::new();
         self.imports.push_str("#include <stddef.h>\n");
         self.imports.push_str("#include <stdint.h>\n");
         self.imports.push_str("#include <stdbool.h>\n");
@@ -721,6 +739,8 @@ impl Gen {
         self.code.push_str("typedef unsigned int uint;\n");
         self.code.push_str("#define $inline static inline __attribute__((always_inline))\n");
 
+        let mut struct_generics = Vec::new();
+        let mut struct_default_initaliser = Vec::new();
         let mut first_case = false;
         let mut fall_case = false;
 
@@ -821,8 +841,28 @@ impl Gen {
                     let mut fields = String::new();
                     for field in struct_fields {
                         let mut varname = self.handle_varname(field.clone());
+                        match field {
+                            Expr::Variable { .. } => {
+                                struct_default_initaliser.push(field.clone());
+                            },
+                            _ => (),
+                        }
+
                         if varname.chars().last().unwrap() == 'A' {
                             match field {
+                                Expr::Variable { info, .. } => {
+                                    if let Expr::VariableName { typ, .. } = *info {
+                                        if let Types::Arr { .. } = typ {
+                                            let varname_eq_index = varname.find("=");
+                                            match varname_eq_index {
+                                                Some(index) => {
+                                                    varname.truncate(index-1);
+                                                },
+                                                None => (),
+                                            }
+                                        }
+                                    }
+                                }
                                 Expr::VariableName { typ, .. } => {
                                     if let Types::Arr { .. } = typ {
                                         let varname_eq_index = varname.find("=");
@@ -845,6 +885,44 @@ impl Gen {
                 },
                 Expr::EndStruct(name) => {
                     self.code.push_str(&format!("}}{name};\n"));
+
+                    if !struct_default_initaliser.is_empty() {
+                        self.code.push_str(&format!("#define {name}_default {{"));
+
+                        for (i, default) in struct_default_initaliser.iter().enumerate() {
+                            let mut field = self.handle_varname(default.clone());
+                            let space_index = field.find(' ').unwrap();
+                            for _ in 0..=space_index {
+                                field.remove(0);
+                            }
+                            field.insert(0, '.');
+
+                            let mut value = self.handle_value(default.clone());
+                            if value.is_empty() {
+                                // have to do all this just to get the type out
+                                if let Expr::Variable { info, .. } = default {
+                                    if let Expr::VariableName { typ, .. } = *info.clone() {
+                                        let typename = self.handle_typ(typ).0;
+                                        value = if self.has_default_struct(&typename) {
+                                            format!("{typename}_default")
+                                        } else {
+                                            String::from("{0}")
+                                        };
+                                    }
+                                }
+                            }
+                            if i == 0 {
+                                self.code.push_str(&format!("{field} = {value}"));
+                            } else {
+                                self.code.push_str(&format!(", {field} = {value}"));
+                            }
+                        }
+
+                        self.code.push_str("}\n");
+                        struct_default_initaliser.clear();
+                        self.default_structs.push(format!("{name}"));
+                    }
+
                     self.defs_location.push(self.code.len());
                 },
                 Expr::MacroStructDef { struct_name, struct_fields } => {
@@ -867,10 +945,8 @@ impl Gen {
                                                 struct_generics.push(generic_name.clone());
                                                 if i == 0 {
                                                     def_code.push_str(&format!("{generic_name}"));
-                                                    // def_name.push_str(&format!("_##{generic_name}"));
                                                 } else {
                                                     def_code.push_str(&format!(", {generic_name}"));
-                                                    // def_name.push_str(&format!("##{generic_name}"));
                                                 }
                                             },
                                             _ => (),
@@ -905,16 +981,8 @@ impl Gen {
                     self.code.push_str(&format!("{def_code}{fields}"));
                 },
                 Expr::MacroEndStruct(name) => {
-                    self.code.push_str(&format!("}} {name}_##imp_struct_type_name"));
-                    // for (i, generic) in struct_generics.iter().enumerate() {
-                    //     if i == 0 {
-                    //         self.code.push_str(&format!("_##{generic}"));
-                    //     } else {
-                    //         self.code.push_str(&format!("##{generic}"));
-                    //     }
-                    // }
+                    self.code.push_str(&format!("}} {name}_##imp_struct_type_name;\n"));
 
-                    self.code.push_str(";\n");
                     self.defs_location.push(self.code.len());
                     struct_generics.clear();
                     self.in_macro_func = false;
@@ -1016,6 +1084,7 @@ impl Gen {
                         }
                         continue;
                     }
+
                     if self.in_macro_func {
                         self.code.push_str(&format!("{varname} = {{0}};\\\n"));
                     } else {
@@ -1025,8 +1094,10 @@ impl Gen {
                 Expr::Variable { info, value } => {
                     self.add_spaces(self.indent);
 
+                    let mut var_typ = Types::None;
                     match *info {
                         Expr::VariableName { ref typ, ref name, .. } => {
+                            var_typ = typ.clone();
                             if let Types::TypeId = typ {
                                 let typeid_type = self.handle_value(*value.clone());
                                 self.code.push_str(&format!("typedef {typeid_type} {name};\n"));
@@ -1060,7 +1131,16 @@ impl Gen {
                             _ => (),
                         }
                     }
-                    let var_val = self.handle_value(*value);
+
+                    let mut var_val = self.handle_value(*value);
+                    if var_val.is_empty() {
+                        let typename = self.handle_typ(var_typ).0;
+                        var_val = if self.has_default_struct(&typename) {
+                            format!("{typename}_default")
+                        } else {
+                            String::from("{0}")
+                        };
+                    }
                     
                     if self.in_macro_func {
                         self.code.push_str(&format!("{varname} = {var_val};\\\n"));

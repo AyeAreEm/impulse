@@ -114,6 +114,9 @@ pub enum Expr {
 
     StartBlock,
     EndBlock,
+
+    DefaultValue,
+
     None,
 }
 
@@ -222,6 +225,7 @@ impl ExprWeights {
             ("import".to_string(), Macros::Import),
             ("inline".to_string(), Macros::Inline),
             ("shared".to_string(), Macros::Shared),
+            ("default".to_string(), Macros::Default),
         ]);
 
         ExprWeights {
@@ -2366,8 +2370,8 @@ impl ExprWeights {
     }
 
     fn create_func_call(&self, expr: &Expr, params: Vec<Token>) -> Expr {
-        if !self.in_func {
-            self.comp_err(&format!("cannot call funcion outside of a scope. function: {:?}", expr));
+        if !self.in_func && !self.in_struct_def {
+            self.comp_err(&format!("cannot call function outside of a scope. function: {:?}", expr));
             exit(1);
         }
 
@@ -2822,6 +2826,7 @@ impl ExprWeights {
                     exit(1);
                 }
             },
+            Macros::Default => Expr::DefaultValue,
             _ => {
                 self.comp_err(&format!("macro {mac:?} not reimplemented yet"));
                 exit(1);
@@ -3363,8 +3368,9 @@ impl ExprWeights {
                             self.comp_err(&format!("unexpected multiple expressions outside of parameters: {:?}", buffer));
                             exit(1);
                         } else if (self.in_struct_def && !self.in_func) || self.in_enum_def {
-                            self.comp_err(&format!("can't call function {:?} inside struct or enum", buffer[0]));
-                            exit(1);
+                            // self.comp_err(&format!("can't call function {:?} inside struct or enum", buffer[0]));
+                            // exit(1);
+                            return self.create_func_call(&buffer[0], params);
                         } else if returning {
                             buffer[0] = self.create_func_call(&buffer[0], params.clone());
                         } else {
@@ -3417,7 +3423,16 @@ impl ExprWeights {
                 Token::Ident(ident) => {
                     if found_macro {
                         if (self.in_struct_def && !self.in_func) || self.in_defer {
+                            println!("running, line num: {}", self.line_num);
                             let mac = self.handle_macros(ident, &i, &value);
+
+                            // originally only c embeds and the old array macro was expected and
+                            // since these were whole liners, we would push to expr_stack but
+                            // Expr::DefaultValue is to be used as only a value so we need to make
+                            // sure it's returned
+                            if let Expr::DefaultValue = mac {
+                                return self.handle_macros(ident, &i, &value);
+                            }
                             self.expr_stack.push(mac);
                             return Expr::None;
                         }
@@ -3823,6 +3838,36 @@ impl ExprWeights {
             Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } => {
                 for field in struct_fields {
                     match field {
+                        Expr::Variable { info, .. } => {
+                            if let Expr::VariableName { typ, name, field_data, .. } = *info {
+                                let new_name = if is_ptr {
+                                    format!("{fname}->{name}")
+                                } else {
+                                    format!("{fname}.{name}")
+                                };
+                                if let Types::TypeDef { ref type_name, .. } = typ {
+                                    self.propagate_struct_fields(new_name.clone(), type_name.to_string(), field_data.1, is_constant);
+                                } else if let Types::Arr { .. } = typ {
+                                    self.propagate_struct_fields(new_name.clone(), String::from("array"), field_data.1, is_constant);
+                                }
+
+                                let new_expr = Expr::Variable {
+                                    info: Box::new(Expr::VariableName {
+                                        typ,
+                                        name: new_name,
+                                        reassign: false,
+                                        constant: is_constant, // CAN BREAK, testing rn
+                                        field_data: (true, is_ptr),
+                                    }),
+                                    value: Box::new(Expr::None),
+                                };
+                                if !self.in_enum_def && !self.in_func && !self.in_struct_def {
+                                    self.global_vars.push(new_expr.clone());
+                                } else if let Some(vars) = self.func_to_vars.get_mut(&self.current_func) {
+                                    vars[self.current_scope].push(new_expr);
+                                }
+                            }
+                        },
                         Expr::VariableName { typ, name, field_data, .. } => {
                             let new_name = if is_ptr {
                                 format!("{fname}->{name}")
@@ -4039,7 +4084,7 @@ impl ExprWeights {
                     if self.in_defer {
                         self.expr_stack.push(expr.clone());
                     } else {
-                        self.program_push(expr.clone());
+                        self.program_push(expr);
                     }
                     return;
                 }
@@ -4095,9 +4140,17 @@ impl ExprWeights {
         }
 
         let expr = Expr::Variable { info: Box::new(left_expr.clone()), value: Box::new(right_expr.clone()) };
-        if !self.in_func && !self.in_enum_def {
+
+        if self.in_struct_def && !self.in_func  {
+            // if initalising struct fields
+            self.expr_stack.push(expr.clone());
+            self.token_stack.clear();
+            return;
+        } else if !self.in_func && !self.in_enum_def {
+            // if in global scope
             self.global_vars.push(expr.clone());
         } else if self.in_enum_def {
+            // if enum field has numeric value
             if let Expr::IntLit(_) = right_expr {
                 self.expr_stack.push(expr);
                 self.token_stack.clear();
@@ -4146,10 +4199,10 @@ impl ExprWeights {
         }
 
         if !right.is_empty() {
-            if self.in_struct_def && !self.in_func {
-                self.comp_err("can't initalise members inside a struct");
-                exit(1);
-            }
+            // if self.in_struct_def && !self.in_func {
+            //     self.comp_err("can't initalise members inside a struct");
+            //     exit(1);
+            // }
             self.create_variable(left, right, is_constant);
             return
         }

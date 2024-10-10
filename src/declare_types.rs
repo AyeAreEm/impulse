@@ -129,5 +129,6 @@ pub enum Macros {
     Import,
     Inline,
     Shared,
+    Default,
     None,
 }

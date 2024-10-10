@@ -204,8 +204,19 @@ struct vec2 :: {
     f64 y;
 }
 ```
-Currently, Impulse does not support default values in structs but there are plans to add them.<br>
-We do support functions inside structs which provide a namespace for these functions. In the future, there will also be methods. Overall these work similar to Zig
+
+We have default struct values.
+```
+struct vec2 :: {
+    f64 x: 10;
+    f64 y: 15;
+}
+
+vec2 position: @default; # you have to emplicitly say that you are going to use the default values
+```
+Using the `@default` macro / decorator will let initialise with the defaults. Without it like `vec2 position;` will be zero initalised.<br>
+<br>
+We also do support functions inside structs which provide a namespace for these functions. In the future, there will also be methods. Overall these work similar to Zig
 
 ```
 struct vec2 :: {

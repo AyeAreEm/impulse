@@ -133,15 +133,6 @@ _ hello :: () {
 ```
 The reason for the second option is it will be a whole block of code only on windows rather than only function
 
-#### Default struct values
-This could replace constructors or the `new` / `init` functions.
-```
-struct Player :: {
-    Vector2f32 pos: |0 0|:
-    i32 health: 100;
-}
-```
-
 #### Grouped Types
 Group of acceptables types. This could be similar to how Go does generics
 ```

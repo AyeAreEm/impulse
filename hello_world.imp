@@ -1,27 +1,15 @@
-@import "base/io.imp";
+struct vec2 :: {
+    f32 x: 10;
+    f32 y: 15;
+}
 
-str alphabet;
-str sub;
-
-_ subsitute :: (string text) {
-    for (text) [text_ch i] {
-        for (alphabet) [alpha_ch j] {
-            if (text_ch = alpha_ch) {
-                text.data[i]: sub.data[j];
-                break;
-            }
-        }
-    }
+struct Player :: {
+    vec2 pos: @default;
+    i32 health: 100;
+    str name: str.from("john");
 }
 
 _ main :: () {
-    alphabet: str.from("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ");
-    sub:      str.from("zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA ");
-
-    print("enter text: ");
-    string text: io.input();
-    defer string.dealloc(&text);
-
-    subsitute(text);
-    println("encrypted: %s" text.data);
+    Player player: @default;
+    println("x: %.1f, y: %.1f, health: %d, name: %s" player.pos.x player.pos.y player.health player.name.data);
 }
