@@ -23,15 +23,15 @@ syntax keyword impulseDefer defer
 syntax keyword impulseBuiltin println print
 
 syntax match impulseFuncCallName "\<\w\+\>\ze\s*("
-syntax match impulseMacros "@\(import\|c\|inline\|shared\)"
-syntax match impulseIdent '\w\+\ze\.\w*('
+syntax match impulseMacros "@\(import\|c\|inline\|shared\|default\)"
+syntax match impulseIdentifier "\<\h\w*\>"
 syntax match impulseFuncDef "\v\w+\ze\s*::\s*\("
 syntax match impulseNamespaceFuncDef "\v\w+\ze\s*\.\s*\w+\s*::\s*\("
 
 syntax region impulseComment start="#.*" end="$"
 syntax match impulseString /"\v[^"]*"/ contains=impulseEscapes
 syntax match impulseChar "'[^'\\]\{1,1}'" contains=impulseEscapes
-syntax match impulseNumber "\<\d\+\>"
+syntax match impulseNumber "\<\d\+\>\(\w\)\@!"
 syntax match impulseEscapes /\\[nr\"']/
 
 highlight link impulseKeywords Keyword
