@@ -69,7 +69,7 @@ bool fs.write_file :: (^char filename ^char content) {
     bool success: false;
     option[^_] file_op: fs.open_file(filename "w");
     if (file_op) [file] {
-        success: @c [fprintf(file, content)];
+        success: @c [fprintf(file, "%s", content)];
         fs.close_file(file);
     }
 
