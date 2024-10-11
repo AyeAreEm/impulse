@@ -1,6 +1,7 @@
-@import "base/time.imp";
+@import "base/dynamic.imp";
 
 _ main :: () {
-    Time now: Time.now();
-    println("%d-%d-%d" now.year now.month now.day);
+    let x: 10;
+    dyn[int] dec_dyn_int;
+    let nums: dyn.new(int); # this doesn't work without above cuz generator checks if the type has been made already
 }

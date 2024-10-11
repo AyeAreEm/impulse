@@ -195,6 +195,7 @@ impl ExprWeights {
 
             ("typeid".to_string(), Keyword::TypeId),
             ("any".to_string(), Keyword::Any),
+            ("let".to_string(), Keyword::Let),
 
             ("if".to_string(), Keyword::If),
             ("orif".to_string(), Keyword::OrIf),
@@ -310,6 +311,7 @@ impl ExprWeights {
             Keyword::Bool => Types::Bool,
             Keyword::TypeId => Types::TypeId,
             Keyword::Any => Types::Any,
+            Keyword::Let => Types::Let,
             Keyword::Generic(typ) => Types::Generic(typ),
             Keyword::TypeDef { type_name, generics } =>  Types::TypeDef { type_name, generics },
             Keyword::Pointer(pointer_to, _) => Types::Pointer(Box::new(pointer_to)),

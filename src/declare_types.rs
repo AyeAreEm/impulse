@@ -27,8 +27,11 @@ pub enum Types {
     F64,
 
     Bool,
+
     TypeId,
     Any,
+    Let,
+
     Generic(String),
 
     Arr {
@@ -77,8 +80,11 @@ pub enum Keyword {
     F64,
 
     Bool,
+
     TypeId,
     Any,
+    Let,
+
     Generic(String),
 
     Println,
