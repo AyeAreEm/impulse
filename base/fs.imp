@@ -63,3 +63,15 @@ string fs.read_file_string :: (^char filename) {
 
     return content;
 }
+
+# returns success or failure
+bool fs.write_file :: (^char filename ^char content) {
+    bool success: false;
+    option[^_] file_op: fs.open_file(filename "w");
+    if (file_op) [file] {
+        success: @c [fprintf(file, content)];
+        fs.close_file(file);
+    }
+
+    return success;
+}

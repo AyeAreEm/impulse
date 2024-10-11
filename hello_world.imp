@@ -1,15 +1,6 @@
-struct vec2 :: {
-    f32 x: 10;
-    f32 y: 15;
-}
-
-struct Player :: {
-    vec2 pos: @default;
-    i32 health: 100;
-    str name: str.from("john");
-}
+@import "base/fs.imp";
 
 _ main :: () {
-    Player player: @default;
-    println("x: %.1f, y: %.1f, health: %d, name: %s" player.pos.x player.pos.y player.health player.name.data);
+    str content: str.from("hello world lolz");
+    fs.write_file("lol.txt" content.data);
 }
