@@ -1,6 +1,1 @@
-@import "base/time.imp";
-
-_ main :: () {
-    Time now: Time.now();
-    println("%d-%d-%d" now.year now.month now.day);
-}
+@import "base/dynamic.imp";

@@ -10,6 +10,7 @@ mod tokeniser;
 mod parser;
 mod generator;
 mod declare_types;
+mod type_checker;
 
 fn initalise(dir: &String) {
     let file_res = fs::File::create(format!("{dir}/c_flags.txt"));

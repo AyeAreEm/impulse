@@ -1,5 +1,5 @@
 use std::{path::Path, fs, collections::HashMap, process::exit};
-use crate::tokeniser::{tokeniser, Token}; use crate::{declare_types::*, Gen};
+use crate::{declare_types::*, tokeniser::{tokeniser, Token}, type_checker::{self, *}, Gen};
 use fs_extra::{dir::CopyOptions, copy_items};
 
 const CUR_PATH: &str = env!("current_path");
@@ -740,7 +740,7 @@ impl ExprWeights {
                         }
                         let new_expr = Expr::Variable {
                             info: Box::new(Expr::VariableName {
-                                typ: Types::Pointer(Box::new(vartyp)),
+                                typ: vartyp,
                                 name: new_name,
                                 reassign: false,
                                 constant,
@@ -4051,6 +4051,12 @@ impl ExprWeights {
 
         match left_expr {
             Expr::VariableName { ref typ, ref name, .. } => {
+                // type check
+                if !compare_type_and_expr(typ, &right_expr, &self.functions) {
+                    self.comp_err(&format!("mismatched types: {typ:?} and {right_expr:?}"));
+                    exit(1);
+                }
+
                 if let Types::TypeId = typ {
                     if !is_constant {
                         self.comp_err(&format!("type masking must be constant. did you mean `typeid {name} :: <value>`?"));
