@@ -1,6 +1,6 @@
-@import "base/fs.imp";
+@import "base/time.imp";
 
 _ main :: () {
-    str content: str.from("hello world lolz");
-    fs.write_file("lol.txt" content.data);
+    Time now: Time.now();
+    println("%d-%d-%d" now.year now.month now.day);
 }

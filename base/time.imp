@@ -40,6 +40,14 @@ struct Time :: {
         return ret;
     }
 
+    Time now :: () {
+        i64 since_epoch: Time.since_epoch();
+        Time local: Time.local(&since_epoch);
+        local.year: [local.year + 1900];
+        local.month: [local.month + 1];
+        return local;
+    }
+
     _ sleep :: (int milliseconds) {
     @c [
         #ifdef _WIN32
