@@ -1,5 +1,5 @@
 use std::{path::Path, fs, collections::HashMap, process::exit};
-use crate::{declare_types::*, tokeniser::{tokeniser, Token}, type_checker::{self, *}, Gen};
+use crate::{declare_types::*, tokeniser::{tokeniser, Token}, type_checker::*, Gen};
 use fs_extra::{dir::CopyOptions, copy_items};
 
 const CUR_PATH: &str = env!("current_path");
@@ -1914,7 +1914,7 @@ impl ExprWeights {
                                         typ = if create_generic {
                                             // TODO: check if ident is already declared
                                             Types::Generic(ident.to_owned()) // might cause errors idk lmao
-                                        } else if self.in_struct_def && self.previous_func.is_empty() {
+                                        } else if self.in_struct_def && self.previous_func.is_empty() && ident == &self.current_func {
                                             Types::TypeDef { type_name: ident.to_owned(), generics: Some(vec![]) }
                                         } else {
                                             self.keyword_to_type(keyword.clone())
