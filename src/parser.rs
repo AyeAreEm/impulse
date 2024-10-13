@@ -2609,7 +2609,7 @@ impl ExprWeights {
                             TCError::Custom(custom) => {
                                 self.comp_err(&format!("function {name} {custom}"));
                             }
-                            _ => unreachable!()
+                            _ => (),
                         }
                     }
                 }
