@@ -1,5 +1,19 @@
 use crate::{declare_types::Types, parser::*};
 
+pub enum TCError<'a> {
+    FuncNotExist,
+    WrongArgLength(usize, usize),
+    MismatchExprType(&'a Expr, &'a Types),
+    // MismatchExprExpr(&'a Expr, &'a Expr),
+    // MismatchTypeType(&'a Types, &'a Types),
+    Custom(String),
+}
+
+pub struct ArgError<'a> {
+    pub pos: usize,
+    pub error: TCError<'a>,
+}
+
 fn get_return_type<'a, 'b>(func_name: &'a String, funcs: &'b Vec<Expr>) -> Option<&'b Types> {
     if funcs.is_empty() {
         return None
@@ -10,8 +24,28 @@ fn get_return_type<'a, 'b>(func_name: &'a String, funcs: &'b Vec<Expr>) -> Optio
             Expr::Func { typ, name, .. } | Expr::MacroFunc { typ, name, .. } => {
                 let san_name = name.replace('.', "__");
                 if &san_name == func_name {
-                    println!("{func_name}: {typ:?}");
+                    println!("{name}: {typ:?}");
                     return Some(typ);
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    None
+}
+
+fn get_args<'a, 'b>(func_name: &'a String, funcs: &'b Vec<Expr>) -> Option<&'b Vec<Expr>> {
+    if funcs.is_empty() {
+        return None;
+    }
+
+    for current_name in funcs {
+        match current_name {
+            Expr::Func { params, name, .. } | Expr::MacroFunc { params, name, .. } => {
+                let san_name = name.replace('.', "__");
+                if &san_name == func_name {
+                    return Some(params);
                 }
             }
             _ => unreachable!(),
@@ -54,7 +88,6 @@ fn compare_type_and_type(t1: &Types, t2: &Types) -> bool {
         (Types::Generic(_), _) => return true,
         (_, Types::Generic(_)) => return true,
         _ => {
-            println!("{t1:?} and {t2:?}");
             return t1 == t2
         },
     }
@@ -87,16 +120,46 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> bool {
                 None => return false,
             }
         },
-        (Types::Pointer(_), Expr::VariableName { typ, .. }) => {
-            return compare_type_and_type(t, typ);
-        },
+        (Types::Pointer(pointer_to), Expr::StrLit(_)) => {
+            return compare_type_and_type(&pointer_to, &Types::Char)
+        }
         (Types::Pointer(pointer_to), _) => return compare_type_and_expr(pointer_to, e, funcs),
-        (_, Expr::VariableName { typ, .. }) => {
-            return compare_type_and_type(t, typ);
-        },
         // if you are using a CEmbed, you should know what you're doing. either way, gcc will pick it up
         (_, Expr::CEmbed(_)) => true,
         (Types::Bool, Expr::True | Expr::False) => true,
         _ => return false,
     }
+}
+
+pub fn compare_exprs_and_args<'a>(exprs: &'a Vec<Expr>, func_name: &'a String, funcs: &'a Vec<Expr>) -> Result<(), ArgError<'a>> {
+    let args = match get_args(func_name, funcs) {
+        Some(a) => a,
+        None => return Err(ArgError { pos: 0, error: TCError::FuncNotExist }),
+    };
+
+    if exprs.len() != args.len() && (func_name != "print" && func_name != "println") {
+        return Err(ArgError { pos: 0, error: TCError::WrongArgLength(exprs.len(), args.len()) });
+    }
+
+    let mut skip_check = false;
+    if func_name == "print" || func_name == "println" {
+        match exprs[0] {
+            Expr::StrLit(_) => skip_check = true,
+            _ => return Err(ArgError { pos: 1, error: TCError::Custom(format!("expected StrLit as first argument, got {:?}", exprs[0])) }) 
+        }
+    }
+
+    if skip_check { return Ok(()) }
+    for (i, expr) in exprs.iter().enumerate() {
+        match (&args[i], expr) {
+            (Expr::VariableName { typ, ..}, _) => {
+                if !compare_type_and_expr(&typ, expr, funcs) {
+                    return Err(ArgError { pos: i + 1, error: TCError::MismatchExprType(expr, typ) });
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    Ok(())
 }

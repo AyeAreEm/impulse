@@ -67,10 +67,7 @@ pub enum Expr {
 
     IntLit(String),
     CharLit(String),
-    StrLit {
-        content: String,
-        is_cstr: bool, // TODO: REMOVE, ALL STRING LITERALS ARE CSTR BY DEFAULT
-    },
+    StrLit(String),
 
     Import(String),
     CEmbed(String),
@@ -1455,7 +1452,7 @@ impl ExprWeights {
                 },
                 Token::Str(word) => {
                     if func_brack_rc == 0 {
-                        expr_params.push(Expr::StrLit { content: word.to_owned(), is_cstr: true })
+                        expr_params.push(Expr::StrLit(word.to_owned()))
                     } else {
                         func_params.push(param.clone());
                     }
@@ -2412,10 +2409,7 @@ impl ExprWeights {
                         self.comp_err(&format!("expected integers inside [], found token {:?}", param));
                         exit(1);
                     } else {
-                        expr_params.push(Expr::StrLit {
-                            content: strlit.to_owned(),
-                            is_cstr: false
-                        });
+                        expr_params.push(Expr::StrLit(strlit.to_owned()));
                     }
                 },
                 Token::Ident(ident) => {
@@ -2595,6 +2589,31 @@ impl ExprWeights {
         match expr {
             Expr::Func { name, .. } | Expr::MacroFunc { name, .. } => {
                 let san_name = name.replace(".", "__");
+
+                match compare_exprs_and_args(&expr_params, &san_name, &self.functions) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        match e.error {
+                            TCError::WrongArgLength(got, expected) => {
+                                self.comp_err(&format!("function {name} expects {expected} arguments, got {got} instead"));
+                                exit(1);
+                            },
+                            TCError::MismatchExprType(wrong_expr, expected_typ) => {
+                                self.comp_err(&format!("function {name} expected argument {} to be of type {expected_typ:?}, got expression {wrong_expr:?}", e.pos));
+                                exit(1);
+                            },
+                            TCError::FuncNotExist => {
+                                self.comp_err(&format!("function {name} does not exist... somehow"));
+                                exit(1);
+                            },
+                            TCError::Custom(custom) => {
+                                self.comp_err(&format!("function {name} {custom}"));
+                            }
+                            _ => unreachable!()
+                        }
+                    }
+                }
+
                 return Expr::FuncCall { name: san_name, gave_params: expr_params }
             },
             _ => {
@@ -3302,7 +3321,7 @@ impl ExprWeights {
                         func_params.push(param.clone());
                         continue;
                     }
-                    expr_params.push(Expr::StrLit { content: word.to_owned(), is_cstr: true });
+                    expr_params.push(Expr::StrLit(word.to_owned()));
                 },
                 unexpected => {
                     self.comp_err(&format!("unexpected token: {unexpected:?}"));
@@ -3415,10 +3434,7 @@ impl ExprWeights {
                     buffer.push(Expr::CharLit(charlit.clone()));
                 },
                 Token::Str(strlit) => {
-                    buffer.push(Expr::StrLit {
-                        content: strlit.to_string(),
-                        is_cstr: false,
-                    });
+                    buffer.push(Expr::StrLit(strlit.to_string()));
                 },
                 Token::Ident(ident) => {
                     if found_macro {

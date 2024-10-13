@@ -390,7 +390,7 @@ impl Gen {
                                 funccall_code.push_str(&format!(", {}", self.handle_value(param.clone())));
                             }
                         },
-                        Expr::StrLit { .. } => {
+                        Expr::StrLit(_) => {
                             let mut string = self.handle_value(param.clone());
                             if i == 0 {
                                 if add_newline {
@@ -504,7 +504,7 @@ impl Gen {
         match value {
             Expr::IntLit(intlit) => intlit,
             Expr::CharLit(charlit) => format!("'{charlit}'"),
-            Expr::StrLit { content, .. } => format!("\"{content}\""),
+            Expr::StrLit(content) => format!("\"{content}\""),
             Expr::True => String::from("true"),
             Expr::False => String::from("false"),
             Expr::Variable { value, .. } => {
