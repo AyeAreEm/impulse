@@ -83,7 +83,19 @@ fn compare_type_and_type(t1: &Types, t2: &Types) -> bool {
 
             return t1_unwrapped == t2_unwrapped;
         },
+        (Types::TypeDef { type_name: t1_name, generics: t1_generics }, Types::TypeDef { type_name: t2_name, generics: t2_generics }) => {
+            if t1_name != t2_name { return false }
 
+            match (t1_generics, t2_generics) {
+                (None, None) => return true,
+                (Some(t1_gen), Some(t2_gen)) => {
+                    // TODO: actually compare the generics
+                    return t1_gen.len() == t2_gen.len()
+                }
+                (None, Some(_)) => return false,
+                (Some(_), None) => return false,
+            }
+        }
         // TODO: maybe change the generic to the correct type when checking
         (Types::Generic(_), _) => return true,
         (_, Types::Generic(_)) => return true,
@@ -126,6 +138,7 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> bool {
         (Types::Pointer(pointer_to), _) => return compare_type_and_expr(pointer_to, e, funcs),
         // if you are using a CEmbed, you should know what you're doing. either way, gcc will pick it up
         (_, Expr::CEmbed(_)) => true,
+        (Types::TypeDef { .. }, Expr::ArrayLit(_)) => true,
         (Types::Bool, Expr::True | Expr::False) => true,
         _ => return false,
     }

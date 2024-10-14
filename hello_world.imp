@@ -1,8 +1,11 @@
-_ say :: (^char word) {
-    println("%s" word);
-}
+@import "base/dynamic.imp";
 
 _ main :: () {
-    str word: str.from("hello world");
-    say(word); # type checker will catch this since str is not ^char
+    dyn[int] nums: dyn.new(int);
+    dyn.push(int nums 10);
+    dyn.push(int nums 20);
+
+    for (nums) [n] {
+        println("%d" n);
+    }
 }

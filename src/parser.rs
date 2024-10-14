@@ -638,14 +638,15 @@ impl ExprWeights {
                                 continue;
                             }
                         } else if generic_not_defined_yet {
-                            let typedef = Types::TypeDef { type_name: name_buf.clone(), generics: None };
+                            let generic = Types::Generic(name_buf.clone());
+                            // let typedef = Types::TypeDef { type_name: name_buf.clone(), generics: None };
                             if pointer_counter > 0 {
-                                let kw; (kw, pointer_counter) = self.create_keyword_pointer(typedef, pointer_counter);
+                                let kw; (kw, pointer_counter) = self.create_keyword_pointer(generic, pointer_counter);
                                 pass_typs.push(self.keyword_to_type(kw));
                                 name_buf.clear();
                                 continue;
                             }
-                            pass_typs.push(typedef);
+                            pass_typs.push(generic);
                             name_buf.clear();
                             continue;
                         } else {
@@ -881,7 +882,7 @@ impl ExprWeights {
                                                 }
                                             }
                                         } else {
-                                            self.comp_err(&format!("expected a typ after struct type, e.g. `my_struct[type]`"));
+                                            self.comp_err(&format!("expected a typeid after struct type, e.g. `my_struct[type]`"));
                                             exit(1);
                                         }
 
