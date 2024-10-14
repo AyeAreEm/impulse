@@ -1,17 +1,93 @@
+use std::collections::HashMap;
 use crate::{declare_types::Types, parser::*};
+use lazy_static::lazy_static;
 
 pub enum TCError<'a> {
     FuncNotExist,
+    GenericNotExist(&'a String),
     WrongArgLength(usize, usize),
     MismatchExprType(&'a Expr, &'a Types),
     // MismatchExprExpr(&'a Expr, &'a Expr),
-    // MismatchTypeType(&'a Types, &'a Types),
+    MismatchTypeType(&'a Types, &'a Types),
     Custom(String),
 }
 
 pub struct ArgError<'a> {
     pub pos: usize,
     pub error: TCError<'a>,
+}
+
+lazy_static! {
+    static ref STRING_TYPES: HashMap<&'static str, Types> = {
+        let string_types = HashMap::from([
+            ("u8", Types::U8),
+            ("i8", Types::I8),
+            ("char", Types::Char),
+
+            ("u16", Types::U16),
+            ("i16", Types::I16),
+
+            ("u32", Types::U32),
+            ("i32", Types::I32),
+
+            ("uint", Types::UInt),
+            ("int", Types::Int),
+
+            ("u64", Types::U64),
+            ("i64", Types::I64),
+
+            ("usize", Types::Usize),
+
+            ("f32", Types::F32),
+            ("f64", Types::F64),
+
+            ("bool", Types::Bool),
+
+            ("any", Types::Any),
+        ]);
+        string_types
+    };
+}
+
+fn create_pointer(typ: Types, pointer_counter: i32) -> Types {
+    let mut ret = typ.clone();
+
+    for _ in 0..pointer_counter {
+        ret = Types::Pointer(Box::new(ret));
+    }
+
+    ret
+}
+
+fn unwrap_pointer(t: &Types) -> &Types {
+    match t {
+        Types::Pointer(pointer_to) => return unwrap_pointer(pointer_to),
+        _ => return t
+    }
+}
+
+pub fn string_to_type(type_name: &String) -> Types {
+    let mut buffer = String::new();
+    let mut pointer_counter = 0;
+
+    for (i, ch) in type_name.chars().enumerate() {
+        if i == type_name.len() - 1{
+            buffer.push(ch);
+
+            let typ = match STRING_TYPES.get(buffer.as_str()) {
+                Some(t) => t.clone(),
+                None => Types::TypeDef { type_name: type_name.clone(), generics: None },
+            };
+
+            return create_pointer(typ, pointer_counter);
+        } else if ch == '^' {
+            pointer_counter += 1;
+        } else {
+            buffer.push(ch);
+        }
+    }
+
+    return Types::None
 }
 
 fn get_return_type<'a, 'b>(func_name: &'a String, funcs: &'b Vec<Expr>) -> Option<&'b Types> {
@@ -24,7 +100,6 @@ fn get_return_type<'a, 'b>(func_name: &'a String, funcs: &'b Vec<Expr>) -> Optio
             Expr::Func { typ, name, .. } | Expr::MacroFunc { typ, name, .. } => {
                 let san_name = name.replace('.', "__");
                 if &san_name == func_name {
-                    println!("{name}: {typ:?}");
                     return Some(typ);
                 }
             }
@@ -53,13 +128,6 @@ fn get_args<'a, 'b>(func_name: &'a String, funcs: &'b Vec<Expr>) -> Option<&'b V
     }
 
     None
-}
-
-fn unwrap_pointer(t: &Types) -> &Types {
-    match t {
-        Types::Pointer(pointer_to) => return unwrap_pointer(pointer_to),
-        _ => return t
-    }
 }
 
 fn compare_type_and_type(t1: &Types, t2: &Types) -> bool {
@@ -168,11 +236,32 @@ pub fn compare_exprs_and_args<'a>(exprs: &'a Vec<Expr>, func_name: &'a String, f
     }
 
     if skip_check { return Ok(()) }
+    let mut typeid_name_to_type: HashMap<&String, &String> = HashMap::new();
     for (i, expr) in exprs.iter().enumerate() {
         match (&args[i], expr) {
-            (Expr::VariableName { typ, ..}, _) => {
-                if !compare_type_and_expr(&typ, expr, funcs) {
-                    return Err(ArgError { pos: i + 1, error: TCError::MismatchExprType(expr, typ) });
+            (Expr::VariableName { typ: arg_typ, name: arg_name, ..}, _) => {
+                if let Expr::VariableName { typ: expr_typ, name: expr_name, .. } = expr {
+                    if let Types::TypeId = expr_typ {
+                        if expr_typ != arg_typ {
+                            return Err(ArgError { pos: i + 1, error: TCError::MismatchTypeType(arg_typ, expr_typ) })
+                        }
+
+                        typeid_name_to_type.entry(arg_name).or_insert(expr_name);
+                    }
+                } else if let Types::Generic(generic) = arg_typ {
+                    let value = match typeid_name_to_type.get(generic) {
+                        Some(v) => v,
+                        None => return Err(ArgError { pos: i + 1, error: TCError::GenericNotExist(generic) })
+                    };
+
+                    let arg_real_typ = string_to_type(value);
+                    if !compare_type_and_expr(&arg_real_typ, expr, funcs) {
+                        return Err(ArgError { pos: i + 1, error: TCError::Custom(format!("argument {} expected type {arg_real_typ:?}, got {expr:?}", i + 1)) });
+                    }
+                }
+
+                if !compare_type_and_expr(&arg_typ, expr, funcs) {
+                    return Err(ArgError { pos: i + 1, error: TCError::MismatchExprType(expr, arg_typ) });
                 }
             }
             _ => unreachable!(),

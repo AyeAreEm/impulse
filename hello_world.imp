@@ -1,15 +1,6 @@
-# fixed string.push
-# add ptr_cast
-# type check address to variables when expecting pointer
-
 @import "base/string.imp";
 
 _ main :: () {
     string word: string.from("hello world");
-    string.push(&word char '!');
-
-    println("%s" word.data);
-    f32 x: 10.5;
-    int y: cast(int x);
-    println("%d" y);
+    string.push(&word char "! bye"); # this will error since StrLit is not of type char
 }
