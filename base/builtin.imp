@@ -171,16 +171,21 @@ struct str :: {
 @inline bool type.compare :: (typeid T typeid K) {
     ^char str_T: type.to_cstr(T);
     ^char str_K: type.to_cstr(K);
+    bool ret: false;
 
     if (c.strcmp(str_T str_K)) {
-        return true;
+        ret: true;
     }
 
-    return false;
+    return ret;
+}
+
+@inline $T ptr_cast :: (typeid T any val) {
+    return @c [*(T*)&val;];
 }
 
 @inline $T cast :: (typeid T any val) {
-    @c [*(T*)&val;];
+    return @c [(T)val;];
 }
 
 # these are only here to claim the definition, these functions are made in the compiler

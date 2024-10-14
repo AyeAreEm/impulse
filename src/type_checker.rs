@@ -64,6 +64,7 @@ fn unwrap_pointer(t: &Types) -> &Types {
 
 fn compare_type_and_type(t1: &Types, t2: &Types) -> bool {
     match (t1, t2) {
+        (Types::Any, _) => return true,
         (
             Types::U8 | Types::I8 | Types::U16 | Types::I16 | Types::U32 | Types::I32 | Types::Usize |
             Types::U64 | Types::I64 | Types::Int | Types::F32 | Types::F64 | Types::Char | Types::UInt,
@@ -108,6 +109,7 @@ fn compare_type_and_type(t1: &Types, t2: &Types) -> bool {
 pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> bool {
     match (t, e) {
         // TODO: double check, think this is fine as parser handles this?
+        (Types::Any, _) => return true,
         (Types::TypeId, _) => return true,
         (Types::Char, Expr::CharLit(_)) => return true,
         (
@@ -131,6 +133,9 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> bool {
                 Some(ret_type) => return compare_type_and_type(t, ret_type),
                 None => return false,
             }
+        },
+        (Types::Pointer(pointer_to), Expr::Address(address_to)) => {
+            return compare_type_and_expr(&pointer_to, address_to, funcs);
         },
         (Types::Pointer(pointer_to), Expr::StrLit(_)) => {
             return compare_type_and_type(&pointer_to, &Types::Char)

@@ -1,11 +1,15 @@
-@import "base/dynamic.imp";
+# fixed string.push
+# add ptr_cast
+# type check address to variables when expecting pointer
+
+@import "base/string.imp";
 
 _ main :: () {
-    dyn[int] nums: dyn.new(int);
-    dyn.push(int nums 10);
-    dyn.push(int nums 20);
+    string word: string.from("hello world");
+    string.push(&word char '!');
 
-    for (nums) [n] {
-        println("%d" n);
-    }
+    println("%s" word.data);
+    f32 x: 10.5;
+    int y: cast(int x);
+    println("%d" y);
 }
