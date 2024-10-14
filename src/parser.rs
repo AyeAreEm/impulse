@@ -192,6 +192,7 @@ impl ExprWeights {
 
             ("typeid".to_string(), Keyword::TypeId),
             ("any".to_string(), Keyword::Any),
+            ("let".to_string(), Keyword::Let),
 
             ("if".to_string(), Keyword::If),
             ("orif".to_string(), Keyword::OrIf),
@@ -307,6 +308,7 @@ impl ExprWeights {
             Keyword::Bool => Types::Bool,
             Keyword::TypeId => Types::TypeId,
             Keyword::Any => Types::Any,
+            Keyword::Let => Types::Let,
             Keyword::Generic(typ) => Types::Generic(typ),
             Keyword::TypeDef { type_name, generics } =>  Types::TypeDef { type_name, generics },
             Keyword::Pointer(pointer_to, _) => Types::Pointer(Box::new(pointer_to)),
@@ -4064,16 +4066,25 @@ impl ExprWeights {
     }
 
     fn create_variable(&mut self, left: Vec<Token>, right: Vec<Token>, is_constant: bool) {
-        let left_expr = self.handle_left_assign(left, is_constant);
+        let mut left_expr = self.handle_left_assign(left, is_constant);
         let right_expr = self.handle_right_assign(right, true);
 
         match left_expr {
-            Expr::VariableName { ref typ, ref name, .. } => {
+            Expr::VariableName { ref mut typ, ref name, .. } => {
                 // type check
-                if !compare_type_and_expr(typ, &right_expr, &self.functions) {
+                let type_checked = compare_type_and_expr(typ, &right_expr, &self.functions);
+                if !type_checked.0 {
                     self.comp_err(&format!("mismatched types: {typ:?} and {right_expr:?}"));
                     exit(1);
                 }
+                *typ = match type_checked.1 {
+                    Types::None => typ.clone(),
+                    Types::TypeDef { ref type_name, .. } => {
+                        self.propagate_struct_fields(name.clone(), type_name.to_owned(), false, is_constant);
+                        type_checked.1
+                    }
+                    _ => type_checked.1,
+                };
 
                 if let Types::TypeId = typ {
                     if !is_constant {

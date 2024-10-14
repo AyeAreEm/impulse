@@ -223,6 +223,7 @@ impl Gen {
 
                 (format!("{typeid}"), String::new())
             },
+            Types::Let => (String::from("let"), String::new()),
             Types::None => (String::new(), String::new()),
             unimpl => {
                 self.comp_err(&format!("{unimpl:?} is not implemented yet"));
@@ -737,6 +738,7 @@ impl Gen {
         self.code.push_str("typedef float f32;\n");
         self.code.push_str("typedef double f64;\n");
         self.code.push_str("typedef unsigned int uint;\n");
+        self.code.push_str("#define let __auto_type\n");
         self.code.push_str("#define $inline static inline __attribute__((always_inline))\n");
 
         let mut struct_generics = Vec::new();

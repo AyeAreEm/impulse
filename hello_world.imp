@@ -1,6 +1,13 @@
-@import "base/string.imp";
+@import "base/dynamic.imp";
 
 _ main :: () {
-    string word: string.from("hello world");
-    string.push(&word char "! bye"); # this will error since StrLit is not of type char
+    let nums: dyn.new(int);
+
+    loop (i < 10) [+] {
+        dyn.push(int nums [i * 10]);
+    }
+
+    for (nums) [n i] {
+        println("%zu: %d" i n);
+    }
 }

@@ -174,46 +174,96 @@ fn compare_type_and_type(t1: &Types, t2: &Types) -> bool {
     }
 }
 
-pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> bool {
+pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, Types) {
     match (t, e) {
+        (Types::Let, Expr::IntLit(_)) => return (true, Types::Int), 
+        (Types::Let, Expr::CharLit(_)) => return (true, Types::Char),
+        (Types::Let, Expr::StrLit(_)) => return (true, Types::Pointer(Box::new(Types::Char))),
+        (Types::Let, Expr::True | Expr::False) => return (true, Types::Bool),
+        (Types::Let, Expr::VariableName { typ, .. }) => {
+            return (true, typ.clone())
+        },
+        (Types::Let, Expr::FuncCall { name, gave_params }) => {
+            let ret_type_op = get_return_type(name, funcs);
+
+            let mut types = Vec::new();
+            match ret_type_op {
+                Some(ret_type) => {
+                    for param in gave_params {
+                        if let Expr::VariableName { typ, name, .. } = param {
+                            // if let Types::Pointer(pointer_to) = typ {
+                            //     let unwrapped = unwrap_pointer(pointer_to);
+                            //     if let Types::TypeId = unwrapped {
+                            //         types.push(string_to_type(name));
+                            //     }
+                            // }
+                            if let Types::TypeId = typ {
+                                types.push(string_to_type(name));
+                            }
+                        } else if let Expr::StructDef { struct_name, .. } = param {
+                            if let Expr::StructName { name, .. } = *struct_name.clone() {
+                                types.push(string_to_type(&name))
+                            }
+                        }
+                    }
+
+                    if let Types::TypeDef { generics, type_name } = ret_type {
+                        if let Some(gens) = generics {
+                            if types.len() != gens.len() {
+                                return (false, Types::None)
+                            }
+
+                            return (true, Types::TypeDef { type_name: type_name.to_owned(), generics: Some(types) })
+                        }
+                    }
+                    return (true, ret_type.clone())
+                },
+                None => return (false, Types::None),
+            }
+        },
         // TODO: double check, think this is fine as parser handles this?
-        (Types::Any, _) => return true,
-        (Types::TypeId, _) => return true,
-        (Types::Char, Expr::CharLit(_)) => return true,
+        (Types::Any, _) => return (true, Types::None),
+        (Types::TypeId, _) => return (true, Types::None),
+        (Types::Char, Expr::CharLit(_)) => return (true, Types::None),
         (
             Types::U8 | Types::I8 | Types::U16 | Types::I16 | Types::U32 | Types::I32 | Types::Usize |
             Types::U64 | Types::I64 | Types::Int | Types::F32 | Types::F64 | Types::Char | Types::UInt |
             Types::Pointer(_),
             Expr::IntLit(_)
-        ) => return true,
+        ) => return (true, Types::None),
         // TODO: maybe change the generic to the correct type when checking
-        (Types::Generic(_), _) => return true,
+        (Types::Generic(_), _) => return (true, Types::None),
         (Types::ArrIndex { arr_typ, .. }, _) => {
             let typ = unwrap_pointer(arr_typ);
-            return compare_type_and_expr(typ, e, funcs);
+            let compare = compare_type_and_expr(typ, e, funcs);
+            return (compare.0, compare.1);
         }
         (_, Expr::VariableName { typ, .. }) => {
-            return compare_type_and_type(t, typ);
+            return (compare_type_and_type(t, typ), Types::None);
         },
         (_, Expr::FuncCall { name, .. }) => {
             let ret_type_op = get_return_type(name, funcs);
             match ret_type_op {
-                Some(ret_type) => return compare_type_and_type(t, ret_type),
-                None => return false,
+                Some(ret_type) => return (compare_type_and_type(t, ret_type), Types::None),
+                None => return (false, Types::None),
             }
         },
         (Types::Pointer(pointer_to), Expr::Address(address_to)) => {
-            return compare_type_and_expr(&pointer_to, address_to, funcs);
+            let compare = compare_type_and_expr(&pointer_to, address_to, funcs);
+            return (compare.0, compare.1);
         },
         (Types::Pointer(pointer_to), Expr::StrLit(_)) => {
-            return compare_type_and_type(&pointer_to, &Types::Char)
+            return (compare_type_and_type(&pointer_to, &Types::Char), Types::None)
         }
-        (Types::Pointer(pointer_to), _) => return compare_type_and_expr(pointer_to, e, funcs),
+        (Types::Pointer(pointer_to), _) => {
+            let compare = compare_type_and_expr(&pointer_to, e, funcs);
+            return (compare.0, compare.1)
+        },
         // if you are using a CEmbed, you should know what you're doing. either way, gcc will pick it up
-        (_, Expr::CEmbed(_)) => true,
-        (Types::TypeDef { .. }, Expr::ArrayLit(_)) => true,
-        (Types::Bool, Expr::True | Expr::False) => true,
-        _ => return false,
+        (_, Expr::CEmbed(_)) => return (true, Types::None),
+        (Types::TypeDef { .. }, Expr::ArrayLit(_)) => return (true, Types::None),
+        (Types::Bool, Expr::True | Expr::False) => return (true, Types::None),
+        _ => return (false, Types::None),
     }
 }
 
@@ -255,12 +305,12 @@ pub fn compare_exprs_and_args<'a>(exprs: &'a Vec<Expr>, func_name: &'a String, f
                     };
 
                     let arg_real_typ = string_to_type(value);
-                    if !compare_type_and_expr(&arg_real_typ, expr, funcs) {
+                    if !compare_type_and_expr(&arg_real_typ, expr, funcs).0 {
                         return Err(ArgError { pos: i + 1, error: TCError::Custom(format!("argument {} expected type {arg_real_typ:?}, got {expr:?}", i + 1)) });
                     }
                 }
 
-                if !compare_type_and_expr(&arg_typ, expr, funcs) {
+                if !compare_type_and_expr(&arg_typ, expr, funcs).0 {
                     return Err(ArgError { pos: i + 1, error: TCError::MismatchExprType(expr, arg_typ) });
                 }
             }

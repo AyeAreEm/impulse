@@ -7,7 +7,7 @@ string readin :: () {
     u8 newline_counter: 0;
 
     loop (newline_counter < 2) {
-        char ch: c_getchar();
+        char ch: c.getchar();
         @c [
             if (ch == '\n') {
                 newline_counter++;
@@ -21,8 +21,8 @@ string readin :: () {
 }
 
 _ main :: () {
-    bool quit: false;
-    dyn[string] todos: dyn.new(string);
+    let quit: false;
+    let todos: dyn.new(string);
 
     loop (!quit) {
         usize input_num;
@@ -40,7 +40,7 @@ _ main :: () {
             }
         } orif (input_num = 2) {
             print("enter todo: ");
-            string todo: readin();
+            let todo: readin();
             dyn.push(string todos todo);
         } orif (input_num = 3) {
             print("enter todo number: ");
