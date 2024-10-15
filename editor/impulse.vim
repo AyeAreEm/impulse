@@ -18,7 +18,7 @@ syntax keyword impulseLoops loop for
 syntax keyword impulseTypeDefs struct enum
 syntax keyword impulseTypeNames int uint i32 u32 i8 u8 i16 u16 i64 u64 f32 f64 _ char bool usize str string
 syntax keyword impulseTrueFalse true false
-syntax keyword impulseTypeid typeid any
+syntax keyword impulseTypeid typeid any let
 syntax keyword impulseDefer defer
 syntax keyword impulseBuiltin println print
 
