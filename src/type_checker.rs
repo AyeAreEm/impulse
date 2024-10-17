@@ -269,6 +269,9 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
         },
         // if you are using a CEmbed, you should know what you're doing. either way, gcc will pick it up
         (_, Expr::CEmbed(_)) => return (true, Types::None),
+
+        // TODO: typecheck all the contents in the literal
+        (Types::Arr { .. }, Expr::ArrayLit(_)) => return (true, Types::None),
         (Types::TypeDef { .. }, Expr::ArrayLit(_)) => return (true, Types::None),
         (Types::Bool, Expr::True | Expr::False) => return (true, Types::None),
         _ => return (false, Types::None),

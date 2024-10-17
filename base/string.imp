@@ -1,6 +1,5 @@
 # Memory allocated string with length and null terminated for easy C interopability
 
-@import "base/builtin.imp";
 @import "base/memory.imp";
 
 @inline ^char c.strncpy :: (^char dest ^char src usize byte_size) {

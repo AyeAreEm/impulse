@@ -1,13 +1,7 @@
-enum Day :: {
-    Mon;
-    Tue;
-    Wed;
-    Thur;
-    Fri;
-    Sat;
-    Sun;
-}
-
 _ main :: () {
-    let today: Day.Thur;
+    []int nums: |1 2 3 4 5|;
+
+    for (nums) [n] {
+        println("%d" n);
+    }
 }
