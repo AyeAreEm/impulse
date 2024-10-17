@@ -238,6 +238,14 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
             let compare = compare_type_and_expr(typ, e, funcs);
             return (compare.0, compare.1);
         }
+        // this is for enums
+        (Types::TypeDef { generics, .. }, Expr::VariableName { typ, .. }) => {
+            if generics == &None && typ == &Types::None {
+                return (true, Types::None);
+            }
+            return (compare_type_and_type(t, typ), Types::None);
+        },
+        (Types::TypeDef { .. }, Expr::DefaultValue) => return (true, Types::None),
         (_, Expr::VariableName { typ, .. }) => {
             return (compare_type_and_type(t, typ), Types::None);
         },

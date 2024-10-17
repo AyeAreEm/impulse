@@ -738,7 +738,7 @@ impl Gen {
         self.code.push_str("typedef float f32;\n");
         self.code.push_str("typedef double f64;\n");
         self.code.push_str("typedef unsigned int uint;\n");
-        self.code.push_str("#define let __auto_type\n");
+        self.code.push_str("#define let __auto_type /* currently only for enums */\n");
         self.code.push_str("#define $inline static inline __attribute__((always_inline))\n");
 
         let mut struct_generics = Vec::new();
