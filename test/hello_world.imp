@@ -1,3 +1,10 @@
 _ main :: () {
-    println("hello there");
+    str hello: str.from("hello");
+    bool has_hell: str.contains(hello "ello");
+
+    if (has_hell) {
+        println("true");
+    } else {
+        println("false");
+    }
 }
