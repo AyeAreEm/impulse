@@ -16,6 +16,7 @@ pub struct Gen {
     compile: bool,
     keep_gen: bool,
     lang: Lang,
+    c_flags: Vec<String>,
 
     libc_map: HashMap<String, bool>,
     defs_location: Vec<usize>,
@@ -41,7 +42,7 @@ fn rand_varname() -> String {
 }
 
 impl Gen {
-    pub fn new(in_file: &str, out_file: &str, compile: bool, keep_gen: bool, lang: Lang) -> Gen {
+    pub fn new(in_file: &str, out_file: &str, compile: bool, keep_gen: bool, lang: Lang, c_flags: &[String]) -> Gen {
         let libc_map = HashMap::from([
             ("stdio".to_string(), true),
             ("stdlib".to_string(), true),
@@ -63,16 +64,21 @@ impl Gen {
         return Gen {
             imports: String::new(),
             comp_imports: String::new(),
+
+            line_num: 0,
+            indent: 0,
             code: String::new(),
+
             in_file: in_file.to_string(),
             out_file: out_file.to_string(),
+
             compile,
             keep_gen,
             lang,
-            line_num: 0,
+            c_flags: c_flags.to_vec(),
+
             libc_map,
             defs_location: Vec::new(),
-            indent: 0,
             generated_structs: Vec::new(),
             default_structs: Vec::new(),
             in_macro_func: false,
@@ -1378,12 +1384,13 @@ impl Gen {
     }
 
     pub fn generate(&mut self, expressions: Vec<(Expr, String, u32)>) {
-        let c_flags_res = fs::read_to_string("c_flags.txt");
-        let c_flags = match c_flags_res {
-            Ok(file) => file,
-            Err(_) => String::new(),
-        };
+        // let c_flags_res = fs::read_to_string("c_flags.txt");
+        // let c_flags = match c_flags_res {
+        //     Ok(file) => file,
+        //     Err(_) => String::new(),
+        // };
 
+        let c_flags = self.c_flags.join(" ");
         match self.lang {
             Lang::C => {
                 self.generate_c(expressions);

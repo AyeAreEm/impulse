@@ -86,7 +86,7 @@ fn setup_step(dir: &String) -> (PathBuf, Vec<(Expr, String, u32)>) {
     return (filename, expressions)
 }
 
-fn build(dir: &String, keep_gen: bool, lang: Lang) {
+fn build(dir: &String, keep_gen: bool, lang: Lang, c_flags: &[String]) {
     let current_dir = env::current_dir();
     let path = match current_dir {
         Ok(path) => path,
@@ -108,7 +108,7 @@ fn build(dir: &String, keep_gen: bool, lang: Lang) {
     //     println!("{:?}", expr.0);
     // }
 
-    let mut gen = Gen::new(filename.to_str().unwrap(), out_filename.unwrap(), true, keep_gen, lang);
+    let mut gen = Gen::new(filename.to_str().unwrap(), out_filename.unwrap(), true, keep_gen, lang, c_flags);
     gen.generate(expressions);
 }
 
@@ -118,7 +118,7 @@ fn transpile(dir: &String, lang: Lang) {
     //     println!("{:?}", expr.0);
     // }
 
-    let mut gen = Gen::new(filename.to_str().unwrap(), "output", false, true, lang);
+    let mut gen = Gen::new(filename.to_str().unwrap(), "output", false, true, lang, &[]);
     gen.generate(expressions);
 }
 
@@ -155,10 +155,10 @@ fn main() {
                     exit(1)
                 }
 
-                build(&args[3], true, Lang::C);
+                build(&args[3], true, Lang::C, &args[4..]);
                 return
             }
-            build(&args[2], false, Lang::C);
+            build(&args[2], false, Lang::C, &args[3..]);
         },
         "transpile" => {
             // TODO: tidy this up and maybe use a hashmap with the available languages
