@@ -24,12 +24,13 @@ Now run `impulse` to check if it has been correctly added to your path
 ## Your first Impulse file
 Create `hello.imp` and inside:
 ```
-_ main() :: {
+_ main :: () {
     println("hello world");
 }
 ```
-To generate .exe, `impulse -b hello.imp hello`<br>
-To generate .c and .exe `impulse -b -c hello.imp hello`<br> (this will generate `output.c`)
-To generate just .c, `impulse -c hello.imp hello` (this will generate `hello.c`)
+To generate .exe, `impulse build .` or `impulse build hello.imp`<br>
+To generate .c and .exe `impulse build --keep .`(this will generate `output.c`)<br>
+To generate just .c, `impulse transpile .` (this will generate `output.c`)<br>
+Note: if you want to run `impulse build .` or the like, make sure you have a main function in your project<br>
 
 For more information, check the <a href="./Docs.md">Docs</a>, <a href="./Overview.md">Overview</a> and or <a href="../examples">Examples</a>. Happy Hacking

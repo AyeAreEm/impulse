@@ -20,9 +20,9 @@ defer
 
 int uint usize char i64 u64 i32 u32 i16 u16 i8 u8 f64 f32 bool _ $
 
-typeid any
+typeid any let
 
-@import @c @inline @shared
+@import @c @inline @shared @default
 ```
 
 That's all the keywords.

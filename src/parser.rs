@@ -160,7 +160,7 @@ pub struct ExprWeights {
 }
 
 impl ExprWeights {
-    pub fn new(tokens: Vec<Token>, filename: &String) -> ExprWeights {
+    pub fn new(tokens: Vec<Token>, filename: &str) -> ExprWeights {
         let func_to_vars: HashMap<String, Vec<Vec<Expr>>> = HashMap::new();
         let keyword_map: HashMap<String, Keyword> = HashMap::from([
             // ("println".to_string(), Keyword::Println),
@@ -484,7 +484,7 @@ impl ExprWeights {
                                 // `handle_funccall` function to get back a clean string of this
                                 // func call, this does not affect the compilation except for maybe
                                 // error messages but not sure.
-                                let mut gen = Gen::new(self.filename.clone(), String::from("output.c"), true, false, Lang::C);
+                                let mut gen = Gen::new(&self.filename, &String::from("output.c"), true, false, Lang::C);
                                 let clean_func_call = gen.handle_funccall(func_call);
                                 params.clear();
                                 clean.push_str(&clean_func_call)

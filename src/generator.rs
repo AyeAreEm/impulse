@@ -41,7 +41,7 @@ fn rand_varname() -> String {
 }
 
 impl Gen {
-    pub fn new(in_file: String, out_file: String, compile: bool, keep_gen: bool, lang: Lang) -> Gen {
+    pub fn new(in_file: &str, out_file: &str, compile: bool, keep_gen: bool, lang: Lang) -> Gen {
         let libc_map = HashMap::from([
             ("stdio".to_string(), true),
             ("stdlib".to_string(), true),
@@ -64,8 +64,8 @@ impl Gen {
             imports: String::new(),
             comp_imports: String::new(),
             code: String::new(),
-            in_file,
-            out_file,
+            in_file: in_file.to_string(),
+            out_file: out_file.to_string(),
             compile,
             keep_gen,
             lang,
