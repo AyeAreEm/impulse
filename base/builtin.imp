@@ -54,7 +54,7 @@ struct[T] array :: {
     @c [return strlen(str);];
 }
 
-# NOTE: this is an actually boolean unlike how c strcmp returns 0
+# NOTE: this is an actual boolean unlike how c strcmp returns 0
 @inline bool c.strcmp :: (^char str1 ^char str2) {
     @c [return !strcmp(str1, str2);];
 }
@@ -156,6 +156,38 @@ struct str :: {
 
         word.data[index]: to;
         return true;
+    }
+
+    bool contains :: (str word ^char pattern) {
+        usize pattern.len: c.strlen(pattern);
+        usize head: 0;
+
+        if (word.len < pattern.len) {
+            return false;
+        }
+
+        for (word) [ch] {
+            if (head = pattern.len) {
+                return true;
+            }
+
+            if (ch = pattern[head]) {
+                head: [head + 1];
+            } else {
+                head: 0;
+            }
+        }
+
+        if (head = pattern.len) {
+            return true;
+        }
+
+        return false;
+    }
+
+    _ clear :: (^str word) {
+        word.data[0]: '\0';
+        word.len: 0;
     }
 }
 

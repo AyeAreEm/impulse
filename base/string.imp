@@ -2,11 +2,6 @@
 
 @import "base/memory.imp";
 
-@inline ^char c.strncpy :: (^char dest ^char src usize byte_size) {
-    # doubt i could write safe code that copies strings
-    @c [ return strncpy(dest, src, byte_size); ];
-}
-
 struct string :: {
     ^char data;
     usize cap;
@@ -47,11 +42,6 @@ struct string :: {
         word.cap: [[word.cap + modifier] * 2];
         word.data: mem.realloc(word.data word.cap);
     }
-
-    #_ copy :: (^char dest ^char src usize byte_size) {
-    #    cstr.copy(dest src byte_size);
-    #    @c [dest[*dest-1] = '\0';];
-    #}
 
     string clone :: (string src) {
         string new: string.with_capacity(src.cap);
@@ -227,8 +217,32 @@ struct string :: {
         return true;
     }
 
+    bool contains :: (string word ^char pattern) {
+        usize pattern.len: c.strlen(pattern);
+        usize head: 0;
 
-    #bool contains :: (string str ^char pattern) {}
+        if (word.len < pattern.len) {
+            return false;
+        }
+
+        for (word) [ch] {
+            if (head = pattern.len) {
+                return true;
+            }
+
+            if (ch = pattern[head]) {
+                head: [head + 1];
+            } else {
+                head: 0;
+            }
+        }
+
+        if (head = pattern.len) {
+            return true;
+        }
+
+        return false;
+    }
     
     _ clear :: (^string word) {
         word.data[0]: '\0';
