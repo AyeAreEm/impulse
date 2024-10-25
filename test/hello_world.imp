@@ -1,3 +1,21 @@
+@import "base/dynamic.imp";
+
 _ main :: () {
-    println("hello world");
+    let nums: dyn.new(int);
+    defer dyn.dealloc(nums);
+    
+    loop (i < 10) [+] {
+        dyn.push(int nums [i * 10]);
+    }
+
+    let last: dyn.pop(int nums);
+    int other_last: nums.data[nums.len - 1]
+    # can't use let here. might fix.
+    # nums.data is of type ^$T and there's no other type info in the above expression.
+    # it is still type checked and you can't do `str other_last`
+
+    if (last) [value] {
+        println("%d" value);
+    }
+    println("%d" other_last);
 }

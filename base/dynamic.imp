@@ -15,8 +15,7 @@ struct[T] dyn :: {
         new.data: mem.alloc(T new.cap);
         @c [ 
             if (new.data == NULL) {
-                fprintf(stderr, "error: failed to allocate memory in %s at line %d\n", __FILE__, __LINE__);
-                fprintf(stderr, "error: please take a look at the c file for more info\n");
+                panic("failed to allocate memory");
                 exit(1);
             }
          ];
@@ -52,6 +51,15 @@ struct[T] dyn :: {
         option[T] ret: dyn.at(T arr [arr.len - 1]);
         if (!ret.none) {
             arr.len: [arr.len - 1];
+        }
+        return ret;
+    }
+
+    option[T] deque :: (typeid T dyn[T] arr) {
+        option[T] ret: dyn.at(T arr [0]);
+        if (!ret.none) {
+            arr.len: [arr.len - 1];
+            arr.data: &arr.data[1];
         }
         return ret;
     }

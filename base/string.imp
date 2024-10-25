@@ -14,8 +14,7 @@ struct string :: {
         new.data: mem.alloc(char new.cap);
         @c [
             if (new.data == NULL) {
-                fprintf(stderr, "error: failed to allocate memory in %s at line %d\n", __FILE__, __LINE__);
-                fprintf(stderr, "error: please take a look at the c file for more info\n");
+                panic("failed to allocate memory");
                 exit(1);
             }
         ];
@@ -30,8 +29,7 @@ struct string :: {
         new.data: mem.alloc(char new.cap);
         @c [
             if (new.data == NULL) {
-                fprintf(stderr, "error: failed to allocate memory in %s at line %d\n", __FILE__, __LINE__);
-                fprintf(stderr, "error: please take a look at the c file for more info\n");
+                panic("failed to allocate memory");
                 exit(1);
             }
         ];
