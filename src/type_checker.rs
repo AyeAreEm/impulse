@@ -181,6 +181,11 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
         (Types::Let, Expr::StrLit(_)) => return (true, Types::Pointer(Box::new(Types::Char))),
         (Types::Let, Expr::True | Expr::False) => return (true, Types::Bool),
         (Types::Let, Expr::VariableName { typ, .. }) => {
+            if let Types::ArrIndex { arr_typ, .. } = typ {
+                let unwrap_arr_typ = unwrap_pointer(arr_typ);
+
+                return (compare_type_and_type(t, unwrap_arr_typ), unwrap_arr_typ.clone())
+            }
             return (true, typ.clone())
         },
         (Types::Let, Expr::FuncCall { name, gave_params }) => {
@@ -237,7 +242,7 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
             let typ = unwrap_pointer(arr_typ);
             let compare = compare_type_and_expr(typ, e, funcs);
             return (compare.0, compare.1);
-        }
+        },
         // this is for enums
         (Types::TypeDef { generics, .. }, Expr::VariableName { typ, .. }) => {
             if generics == &None && typ == &Types::None {
@@ -247,6 +252,10 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
         },
         (Types::TypeDef { .. }, Expr::DefaultValue) => return (true, Types::None),
         (_, Expr::VariableName { typ, .. }) => {
+            if let Types::ArrIndex { arr_typ, .. } = typ {
+                let unwrap_arr_typ = unwrap_pointer(arr_typ);
+                return (compare_type_and_type(t, unwrap_arr_typ), Types::None)
+            }
             return (compare_type_and_type(t, typ), Types::None);
         },
         (_, Expr::FuncCall { name, .. }) => {
