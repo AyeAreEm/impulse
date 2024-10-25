@@ -112,6 +112,18 @@ fn build(dir: &String, keep_gen: bool, lang: Lang, c_flags: &[String]) {
     gen.generate(expressions);
 }
 
+fn build_as_file(dir: &String, keep_gen: bool, lang: Lang, c_flags: &[String]) {
+    let (filename, expressions) = setup_step(dir);
+    // for expr in &expressions {
+    //     println!("{:?}", expr.0);
+    // }
+
+    let out_filename = filename.file_stem().unwrap().to_str().unwrap();
+
+    let mut gen = Gen::new(filename.to_str().unwrap(), out_filename, true, keep_gen, lang, c_flags);
+    gen.generate(expressions);
+}
+
 fn transpile(dir: &String, lang: Lang) {
     let (filename, expressions) = setup_step(dir);
     // for expr in &expressions {
@@ -155,9 +167,45 @@ fn main() {
                     exit(1)
                 }
 
+                if &args[3] == "-file" {
+                    if args.len() < 5 {
+                        println!("\x1b[91merror\x1b[0m: expected path after -file");
+                        exit(1)
+                    }
+
+                    // build with keep and as file
+                    build_as_file(&args[4], true, Lang::C, &args[5..]);
+                    return
+                }
+
+                // build with keep
                 build(&args[3], true, Lang::C, &args[4..]);
                 return
             }
+
+            if &args[2] == "-file" {
+                if args.len() < 4 {
+                    println!("\x1b[91merror\x1b[0m: expected path after -file");
+                    exit(1)
+                }
+
+                if &args[3] == "--keep" {
+                    if args.len() < 5 {
+                        println!("\x1b[91merror\x1b[0m: expected path after --keep");
+                        exit(1)
+                    }
+
+                    // build as file with keep
+                    build_as_file(&args[4], true, Lang::C, &args[5..]);
+                    return
+                }
+
+                // build as file
+                build_as_file(&args[3], false, Lang::C, &args[4..]);
+                return
+            }
+
+            // build normally
             build(&args[2], false, Lang::C, &args[3..]);
         },
         "transpile" => {

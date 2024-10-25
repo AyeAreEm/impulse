@@ -1,5 +1,5 @@
 /target
 
 /test/output.c
-/test/test.exe
+/test/*.exe
 /test/test
