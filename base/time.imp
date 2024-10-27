@@ -12,9 +12,13 @@ struct Time :: {
     int second;
     int minute;
     int hour;
-    int day;
+
+    int date; # date of the month
     int month;
     int year;
+
+    int day; # day of the week
+
     int days_since_jan_first;
     bool is_daylight_savings;
 
@@ -30,9 +34,13 @@ struct Time :: {
         ret.second = local_time->tm_sec;
         ret.minute = local_time->tm_min;
         ret.hour = local_time->tm_hour;
-        ret.day = local_time->tm_mday;
+
+        ret.date = local_time->tm_mday;
         ret.month = local_time->tm_mon;
         ret.year = local_time->tm_year;
+
+        ret.day = local_time->tm_wday;
+
         ret.days_since_jan_first = local_time->tm_yday;
         ret.is_daylight_savings = local_time->tm_isdst;
         ];

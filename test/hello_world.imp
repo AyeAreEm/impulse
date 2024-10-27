@@ -1,21 +1,49 @@
-@import "base/dynamic.imp";
+@import "base/time.imp";
+
+enum Day :: {
+    Sun;
+    Mon;
+    Tue;
+    Wed;
+    Thu;
+    Fri;
+    Sat;
+
+    Day today :: () {
+        Time now :: Time.now();
+        return now.day;
+    }
+
+    _ format :: (Day day) {
+        switch (day) {
+            case (Day.Mon) {
+                println("Mon");
+            }
+            case (Day.Tue) {
+                println("Tue");
+            }
+            case (Day.Wed) {
+                println("Wed");
+            }
+            case (Day.Thu) {
+                println("Thu");
+            }
+            case (Day.Fri) {
+                println("Fri");
+            }
+            case (Day.Sat) {
+                println("Sat");
+            }
+            case (Day.Sun) {
+                println("Sun");
+            }
+        }
+    }
+}
+
 
 _ main :: () {
-    let nums: dyn.new(int);
-    defer dyn.dealloc(nums);
-    
-    loop (i < 10) [+] {
-        dyn.push(int nums [i * 10]);
-    }
-
-    let last: dyn.pop(int nums);
-    int other_last: nums.data[nums.len - 1]
-    # can't use let here. might fix.
-    # nums.data is of type ^$T and there's no other type info in the above expression.
-    # it is still type checked and you can't do `str other_last`
-
-    if (last) [value] {
-        println("%d" value);
-    }
-    println("%d" other_last);
+    Day today :: Day.today();
+    println("%d" today);
+    Day.format(today);
 }

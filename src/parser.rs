@@ -822,12 +822,12 @@ impl ExprWeights {
                                         } else if pointer_counter > 0 {
                                             (kw_buf, pointer_counter) = self.create_keyword_pointer(Types::TypeDef {
                                                 type_name: ident.to_owned(),
-                                                generics: Some(vec![]),
+                                                generics: None,
                                             }, pointer_counter);
                                         } else {
                                             kw_buf = Keyword::TypeDef {
                                                 type_name: ident.to_string(),
-                                                generics: Some(vec![]),
+                                                generics: None,
                                             };
                                         }
                                     },
@@ -1688,15 +1688,11 @@ impl ExprWeights {
                     }
                     *subtyp.clone()
                 } else if let Types::TypeDef { type_name, generics: generics_op } = typ {
-                    let generics = match generics_op {
-                        Some(g) => g,
-                        None => {
-                            self.comp_err(&format!("{type_name} unsupported in for loops currently"));
-                            exit(1);
-                        },
-                    };
-
                     if type_name == &String::from("dyn") || type_name == &String::from("array") {
+                        let generics = match generics_op {
+                            Some(g) => g,
+                            None => unreachable!(),
+                        };
                         let subtyp = generics[0].clone();
                         match subtyp {
                             Types::TypeDef { ref type_name, .. } => self.propagate_struct_fields(new_varnames[0].to_owned(), type_name.to_string(), false, *constant),
@@ -1895,7 +1891,10 @@ impl ExprWeights {
                                 None => Keyword::None,
                             };
 
-                            if let Expr::StructDef { .. } | Expr::MacroStructDef { .. } | Expr::EnumDef { .. } = self.find_ident(ident.clone()) {
+                            let found_ident = self.find_ident(ident.clone());
+                            if let Expr::StructDef { .. } | Expr::EnumDef { .. } = found_ident {
+                                keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: None };
+                            } else if let Expr::MacroStructDef { .. } = found_ident {
                                 keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: Some(vec![]) };
                             }
 
@@ -1915,7 +1914,11 @@ impl ExprWeights {
                                             // TODO: check if ident is already declared
                                             Types::Generic(ident.to_owned()) // might cause errors idk lmao
                                         } else if self.in_struct_def && self.previous_func.is_empty() && ident == &self.current_func {
+                                            // TODO: change `generics: Some(vec![])` to Some or
+                                            // None if TypeDef is Struct, MacroStruct, Enum
                                             Types::TypeDef { type_name: ident.to_owned(), generics: Some(vec![]) }
+                                        } else if self.in_enum_def && self.previous_func.is_empty() && ident == &self.current_func {
+                                            Types::TypeDef { type_name: ident.to_owned(), generics: None }
                                         } else {
                                             self.keyword_to_type(keyword.clone())
                                         };
@@ -2080,7 +2083,7 @@ impl ExprWeights {
         }
 
         if create_for {
-            if (self.in_struct_def && !self.in_func) || self.in_enum_def {
+            if (self.in_struct_def || self.in_enum_def) && !self.in_func {
                 self.comp_err("can't use loops inside structs or enums");
                 exit(1);
             }
@@ -2090,7 +2093,7 @@ impl ExprWeights {
         }
 
         if create_loop {
-            if (self.in_struct_def && !self.in_func) || self.in_enum_def {
+            if (self.in_struct_def || self.in_enum_def) && !self.in_func {
                 self.comp_err("can't use loops inside structs or enums");
                 exit(1);
             }
@@ -2100,7 +2103,7 @@ impl ExprWeights {
         }
 
         if create_branch {
-            if (self.in_struct_def && !self.in_func) || self.in_enum_def {
+            if (self.in_struct_def || self.in_enum_def) && !self.in_func {
                 self.comp_err("can't use branches inside structs or enums");
                 exit(1);
             }
@@ -2111,7 +2114,7 @@ impl ExprWeights {
 
         if create_case || create_fall {
             // TODO: check if inside switch as well, could do it inside generator
-            if (self.in_struct_def && !self.in_func) || self.in_enum_def {
+            if (self.in_struct_def || self.in_enum_def) && !self.in_func {
                 self.comp_err("can't use cases inside structs or enums");
                 exit(1);
             }
@@ -2174,8 +2177,16 @@ impl ExprWeights {
                 self.create_func(typ.clone(), params.clone(), namespaced_name, is_inline);
                 return
             } else if self.in_enum_def {
-                self.comp_err("can't create a function inside enums");
-                exit(1);
+                if self.previous_func.is_empty() {
+                    self.previous_func = self.current_func.clone();
+                    self.create_enum();
+                    self.in_enum_def = true;
+                }
+
+                let namespaced_name = format!("{}.{name}", self.previous_func);
+                println!("{namespaced_name}");
+                self.create_func(typ.clone(), params.clone(), namespaced_name, is_inline);
+                return
             }
 
             self.create_func(typ.clone(), params.clone(), name.clone(), is_inline);
@@ -2872,7 +2883,7 @@ impl ExprWeights {
                                 keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: None };
                             },
                             Expr::StructDef { .. } => {
-                                keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: Some(vec![]) }
+                                keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: None };
                             },
                             Expr::MacroStructDef { .. } => {
                                 let pass_typs = if let Token::Int(typs) = &var_info[2] {
@@ -3005,7 +3016,7 @@ impl ExprWeights {
                                 Expr::StructDef { struct_name, .. } => {
                                     match *struct_name {
                                         Expr::StructName { name, .. } => {
-                                            let tmp = Types::TypeDef { type_name: name.clone(), generics: Some(vec![]) };
+                                            let tmp = Types::TypeDef { type_name: name.clone(), generics: None };
                                             keyword = Keyword::Pointer(tmp.clone(), tmp);
                                         },
                                         _ => {
@@ -3095,7 +3106,7 @@ impl ExprWeights {
                                                     Expr::StructName { name, .. } => {
                                                         (keyword, pointer_counter) = self.create_keyword_pointer(Types::TypeDef {
                                                             type_name: name.clone(),
-                                                            generics: Some(vec![]),
+                                                            generics: None,
                                                         }, pointer_counter);
                                                     },
                                                     _ => {
@@ -3390,7 +3401,7 @@ impl ExprWeights {
                         if buffer.len() > 1 {
                             self.comp_err(&format!("unexpected multiple expressions outside of parameters: {:?}", buffer));
                             exit(1);
-                        } else if (self.in_struct_def && !self.in_func) || self.in_enum_def {
+                        } else if (self.in_struct_def || self.in_enum_def) && !self.in_func {
                             // self.comp_err(&format!("can't call function {:?} inside struct or enum", buffer[0]));
                             // exit(1);
                             return self.create_func_call(&buffer[0], params);
@@ -4184,7 +4195,7 @@ impl ExprWeights {
         } else if !self.in_func && !self.in_enum_def {
             // if in global scope
             self.global_vars.push(expr.clone());
-        } else if self.in_enum_def {
+        } else if self.in_enum_def && !self.in_func {
             // if enum field has numeric value
             if let Expr::IntLit(_) = right_expr {
                 self.expr_stack.push(expr);
@@ -4342,6 +4353,13 @@ impl ExprWeights {
                             self.previous_func.clear();
                             self.in_struct_def = false;
                         }
+                    } else if self.in_enum_def && curl_rc == 0 {
+                        if self.previous_func.is_empty() {
+                            self.create_enum();
+                        } else {
+                            self.previous_func.clear();
+                            self.in_enum_def = false;
+                        }
                     } else if self.in_defer {
                         let mut include_rcurl = false;
                         if defer_rc != 0 {
@@ -4368,8 +4386,6 @@ impl ExprWeights {
                         } else if include_rcurl {
                             self.expr_stack.push(Expr::EndBlock);
                         }
-                    } else if self.in_enum_def {
-                        self.create_enum();
                     } else if !self.in_defer {
                         self.program_push(Expr::EndBlock);
                     }
