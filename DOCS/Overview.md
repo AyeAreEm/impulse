@@ -28,6 +28,8 @@ All variables are initalised to zero if not given a value
 int x;
 int y: 0;
 # x and y are always equal
+
+int z: @garbage; # this is a random uninitalised value
 ```
 For more information, please check <a href="./Variables.md">Variables.md</a>
 

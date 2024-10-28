@@ -2,8 +2,9 @@
 These work similarly to C where it's `<type> <name>: <value>`, also note that `:` is the assignment operator and `=` is the equality operator
 ```
 int x: [5 + 5];
-string word: str.from("hello");
-bool foo: true;
+int y; # this will always be 0
+int z: @garbage; # this will be an uninitalised value
+
 [10]int arr: |0 1 2|;
 dyn[int] nums: dyn.new(int);
 
@@ -17,8 +18,15 @@ x^: 15;
 int x :: 10;
 x: 15; # errors
 ```
-Note: a little quirk with constants are the same as how they are in C, if you get a pointer to it and then change it's value, it will work, no errors.
 
+# Type Inference
+The `let` keyword will try to infer the type of the variable as long as there's enough information about the type
+```
+let x: 10; # the type would be int
+let word: str.from("hello"); # the type would be str
+
+let something: |10 15|; # this would error since there isn't enough info on the type
+```
 
 # Note
 Almost all identifiers can have a `.` in it. This is to emulate methods or fields without a struct if you just need the association.<br>

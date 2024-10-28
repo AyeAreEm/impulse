@@ -136,5 +136,6 @@ pub enum Macros {
     Inline,
     Shared,
     Default,
+    Garbage,
     None,
 }

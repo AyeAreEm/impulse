@@ -560,12 +560,12 @@ impl Gen {
             },
             Expr::CEmbed(code) => code,
             Expr::DefaultValue => String::new(),
+            Expr::GarbageValue => String::from("impulse_garbage"),
             unimpl => {
                 self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                 exit(1);
             }
         }
-
     }
 
     fn handle_boolean_condition(&mut self, conditions: &Vec<Expr>) -> String {
@@ -1148,6 +1148,13 @@ impl Gen {
                         } else {
                             String::from("{0}")
                         };
+                    } else if var_val == String::from("impulse_garbage") {
+                        if self.in_macro_func {
+                            self.code.push_str(&format!("{varname};\\\n"));
+                        } else {
+                            self.code.push_str(&format!("{varname};\n"));
+                        }
+                        continue
                     }
                     
                     if self.in_macro_func {

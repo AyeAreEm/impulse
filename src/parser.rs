@@ -113,6 +113,7 @@ pub enum Expr {
     EndBlock,
 
     DefaultValue,
+    GarbageValue,
 
     None,
 }
@@ -145,7 +146,10 @@ pub struct ExprWeights {
 
     in_scope: bool,
     in_func: bool,
+
     in_struct_def: bool,
+    is_struct_generic: bool,
+
     in_enum_def: bool,
 
     in_defer: bool,
@@ -224,6 +228,7 @@ impl ExprWeights {
             ("inline".to_string(), Macros::Inline),
             ("shared".to_string(), Macros::Shared),
             ("default".to_string(), Macros::Default),
+            ("garbage".to_string(), Macros::Garbage),
         ]);
 
         ExprWeights {
@@ -249,6 +254,7 @@ impl ExprWeights {
             in_scope: false,
             in_func: false,
             in_struct_def: false,
+            is_struct_generic: false,
             in_enum_def: false,
             in_defer: false,
             one_defer: false,
@@ -1196,6 +1202,7 @@ impl ExprWeights {
             self.expr_stack.push(Expr::StructName{ name, is_shared });
         } else {
             self.expr_stack.push(Expr::MacroStructName { name, generics: pass_generic, is_shared });
+            self.is_struct_generic = true;
         }
         self.token_stack.clear();
     }
@@ -1914,9 +1921,11 @@ impl ExprWeights {
                                             // TODO: check if ident is already declared
                                             Types::Generic(ident.to_owned()) // might cause errors idk lmao
                                         } else if self.in_struct_def && self.previous_func.is_empty() && ident == &self.current_func {
-                                            // TODO: change `generics: Some(vec![])` to Some or
-                                            // None if TypeDef is Struct, MacroStruct, Enum
-                                            Types::TypeDef { type_name: ident.to_owned(), generics: Some(vec![]) }
+                                            if self.is_struct_generic {
+                                                Types::TypeDef { type_name: ident.to_owned(), generics: Some(vec![]) }
+                                            } else {
+                                                Types::TypeDef { type_name: ident.to_owned(), generics: None }
+                                            }
                                         } else if self.in_enum_def && self.previous_func.is_empty() && ident == &self.current_func {
                                             Types::TypeDef { type_name: ident.to_owned(), generics: None }
                                         } else {
@@ -2184,7 +2193,6 @@ impl ExprWeights {
                 }
 
                 let namespaced_name = format!("{}.{name}", self.previous_func);
-                println!("{namespaced_name}");
                 self.create_func(typ.clone(), params.clone(), namespaced_name, is_inline);
                 return
             }
@@ -2776,7 +2784,7 @@ impl ExprWeights {
                     Some(kw) => keyword = kw.clone(),
                     None => {
                         if let Expr::StructDef { .. } = self.find_structure(ident) {
-                            keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: Some(vec![]) };
+                            keyword = Keyword::TypeDef { type_name: ident.to_string(), generics: None };
                         } else {
                             self.comp_err(&format!("expected keyword, got {ident}"));
                             exit(1);
@@ -2861,6 +2869,7 @@ impl ExprWeights {
                 }
             },
             Macros::Default => Expr::DefaultValue,
+            Macros::Garbage => Expr::GarbageValue,
             _ => {
                 self.comp_err(&format!("macro {mac:?} not reimplemented yet"));
                 exit(1);
@@ -3625,9 +3634,16 @@ impl ExprWeights {
                                 } else {
                                     // if in struct it reference it's own name
                                     if self.in_struct_def && ident == &self.current_func {
-                                        let mut k = Keyword::TypeDef {
-                                            type_name: format!("struct {}", self.current_func), 
-                                            generics: Some(vec![])
+                                        let mut k = if self.is_struct_generic {
+                                            Keyword::TypeDef {
+                                                type_name: format!("struct {}", self.current_func), 
+                                                generics: Some(vec![])
+                                            } 
+                                        } else {
+                                            Keyword::TypeDef {
+                                                type_name: format!("struct {}", self.current_func), 
+                                                generics: None
+                                            } 
                                         };
                                         if pointer_counter > 0 {
                                             k = self.create_keyword_pointer(self.keyword_to_type(k), pointer_counter).0;

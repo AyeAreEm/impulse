@@ -250,6 +250,7 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
             }
             return (compare_type_and_type(t, typ), Types::None);
         },
+        (_, Expr::GarbageValue) => return (true, Types::None),
         (Types::TypeDef { .. }, Expr::DefaultValue) => return (true, Types::None),
         (_, Expr::VariableName { typ, .. }) => {
             if let Types::ArrIndex { arr_typ, .. } = typ {

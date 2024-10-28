@@ -22,7 +22,7 @@ int uint usize char i64 u64 i32 u32 i16 u16 i8 u8 f64 f32 bool _ $
 
 typeid any let
 
-@import @c @inline @shared @default
+@import @c @inline @shared @default @garbage
 ```
 
 That's all the keywords.

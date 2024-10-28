@@ -1,49 +1,7 @@
-@import "base/time.imp";
-
-enum Day :: {
-    Sun;
-    Mon;
-    Tue;
-    Wed;
-    Thu;
-    Fri;
-    Sat;
-
-    Day today :: () {
-        Time now :: Time.now();
-        return now.day;
-    }
-
-    _ format :: (Day day) {
-        switch (day) {
-            case (Day.Mon) {
-                println("Mon");
-            }
-            case (Day.Tue) {
-                println("Tue");
-            }
-            case (Day.Wed) {
-                println("Wed");
-            }
-            case (Day.Thu) {
-                println("Thu");
-            }
-            case (Day.Fri) {
-                println("Fri");
-            }
-            case (Day.Sat) {
-                println("Sat");
-            }
-            case (Day.Sun) {
-                println("Sun");
-            }
-        }
-    }
-}
-
-
 _ main :: () {
-    Day today :: Day.today();
-    println("%d" today);
-    Day.format(today);
+    int x: @garbage;
+    int y: @garbage;
+
+    println("%d" x);
+    println("%d" y);
 }
