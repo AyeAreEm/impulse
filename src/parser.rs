@@ -1260,8 +1260,8 @@ impl ExprWeights {
             }
         }
 
-
         self.in_struct_def = false;
+        self.is_struct_generic = false;
     }
 
     fn boolean_conditions(&self, params: &Vec<Token>, is_loop: bool) -> (Vec<Expr>, Expr) {
@@ -4368,6 +4368,7 @@ impl ExprWeights {
                         } else {
                             self.previous_func.clear();
                             self.in_struct_def = false;
+                            self.is_struct_generic = false;
                         }
                     } else if self.in_enum_def && curl_rc == 0 {
                         if self.previous_func.is_empty() {
