@@ -23,7 +23,7 @@ syntax keyword impulseDefer defer
 syntax keyword impulseBuiltin println print
 
 syntax match impulseFuncCallName "\<\w\+\>\ze\s*("
-syntax match impulseMacros "@\(import\|c\|inline\|shared\|default\|garbage\)"
+syntax match impulseMacros "@\(import\|c\|inline\|shared\|default\|garbage\|mut\)"
 syntax match impulseIdent '\w\+\ze\.\w*('
 syntax match impulseFuncDef "\v\w+\ze\s*::\s*\("
 syntax match impulseNamespaceFuncDef "\v\w+\ze\s*\.\s*\w+\s*::\s*\("

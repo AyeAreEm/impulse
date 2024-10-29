@@ -154,17 +154,6 @@ string word: string.from("hello");
 word.push_char('!');
 ```
 
-#### Constant function arguments by default
-Since there isn't a `const` keyword, there is no way to tell if an arg is constant or not. so maybe it should be constant by default. (like in Odin)
-
-#### Constant function argument syntax alternative to above
-```
-i32 add :: (i32 :: x i32 :: y) {
-    x: 10; # error, constant reassignment
-    return [x + y];
-}
-```
-
 #### Variable equal to expression
 Not sure on the syntax.
 ```

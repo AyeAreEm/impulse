@@ -243,8 +243,8 @@ impl Gen {
             Expr::Variable { info, .. } => {
                 return self.handle_varname(*info);
             },
-            Expr::VariableName { ref typ, reassign, constant, .. } => {
-                let mut vardec = if constant && !reassign {
+            Expr::VariableName { ref typ, reassign, constant, func_arg, .. } => {
+                let mut vardec = if constant && !reassign && !func_arg {
                     String::from("const ")
                 } else {
                     String::new()
@@ -1038,6 +1038,13 @@ impl Gen {
                             }
                         }
 
+                        // match varname.find('*') {
+                        //     Some(idx) => {
+                        //         varname.insert_str(idx+1, " const");
+                        //     },
+                        //     None => (),
+                        // }
+
                         if i == 0 {
                             func_code.push_str(&varname);
                         } else {
@@ -1076,10 +1083,10 @@ impl Gen {
                     self.defs_location.push(self.code.len());
                     self.code.push_str(&func_code);
                 },
-                Expr::VariableName { typ, name, reassign, constant, field_data } => {
+                Expr::VariableName { typ, name, reassign, constant, field_data, func_arg } => {
                     self.add_spaces(self.indent);
 
-                    let mut varname = self.handle_varname(Expr::VariableName { typ: typ.clone(), name, reassign, constant, field_data });
+                    let mut varname = self.handle_varname(Expr::VariableName { typ: typ.clone(), name, reassign, constant, field_data, func_arg });
                     let last_varname = varname.chars().last().unwrap();
                     if last_varname == 'A' {
                         if let Types::Arr { length, .. } = typ {

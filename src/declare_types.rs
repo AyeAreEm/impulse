@@ -132,6 +132,7 @@ pub enum Keyword {
 #[derive(Debug, Clone)]
 pub enum Macros {
     C,
+    Mut,
     Import,
     Inline,
     Shared,

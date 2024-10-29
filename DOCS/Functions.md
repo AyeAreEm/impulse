@@ -1,5 +1,5 @@
 # Functions
-These are similar to Jai or Odin, as well as similar to defining a variable. `<type> <name> :: (<type> <name>) :: {}`
+These are similar to Jai or Odin, as well as similar to defining a variable. `<type> <name> :: (<type> <name>) {}`<br>
 
 ```
 _ main :: () {
@@ -12,14 +12,20 @@ _ main :: () {
 }
 ```
 
-# Quirk
-The original syntax for functions were a little different but are still available for use in Impulse if it'll help you `grep` it easier. Might be a little hard to read tho
+## Function Arguments
+Note: impulse doesn't use `,` to separate arguments. `(int x int y)` passes two arguments, integer x and integer y.<br>
+Arguments are `constant` by default as there isn't a `const` or `var` keyword. This is also to hopefully reduce bugs
 ```
-_() main :: {
-
+_ reset :: (int num) {
+    num: 10; # this will error since num is constant
 }
+```
 
-string(^char) str.from :: {
+If you want to mutate an argument, use the `@mut` macro to explicitly tell the compiler to treat the argument as a variable
 
+```
+_ reset :: (int num) {
+    @mut num;
+    num: 10;
 }
 ```

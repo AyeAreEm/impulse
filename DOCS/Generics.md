@@ -19,10 +19,11 @@ struct[T] dyn :: {
 }
 ```
 
-The `$` is used to declare a field or variable of a generic type. If the generic is being passed to a function or used as a subtype, `$` is not used.
+The `$` is used when making of variable of the generic type only. When passed to functions and structs, they aren't used.
 
 # Quirk
 Typeid makes a function a C macro, for the most part there is no difference except function parameters<br>
+Note: a big difference is that these cannot have early returns currently
 ```
 # example, not the real function in standard lib
 _ push :: (typeid T dyn[T] arr $T data) {

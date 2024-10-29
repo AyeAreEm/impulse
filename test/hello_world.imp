@@ -1,8 +1,11 @@
+_ reset :: (^int x) {
+    @mut x;
+    x^: 15;
+}
+
 _ main :: () {
-    str word: str.from("hello");
-    # this wasn't working because the var is of type
-    # TypeDef {name: "str", generics: None}
-    # but the function's return type was of type
-    # TypeDef {name: "str", generics: Some([])}
-    # fixed to be generics: None
+    int x: 10;
+    reset(&x);
+    
+    println("%d" x);
 }

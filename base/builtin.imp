@@ -129,18 +129,21 @@ struct str :: {
     }
 
     _ to_lowercase :: (str word) {
+        @mut word;
         for (word) [ch i] {
             word.data[i]: @c [tolower(ch)];
         }
     }
     
     _ to_uppercase :: (str word) {
+        @mut word;
         for (word) [ch i] {
             word.data[i]: @c [toupper(ch)];
         }
     }
 
     _ replace_char :: (str word char from char to) {
+        @mut word;
         for (word) [ch i] {
             if (ch = from) {
                 word.data[i]: to;
@@ -149,6 +152,8 @@ struct str :: {
     }
 
     bool replace_index :: (str word usize index char to) {
+        @mut word;
+
         option[char] at_index: str.at(word index);
         if (at_index.none = true) {
             return false;
@@ -186,6 +191,8 @@ struct str :: {
     }
 
     _ clear :: (^str word) {
+        @mut word;
+
         word.data[0]: '\0';
         word.len: 0;
     }

@@ -26,8 +26,8 @@ pub enum Expr {
         name: String,
         reassign: bool,
         constant: bool,
+        func_arg: bool,
         field_data: (bool, bool), // is_field, is_pointer
-        // dots_to_arrows: Vec<bool>,
     },
     Variable {
         info: Box<Expr>, // Expr = VariableName
@@ -224,6 +224,7 @@ impl ExprWeights {
 
         let macros_map: HashMap<String, Macros> = HashMap::from([
             ("c".to_string(), Macros::C),
+            ("mut".to_string(), Macros::Mut),
             ("import".to_string(), Macros::Import),
             ("inline".to_string(), Macros::Inline),
             ("shared".to_string(), Macros::Shared),
@@ -735,7 +736,7 @@ impl ExprWeights {
         if let Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } = self.find_structure(&user_def) {
             for field in struct_fields {
                 match field {
-                    Expr::VariableName { typ: vartyp, name: varname, constant, field_data, .. } => {
+                    Expr::VariableName { typ: vartyp, name: varname, field_data, .. } => {
                         let new_name = if is_ptr {
                             format!("{fname}->{varname}")
                         } else {
@@ -743,13 +744,16 @@ impl ExprWeights {
                         };
                         if let Types::TypeDef { ref type_name, .. } = vartyp {
                             expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), type_name.to_owned(), field_data.1));
+                        } else if let Types::Arr { .. } = vartyp {
+                            expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), String::from("array"), field_data.1));
                         }
                         let new_expr = Expr::Variable {
                             info: Box::new(Expr::VariableName {
                                 typ: vartyp,
                                 name: new_name,
                                 reassign: false,
-                                constant,
+                                constant: true,
+                                func_arg: true,
                                 field_data: (true, is_ptr),
                             }),
                             value: Box::new(Expr::None),
@@ -791,8 +795,9 @@ impl ExprWeights {
                                 if !array_lens.is_empty() {
                                     // TODO: make this support mutli-dimensional arrays
                                     // kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
+                                    // kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![typ]) };
                                     let typ = self.keyword_to_type(kw.clone());
-                                    kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![typ]) };
+                                    kw_buf = Keyword::Arr { typ: Box::new(typ), length: array_lens[0].clone() };
                                     array_lens.clear();
                                     updated_kw_buf = true;
                                 }
@@ -819,11 +824,12 @@ impl ExprWeights {
                                         if !array_lens.is_empty() {
                                             // TODO: make this support mutli-dimensional arrays
                                             // kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
+                                            // kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![typ]) };
                                             let typ = Types::TypeDef {
                                                 type_name: ident.to_string(),
                                                 generics: None,
                                             };
-                                            kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![typ]) };
+                                            kw_buf = Keyword::Arr { typ: Box::new(typ), length: array_lens[0].clone() };
                                             array_lens.clear();
                                         } else if pointer_counter > 0 {
                                             (kw_buf, pointer_counter) = self.create_keyword_pointer(Types::TypeDef {
@@ -944,6 +950,8 @@ impl ExprWeights {
                             // THIS NEEDS TO BE DONE HERE BECAUSE WE ARE ENTERING A NEW SCOPE, THE
                             // "propagate_struct_fields" FUNCTION WORKS FOR THE CURRENT SCOPE
                             expr_param.append(&mut self.create_func_propagate_field(ident.clone(), user_def.to_owned(), false));
+                        } else if let Types::Arr { .. } = typ {
+                            expr_param.append(&mut self.create_func_propagate_field(ident.clone(), String::from("array"), false));
                         } else if let Keyword::Pointer(.., last) = kw_buf {
                             if let Types::TypeDef { type_name: ref user_def, .. } = last {
                                 expr_param.append(&mut self.create_func_propagate_field(ident.clone(), user_def.to_owned(), true));
@@ -956,7 +964,8 @@ impl ExprWeights {
                             typ,
                             name: ident.to_owned(),
                             reassign: false,
-                            constant: false,
+                            constant: true,
+                            func_arg: true,
                             field_data: (false, false),
                         };
 
@@ -1119,6 +1128,7 @@ impl ExprWeights {
                 name: format!("{sanitised_name}.field_count"),
                 reassign: false,
                 constant: true,
+                func_arg: false,
                 field_data: (false, false),
             }),
             value: Box::new(Expr::IntLit(format!("{}", exprs.len()))),
@@ -1177,6 +1187,7 @@ impl ExprWeights {
                                 name: name_buf.clone(),
                                 reassign: false,
                                 constant: false,
+                                func_arg: false,
                                 field_data: (false, false),
                             }),
                             value: Box::new(Expr::None)
@@ -1384,7 +1395,7 @@ impl ExprWeights {
                                 exit(1);
                             }
                         },
-                        Expr::VariableName { typ, name, reassign, constant, field_data } => {
+                        Expr::VariableName { typ, name, reassign, constant, field_data, func_arg } => {
                             if i != params.len()-1 {
                                 if let Token::Int(index) = &params[i+1] {
                                     had_index = true;
@@ -1396,13 +1407,14 @@ impl ExprWeights {
                                         name,
                                         reassign,
                                         constant,
-                                        field_data
+                                        field_data,
+                                        func_arg
                                     });
                                 } else {
-                                    expr_params.push(Expr::VariableName { typ, name, reassign, constant, field_data });
+                                    expr_params.push(Expr::VariableName { typ, name, reassign, constant, field_data, func_arg });
                                 }
                             } else {
-                                expr_params.push(Expr::VariableName { typ, name, reassign, constant, field_data });
+                                expr_params.push(Expr::VariableName { typ, name, reassign, constant, field_data, func_arg });
                             }
                         },
                         Expr::None => {
@@ -1412,6 +1424,7 @@ impl ExprWeights {
                                     name: ident.to_owned(),
                                     reassign: true,
                                     constant: false,
+                                    func_arg: false,
                                     field_data: (false, false),
                                 };
 
@@ -1556,6 +1569,7 @@ impl ExprWeights {
                                         name: capture.to_owned(),
                                         reassign: false,
                                         constant: false,
+                                        func_arg: false,
                                         field_data: (false, false)
                                     }),
                                     value: Box::new(value),
@@ -1741,6 +1755,7 @@ impl ExprWeights {
                             name: new_varnames[1].to_string(),
                             reassign: false,
                             constant: false,
+                            func_arg: false,
                             field_data: (false, false),
                         }),
                         value: Box::new(Expr::IntLit(String::from("0")))
@@ -1759,6 +1774,7 @@ impl ExprWeights {
                     name: new_varnames[0].to_string(),
                     reassign: false,
                     constant: false,
+                    func_arg: false,
                     field_data: (false, false)
                 };
 
@@ -1775,6 +1791,7 @@ impl ExprWeights {
                             name: new_varnames[1].to_string(),
                             reassign: false,
                             constant: false,
+                            func_arg: false,
                             field_data: (false, false),
                         }),
                         value: Box::new(Expr::IntLit(String::from("0")))
@@ -2471,12 +2488,12 @@ impl ExprWeights {
                                 if pointer_counter > 0 {
                                     let (kw, _) = self.create_keyword_pointer(Types::TypeId, pointer_counter);
                                     let typ = self.keyword_to_type(kw);
-                                    expr_params.push(Expr::VariableName { typ, name: ident.clone(), reassign: false, constant: false, field_data: (false, false) });
+                                    expr_params.push(Expr::VariableName { typ, name: ident.clone(), reassign: false, constant: false, field_data: (false, false), func_arg: false });
                                     pointer_counter = 0;
                                     continue;
                                 }
                                 let _ = self.keyword_to_type(keyword.clone());
-                                expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.clone(), reassign: false, constant: false, field_data: (false, false) })
+                                expr_params.push(Expr::VariableName { typ: Types::TypeId, name: ident.clone(), reassign: false, constant: false, field_data: (false, false), func_arg: false })
                             },
                             None => {
                                 self.comp_err(&format!("unknown identifier: {}", ident));
@@ -2492,7 +2509,7 @@ impl ExprWeights {
                             }, pointer_counter);
                             pointer_counter = 0;
                             let typ = self.keyword_to_type(kw);
-                            expr_params.push(Expr::VariableName { typ, name: ident.clone(), reassign: false, constant: false, field_data: (false, false) });
+                            expr_params.push(Expr::VariableName { typ, name: ident.clone(), reassign: false, constant: false, field_data: (false, false), func_arg: false });
                         } else {
                             expr_params.push(expr);
                         }
@@ -2826,8 +2843,55 @@ impl ExprWeights {
             name,
             reassign: false,
             constant: is_constant,
+            func_arg: false,
             field_data: (false, false),
         }
+    }
+
+    fn handle_mutate_func_arg(&mut self, varname: &String) {
+        let variables_res = self.func_to_vars.get_mut(&self.current_func);
+        match variables_res {
+            Some(variables) => {
+                let mut new_vars = Vec::new();
+                let mut idxs: Vec<usize> = Vec::new();
+
+                for (idx, vars) in variables[self.current_scope].iter().enumerate() {
+                    if let Expr::Variable { info, value } = vars {
+                        if let Expr::VariableName { typ, name, field_data, func_arg, .. } = *info.clone() {
+                            if name.replace("->", ".").contains(varname) && func_arg {
+                                new_vars.push(Expr::Variable {
+                                    info: Box::new(Expr::VariableName {
+                                        typ: typ.clone(),
+                                        name: name.clone(),
+                                        reassign: false,
+                                        constant: false,
+                                        func_arg: true,
+                                        field_data,
+                                    }),
+                                    value: value.clone(),
+                                });
+                                idxs.push(idx);
+                            }
+                        }
+                    }
+                }
+
+                if !new_vars.is_empty() {
+                    for (i, old_var_idx) in idxs.iter().enumerate() {
+                        variables[self.current_scope].remove(*old_var_idx);
+                        variables[self.current_scope].insert(*old_var_idx, new_vars[i].clone());
+                    }
+                    println!("{:?}", variables[self.current_scope])
+                } else {
+                    self.comp_err(&format!("expected {varname} to be a function argument but wasn't. @mut is used to make an argument mutable"));
+                    exit(1);
+                }
+            },
+            None => {
+                self.comp_err(&format!("expected {varname} to be a function argument but wasn't. @mut is used to make an argument mutable"));
+                exit(1);
+            },
+        };
     }
 
     fn handle_macros(&mut self, ident: &String, index: &usize, value: &Vec<Token>) -> Expr {
@@ -2870,6 +2934,12 @@ impl ExprWeights {
             },
             Macros::Default => Expr::DefaultValue,
             Macros::Garbage => Expr::GarbageValue,
+            Macros::Mut => {
+                if let Token::Ident(ident) = &value[index+1] {
+                    self.handle_mutate_func_arg(ident);
+                }
+                return Expr::None;
+            },
             _ => {
                 self.comp_err(&format!("macro {mac:?} not reimplemented yet"));
                 exit(1);
@@ -2917,17 +2987,14 @@ impl ExprWeights {
                                             self.comp_err(&format!("enum field {ident} must be constant if given value. did you mean `{ident} :: <value>`?"));
                                             exit(1);
                                         }
-                                        return Expr::VariableName { typ: Types::None, name: new_name, reassign: false, constant: true, field_data: (false, false) }
+                                        return Expr::VariableName { typ: Types::None, name: new_name, reassign: false, constant: true, field_data: (false, false), func_arg: false }
                                     }
                                     self.comp_err(&format!("undeclared identifier: {ident}"));
                                     exit(1);
                                 },
                                 Expr::VariableName { typ, name, constant, field_data, .. } => {
-                                    if constant {
+                                    if constant || is_constant {
                                         self.comp_err(&format!("var {name} is constant. can't be reassigned"));
-                                        exit(1);
-                                    } else if is_constant {
-                                        self.comp_err(&format!("var {name} is mutable. constants need value during declaration"));
                                         exit(1);
                                     }
 
@@ -2939,6 +3006,7 @@ impl ExprWeights {
                                                     name,
                                                     reassign: true,
                                                     constant: false,
+                                                    func_arg: false,
                                                     field_data 
                                                 }
                                             ));
@@ -2971,6 +3039,7 @@ impl ExprWeights {
                                                 name: name.to_owned(),
                                                 reassign: true, 
                                                 constant: false,
+                                                func_arg: false,
                                                 field_data
                                             }
                                         } else {
@@ -2979,7 +3048,7 @@ impl ExprWeights {
                                         }
                                     }
 
-                                    return Expr::VariableName { typ: typ.clone(), name: name.to_owned(), reassign: true, constant: false, field_data }
+                                    return Expr::VariableName { typ: typ.clone(), name: name.to_owned(), reassign: true, constant: false, field_data, func_arg: false }
                                 }
                                 expr => {
                                     return expr
@@ -3171,7 +3240,7 @@ impl ExprWeights {
 
                 let typ = self.keyword_to_type(keyword.clone());
                 if let Token::Ident(varname) = &var_info[2] {
-                    return Expr::VariableName { typ, name: varname.to_owned(), reassign: false, constant: false, field_data: (false, false) }
+                    return Expr::VariableName { typ, name: varname.to_owned(), reassign: false, constant: false, field_data: (false, false), func_arg: false }
                 }
             },
             _ => {
@@ -3222,18 +3291,15 @@ impl ExprWeights {
             }
 
             let typ = self.keyword_to_type(keyword.clone());
-            return Expr::VariableName { typ, name: name.to_owned(), reassign: false, constant: is_constant, field_data: (false, false)};
+            return Expr::VariableName { typ, name: name.to_owned(), reassign: false, constant: is_constant, field_data: (false, false), func_arg: false };
         } else if let Expr::VariableName { typ, name, constant, field_data, .. } = found_expr {
             if constant || is_constant {
                 self.comp_err(&format!("var {name} is constant. can't be reassigned"));
                 exit(1);
-            } else if is_constant {
-                self.comp_err(&format!("var {name} is mutable. constants need value during declaration"));
-                exit(1);
             }
             match keyword {
                 Keyword::None => {
-                    return Expr::VariableName { typ, name, reassign: true, constant: false, field_data};
+                    return Expr::VariableName { typ, name, reassign: true, constant: false, field_data, func_arg: false };
                 },
                 _ => {
                     self.comp_err(&format!("variable {:?} already declared", name));
@@ -3463,7 +3529,6 @@ impl ExprWeights {
                 Token::Ident(ident) => {
                     if found_macro {
                         if (self.in_struct_def && !self.in_func) || self.in_defer {
-                            println!("running, line num: {}", self.line_num);
                             let mac = self.handle_macros(ident, &i, &value);
 
                             // originally only c embeds and the old array macro was expected and
@@ -3684,8 +3749,8 @@ impl ExprWeights {
 
                     let expr = self.find_ident(ident.to_string());
                     match expr {
-                        Expr::VariableName { ref typ, ref name, reassign, constant: _, field_data } => {
-                            buffer.push(Expr::VariableName { typ: typ.clone(), name: name.to_owned(), reassign, constant: is_constant, field_data })
+                        Expr::VariableName { ref typ, ref name, reassign, constant: _, field_data, func_arg } => {
+                            buffer.push(Expr::VariableName { typ: typ.clone(), name: name.to_owned(), reassign, constant: is_constant, field_data, func_arg })
                         },
                         Expr::None => {
                             let typ_kw_res = self.keyword_map.get(ident);
@@ -3823,6 +3888,7 @@ impl ExprWeights {
                                 name: name.to_owned(),
                                 reassign: false,
                                 constant,
+                                func_arg: false,
                                 field_data: (false, false)
                             }));
                             if returning {
@@ -3853,6 +3919,7 @@ impl ExprWeights {
                             name: name.to_owned(),
                             reassign: false,
                             constant: constant.to_owned(),
+                            func_arg: false,
                             field_data: (field_data.0, field_data.1),
                         };
                         if returning {
@@ -3904,6 +3971,7 @@ impl ExprWeights {
                                         name: new_name,
                                         reassign: false,
                                         constant: is_constant, // CAN BREAK, testing rn
+                                        func_arg: false,
                                         field_data: (true, is_ptr),
                                     }),
                                     value: Box::new(Expr::None),
@@ -3933,6 +4001,7 @@ impl ExprWeights {
                                     name: new_name,
                                     reassign: false,
                                     constant: is_constant, // CAN BREAK, testing rn
+                                    func_arg: false,
                                     field_data: (true, is_ptr),
                                 }),
                                 value: Box::new(Expr::None),
@@ -4008,9 +4077,9 @@ impl ExprWeights {
                             *generics = Some(pass_typs);
                         }
                         expr = if self.in_enum_def {
-                            Expr::VariableName { typ, name: word, reassign: false, constant: true, field_data: (false, false) }
+                            Expr::VariableName { typ, name: word, reassign: false, constant: true, field_data: (false, false), func_arg: false }
                         } else {
-                            Expr::VariableName { typ, name: word, reassign: false, constant: false, field_data: (false, false) }
+                            Expr::VariableName { typ, name: word, reassign: false, constant: false, field_data: (false, false), func_arg: false }
                         };
                     },
                     _ => {
@@ -4136,6 +4205,7 @@ impl ExprWeights {
                             name: new_name,
                             reassign: false,
                             constant: true,
+                            func_arg: false,
                             field_data: (false, false)
                         }),
                         value: Box::new(right_expr)
@@ -4177,6 +4247,7 @@ impl ExprWeights {
                                     name: new_name,
                                     reassign: false,
                                     constant: true,
+                                    func_arg: false,
                                     field_data: (false, false)
                                 }),
                                 value: Box::new(right_expr)

@@ -184,7 +184,7 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
             if let Types::ArrIndex { arr_typ, .. } = typ {
                 let unwrap_arr_typ = unwrap_pointer(arr_typ);
 
-                return (compare_type_and_type(t, unwrap_arr_typ), unwrap_arr_typ.clone())
+                return (true, unwrap_arr_typ.clone())
             }
             return (true, typ.clone())
         },
