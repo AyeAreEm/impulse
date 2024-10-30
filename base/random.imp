@@ -10,6 +10,8 @@
 
 # min and max inclusive
 int random.range :: (int min int max) {
+    @mut min; @mut max;
+
     if (min > max) {
         int temp: min;
         min: max;
