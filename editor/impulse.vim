@@ -32,6 +32,8 @@ syntax region impulseComment start="#.*" end="$"
 syntax match impulseString /"\v[^"]*"/ contains=impulseEscapes
 syntax match impulseChar "'[^'\\]\{1,1}'" contains=impulseEscapes
 syntax match impulseNumber "\<\d\+\>\(\w\)\@!"
+syntax match impulseHex /\<0x[0-9A-Fa-f]\+\>/
+syntax match impulseBinary /\<0b[0-1]\+\>/
 syntax match impulseEscapes /\\[nr\"']/
 
 highlight link impulseKeywords Keyword
@@ -44,6 +46,8 @@ highlight link impulseComment Comment
 highlight link impulseString String
 highlight link impulseChar String
 highlight link impulseNumber Number
+highlight link impulseHex Number
+highlight link impulseBinary Number
 highlight link impulseTypeNames Type
 highlight link impulseEscapes SpecialChar
 highlight link impulseFuncCallName Function
