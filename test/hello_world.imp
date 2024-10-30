@@ -1,11 +1,4 @@
-_ reset :: (^int x) {
-    @mut x;
-    x^: 15;
-}
-
 _ main :: () {
-    int x: 10;
-    reset(&x);
-    
+    int x: [0xFF + 5]; # 260
     println("%d" x);
 }

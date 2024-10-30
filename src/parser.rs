@@ -521,10 +521,18 @@ impl ExprWeights {
                 Token::Mod => clean.push('%'),
                 Token::Ident(ident) => {
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<f64>();
-                    let is_num = match ident_num {
-                        Ok(_) => true,
-                        Err(_) => false,
+                    let is_num = if ident.len() > 2 && (&ident[0..2].to_lowercase() == "0x" || &ident[0..2].to_lowercase() == "0b") {
+                        let ident_num = usize::from_str_radix(&ident[2..], 16);
+                        match ident_num {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
+                    } else {
+                        let ident_num = ident.parse::<f64>();
+                        match ident_num {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
                     };
 
                     if is_num {
@@ -999,13 +1007,23 @@ impl ExprWeights {
                         continue;
                     }
 
-                    let intlit_res = intlit_str.parse::<f64>();
-                    match intlit_res {
-                        Ok(_) => {
-                            array_lens.push(intlit_str.clone());
-                        },
-                        Err(_) => continue,
-                    }
+                    if intlit_str.len() > 2 && (&intlit_str[0..2].to_lowercase() == "0x" || &intlit_str[0..2].to_lowercase() == "0b") {
+                        let ident_num = usize::from_str_radix(&intlit_str[2..], 16);
+                        match ident_num {
+                            Ok(_) => {
+                                array_lens.push(intlit_str.clone());
+                            },
+                            Err(_) => continue,
+                        }
+                    } else {
+                        let ident_num = intlit_str.parse::<f64>();
+                        match ident_num {
+                            Ok(_) => {
+                                array_lens.push(intlit_str.clone());
+                            },
+                            Err(_) => continue,
+                        }
+                    };
                 },
                 _ => {
                     self.comp_err(&format!("unexpected token in function argument: {param:?}"));
@@ -1349,10 +1367,18 @@ impl ExprWeights {
                     }
 
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<f64>();
-                    let is_num = match ident_num {
-                        Ok(_) => true,
-                        Err(_) => false,
+                    let is_num = if ident.len() > 2 && (&ident[0..2].to_lowercase() == "0x" || &ident[0..2].to_lowercase() == "0b") {
+                        let ident_num = usize::from_str_radix(&ident[2..], 16);
+                        match ident_num {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
+                    } else {
+                        let ident_num = ident.parse::<f64>();
+                        match ident_num {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
                     };
 
                     if is_num {
@@ -1741,7 +1767,7 @@ impl ExprWeights {
         match found_var {
             Expr::VariableName { constant, .. } => {
                 if !constant {
-                    self.comp_err(&format!("variable {} is constant. can't be used in for loop", new_varnames[0]));
+                    self.comp_err(&format!("{} is constant. can't be used in for loop", new_varnames[0]));
                 }
                 if new_varnames.len() == 2 {
                     expr = Expr::For { 
@@ -1899,13 +1925,24 @@ impl ExprWeights {
                         params.push(token.clone());
                     } else {
                         // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                        let ident_num = ident.parse::<f64>();
-                        match ident_num {
-                            Ok(_) => {
-                                self.comp_err(&format!("can't use a number as an identifier. try `name{ident}`?"));
-                                exit(1);
-                            },
-                            Err(_) => (),
+                        if ident.len() > 2 && (&ident[0..2].to_lowercase() == "0x" || &ident[0..2].to_lowercase() == "0b") {
+                            let ident_num = usize::from_str_radix(&ident[2..], 16);
+                            match ident_num {
+                                Ok(_) => {
+                                    self.comp_err(&format!("can't use a number as an identifier. try `name{ident}`?"));
+                                    exit(1);
+                                },
+                                Err(_) => (),
+                            }
+                        } else {
+                            let ident_num = ident.parse::<f64>();
+                            match ident_num {
+                                Ok(_) => {
+                                    self.comp_err(&format!("can't use a number as an identifier. try `name{ident}`?"));
+                                    exit(1);
+                                },
+                                Err(_) => (),
+                            }
                         }
 
                         if let Keyword::None = keyword {
@@ -2469,10 +2506,18 @@ impl ExprWeights {
 
 
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<f64>();
-                    let is_num = match ident_num {
-                        Ok(_) => true,
-                        Err(_) => false,
+                    let is_num = if ident.len() > 2 && (&ident[0..2].to_lowercase() == "0x" || &ident[0..2].to_lowercase() == "0b") {
+                        let ident_num = usize::from_str_radix(&ident[2..], 16);
+                        match ident_num {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
+                    } else {
+                        let ident_num = ident.parse::<f64>();
+                        match ident_num {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
                     };
 
                     if is_num {
@@ -2881,7 +2926,6 @@ impl ExprWeights {
                         variables[self.current_scope].remove(*old_var_idx);
                         variables[self.current_scope].insert(*old_var_idx, new_vars[i].clone());
                     }
-                    println!("{:?}", variables[self.current_scope])
                 } else {
                     self.comp_err(&format!("expected {varname} to be a function argument but wasn't. @mut is used to make an argument mutable"));
                     exit(1);
@@ -2994,7 +3038,7 @@ impl ExprWeights {
                                 },
                                 Expr::VariableName { typ, name, constant, field_data, .. } => {
                                     if constant || is_constant {
-                                        self.comp_err(&format!("var {name} is constant. can't be reassigned"));
+                                        self.comp_err(&format!("{name} is constant, can't be modified. try `@mut {name};` to make it mutable"));
                                         exit(1);
                                     }
 
@@ -3294,7 +3338,7 @@ impl ExprWeights {
             return Expr::VariableName { typ, name: name.to_owned(), reassign: false, constant: is_constant, field_data: (false, false), func_arg: false };
         } else if let Expr::VariableName { typ, name, constant, field_data, .. } = found_expr {
             if constant || is_constant {
-                self.comp_err(&format!("var {name} is constant. can't be reassigned"));
+                self.comp_err(&format!("{name} is constant, can't be modified. try `@mut {name};` to make it mutable"));
                 exit(1);
             }
             match keyword {
@@ -3332,13 +3376,24 @@ impl ExprWeights {
                     }
 
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<f64>();
-                    match ident_num {
-                        Ok(_) => {
-                            expr_params.push(Expr::IntLit(ident.to_owned()));
-                            continue;
-                        },
-                        Err(_) => (),
+                    if ident.len() > 2 && (&ident[0..2].to_lowercase() == "0x" || &ident[0..2].to_lowercase() == "0b") {
+                        let ident_num = usize::from_str_radix(&ident[2..], 16);
+                        match ident_num {
+                            Ok(_) => {
+                                expr_params.push(Expr::IntLit(ident.to_owned()));
+                                continue;
+                            },
+                            Err(_) => (),
+                        }
+                    } else {
+                        let ident_num = ident.parse::<f64>();
+                        match ident_num {
+                            Ok(_) => {
+                                expr_params.push(Expr::IntLit(ident.to_owned()));
+                                continue;
+                            },
+                            Err(_) => (),
+                        }
                     }
 
                     let keyword_res = self.keyword_map.get(ident);
@@ -3736,10 +3791,18 @@ impl ExprWeights {
                     }
 
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                    let ident_num = ident.parse::<f64>();
-                    let is_num = match ident_num {
-                        Ok(_) => true,
-                        Err(_) => false,
+                    let is_num = if ident.len() > 2 && (&ident[0..2].to_lowercase() == "0x" || &ident[0..2].to_lowercase() == "0b") {
+                        let ident_num = usize::from_str_radix(&ident[2..], 16);
+                        match ident_num {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
+                    } else {
+                        let ident_num = ident.parse::<f64>();
+                        match ident_num {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
                     };
 
                     if is_num {
@@ -4047,10 +4110,18 @@ impl ExprWeights {
         match ident {
             Token::Ident(word) => {
                 // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
-                let ident_num = word.parse::<f64>();
-                let is_num = match ident_num {
-                    Ok(_) => true,
-                    Err(_) => false,
+                let is_num = if word.len() > 2 && (&word[0..2].to_lowercase() == "0x" || &word[0..2].to_lowercase() == "0b") {
+                    let ident_num = usize::from_str_radix(&word[2..], 16);
+                    match ident_num {
+                        Ok(_) => true,
+                        Err(_) => false,
+                    }
+                } else {
+                    let ident_num = word.parse::<f64>();
+                    match ident_num {
+                        Ok(_) => true,
+                        Err(_) => false,
+                    }
                 };
 
                 if is_num {
