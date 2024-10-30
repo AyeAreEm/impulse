@@ -132,7 +132,7 @@ fn get_args<'a, 'b>(func_name: &'a String, funcs: &'b Vec<Expr>) -> Option<&'b V
 
 fn compare_type_and_type(t1: &Types, t2: &Types) -> bool {
     match (t1, t2) {
-        (Types::Any, _) => return true,
+        (Types::Any, _) | (_, Types::Any) => return true,
         (
             Types::U8 | Types::I8 | Types::U16 | Types::I16 | Types::U32 | Types::I32 | Types::Usize |
             Types::U64 | Types::I64 | Types::Int | Types::F32 | Types::F64 | Types::Char | Types::UInt,
@@ -176,6 +176,8 @@ fn compare_type_and_type(t1: &Types, t2: &Types) -> bool {
 
 pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, Types) {
     match (t, e) {
+        // TODO: double check, think this is fine as parser handles this?
+        (Types::Any, _) => return (true, Types::None),
         (Types::Let, Expr::IntLit(_)) => return (true, Types::Int), 
         (Types::Let, Expr::CharLit(_)) => return (true, Types::Char),
         (Types::Let, Expr::StrLit(_)) => return (true, Types::Pointer(Box::new(Types::Char))),
@@ -226,8 +228,6 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
                 None => return (false, Types::None),
             }
         },
-        // TODO: double check, think this is fine as parser handles this?
-        (Types::Any, _) => return (true, Types::None),
         (Types::TypeId, _) => return (true, Types::None),
         (Types::Char, Expr::CharLit(_)) => return (true, Types::None),
         (
@@ -252,6 +252,15 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
         },
         (_, Expr::GarbageValue) => return (true, Types::None),
         (Types::TypeDef { .. }, Expr::DefaultValue) => return (true, Types::None),
+        (Types::Arr { typ: arr_typ, .. }, Expr::VariableName { typ: var_typ, .. }) => {
+            if let Types::Arr { .. } = var_typ {
+                if let Types::Any = **arr_typ {
+                    return (true, Types::None)
+                }
+            }
+
+            return compare_type_and_expr(arr_typ, e, funcs)
+        },
         (_, Expr::VariableName { typ, .. }) => {
             if let Types::ArrIndex { arr_typ, .. } = typ {
                 let unwrap_arr_typ = unwrap_pointer(arr_typ);
