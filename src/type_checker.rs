@@ -319,14 +319,16 @@ pub fn compare_exprs_and_args<'a>(exprs: &'a Vec<Expr>, func_name: &'a String, f
     let mut typeid_name_to_type: HashMap<&String, &String> = HashMap::new();
     for (i, expr) in exprs.iter().enumerate() {
         match (&args[i], expr) {
-            (Expr::VariableName { typ: arg_typ, name: arg_name, ..}, _) => {
-                if let Expr::VariableName { typ: expr_typ, name: expr_name, .. } = expr {
+            (Expr::VariableName { typ: arg_typ, name: arg_name, constant: arg_const, ..}, _) => {
+                if let Expr::VariableName { typ: expr_typ, name: expr_name, constant: expr_const, .. } = expr {
                     if let Types::TypeId = expr_typ {
                         if expr_typ != arg_typ {
                             return Err(ArgError { pos: i + 1, error: TCError::MismatchTypeType(arg_typ, expr_typ) })
                         }
 
                         typeid_name_to_type.entry(arg_name).or_insert(expr_name);
+                    } else if !*arg_const && *expr_const {
+                        return Err(ArgError { pos: i + 1, error: TCError::Custom(format!("argument {} isn't constant but passed expression: {expr:?}, which is constant", i + 1)) })
                     }
                 } else if let Types::Generic(generic) = arg_typ {
                     let value = match typeid_name_to_type.get(generic) {

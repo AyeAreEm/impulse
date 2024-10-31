@@ -1,14 +1,11 @@
-@import "base/builtin.imp";
-@import "base/dynamic.imp";
-@import "base/env.imp";
-@import "base/fs.imp";
-@import "base/io.imp";
-@import "base/math.imp";
-@import "base/memory.imp";
-@import "base/random.imp";
-@import "base/string.imp";
-@import "base/time.imp";
+_ change :: (^int num) {
+    @mut num; # this makes it mutable or errors if expression is actually const
+    num^: 10;
+}
 
 _ main :: () {
-    println("hello world");
+    int x: 1;
+    ^int y :: &x; # impulse treats this as a constant pointer to a constant value
+
+    change(y); # error, y is constant when the argument is mutable
 }

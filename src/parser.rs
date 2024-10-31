@@ -115,6 +115,8 @@ pub enum Expr {
     DefaultValue,
     GarbageValue,
 
+    MutateVars(Vec<Expr>),
+
     None,
 }
 
@@ -2920,7 +2922,21 @@ impl ExprWeights {
         }
     }
 
-    fn handle_mutate_func_arg(&mut self, varname: &String) {
+    fn handle_mutate_func_arg(&mut self, varname: &String) -> Vec<Expr> {
+        for func in self.functions.iter_mut() {
+            if let Expr::Func { params, name: func_name, .. } | Expr::MacroFunc { params, name: func_name, .. } = func {
+                if func_name == &self.current_func {
+                    for param in params {
+                        if let Expr::VariableName { name: param_name, constant, .. } = param {
+                            if param_name == varname {
+                                *constant = false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let variables_res = self.func_to_vars.get_mut(&self.current_func);
         match variables_res {
             Some(variables) => {
@@ -2949,10 +2965,15 @@ impl ExprWeights {
                 }
 
                 if !new_vars.is_empty() {
+                    let mut old_vars = Vec::new();
                     for (i, old_var_idx) in idxs.iter().enumerate() {
-                        variables[self.current_scope].remove(*old_var_idx);
+                        let old_var = variables[self.current_scope].remove(*old_var_idx);
                         variables[self.current_scope].insert(*old_var_idx, new_vars[i].clone());
+
+                        old_vars.push(old_var);
                     }
+
+                    return old_vars;
                 } else {
                     self.comp_err(&format!("expected {varname} to be a function argument but wasn't. @mut is used to make an argument mutable"));
                     exit(1);
@@ -3007,9 +3028,12 @@ impl ExprWeights {
             Macros::Garbage => Expr::GarbageValue,
             Macros::Mut => {
                 if let Token::Ident(ident) = &value[index+1] {
-                    self.handle_mutate_func_arg(ident);
+                    let old_vars = self.handle_mutate_func_arg(ident);
+                    return Expr::MutateVars(old_vars);
+                } else {
+                    self.comp_err(&format!("expected an identifier, got {:?}", value[index+1]));
+                    exit(1);
                 }
-                return Expr::None;
             },
             _ => {
                 self.comp_err(&format!("macro {mac:?} not reimplemented yet"));

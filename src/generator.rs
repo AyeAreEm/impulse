@@ -243,8 +243,8 @@ impl Gen {
             Expr::Variable { info, .. } => {
                 return self.handle_varname(*info);
             },
-            Expr::VariableName { ref typ, reassign, constant, func_arg, .. } => {
-                let mut vardec = if constant && !reassign && !func_arg {
+            Expr::VariableName { ref typ, reassign, constant, .. } => {
+                let mut vardec = if constant && !reassign {
                     String::from("const ")
                 } else {
                     String::new()
@@ -1383,6 +1383,24 @@ impl Gen {
                 Expr::Continue => {
                     self.add_spaces(self.indent);
                     self.code.push_str("continue;\n");
+                },
+                Expr::MutateVars(variables) => {
+                    for variable in variables {
+                        let varname = self.handle_varname(variable.clone());
+                        println!("{varname}");
+                        let new_varname = varname.strip_prefix("const ").unwrap();
+                        let pos = self.code.rfind(&varname);
+
+                        match pos {
+                            Some(index) => {
+                                let before = &self.code[..index];
+                                let after = &self.code[index..];
+                                let replaced = after.replace(&varname, new_varname);
+                                self.code = format!("{before}{replaced}");
+                            },
+                            None => (),
+                        }
+                    }
                 },
                 unimpl => {
                     self.comp_err(&format!("{unimpl:?} is not implemented yet"));
