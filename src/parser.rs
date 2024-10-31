@@ -744,6 +744,33 @@ impl ExprWeights {
         if let Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } = self.find_structure(&user_def) {
             for field in struct_fields {
                 match field {
+                    Expr::Variable { info, .. } => {
+                        if let Expr::VariableName { typ: vartyp, name: varname, field_data, .. } = *info {
+                            let new_name = if is_ptr {
+                                format!("{fname}->{varname}")
+                            } else {
+                                format!("{fname}.{varname}")
+                            };
+                            if let Types::TypeDef { ref type_name, .. } = vartyp {
+                                expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), type_name.to_owned(), field_data.1));
+                            } else if let Types::Arr { .. } = vartyp {
+                                expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), String::from("array"), field_data.1));
+                            }
+                            let new_expr = Expr::Variable {
+                                info: Box::new(Expr::VariableName {
+                                    typ: vartyp,
+                                    name: new_name,
+                                    reassign: false,
+                                    constant: true,
+                                    func_arg: true,
+                                    field_data: (true, is_ptr),
+                                }),
+                                value: Box::new(Expr::None),
+                            };
+
+                            expr_param.push(new_expr);
+                        }
+                    },
                     Expr::VariableName { typ: vartyp, name: varname, field_data, .. } => {
                         let new_name = if is_ptr {
                             format!("{fname}->{varname}")

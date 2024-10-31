@@ -1,30 +1,123 @@
-# Random library based off of C's rand() and srand() function, not to be used in cryptography
+@import "base/time.imp";
 
-@inline _ random.seed :: (uint seed_value) {
-    @c [return srand(seed_value);];
-}
+# MT19937 RNG - more memory, more computation, higher quality
+int MT_N :: 624;
+int MT_M :: 397;
+int MT_W :: 32;
+int MT_R :: 31;
+int MT_UMASK :: @c [0xffffffffUL << MT_R];
+int MT_LMASK :: @c [0xffffffffUL >> (MT_W-MT_R)];
+int MT_A :: @c [0x9908b0dfUL];
+int MT_U :: 11;
+int MT_S :: 7;
+int MT_T :: 15;
+int MT_L :: 18;
+int MT_B :: @c [0x9d2c5680UL];
+int MT_C :: @c [0xefc60000UL];
+int MT_F :: @c [1812433253UL];
 
-@inline int random.rand :: () {
-    @c [return rand();];
-}
+struct MT :: {
+    [MT_N]u32 state;
+    usize state_index;
 
-# min and max inclusive
-int random.range :: (int min int max) {
-    @mut min; @mut max;
+    MT init :: (u32 seed) {
+        @mut seed;
 
-    if (min > max) {
-        int temp: min;
-        min: max;
-        max: temp;
+        # variable length not allowed
+        [624]u32 state_array;
+        MT new: |state_array 0|;
+        new.state.data[0]: seed;
+
+        usize i: 1;
+        loop (i < MT_N) [+] {
+            seed: @c [MT_F * (seed ^ (seed >> (MT_W - 2))) + i];
+            new.state.data[i]: seed;
+        }
+        new.state_index: 0;
+
+        return new;
     }
 
-    return [random.rand() % [max - min + 1] + min];
+    u32 gen :: (^MT state) {
+        @mut state;
+
+        int k: state.state_index;
+        int j: [k - [MT_N - 1]];
+
+        u32 x: @c [(state->state.data[k] & MT_UMASK) | (state->state.data[j] & MT_LMASK)];
+        u32 xA: @c [x >> 1];
+        @c [if (x & 0x00000001UL) xA ^= MT_A;];
+
+        j: [k - [MT_N - MT_M]];
+        if (j < 0) {
+            j: [j + MT_N];
+        }
+
+        x: @c [state->state.data[j] ^ xA];
+        @c [state->state.data[k++] = x;];
+
+        if (k >= MT_N) {
+            k: 0;
+        }
+        state.state_index: k;
+
+        u32 y: @c [x ^ (x >> MT_U)];
+        y: @c [y ^ ((y << MT_S) & MT_B)];
+        y: @c [y ^ ((y << MT_T) & MT_C)];
+
+        u32 z: @c [y ^ (y >> MT_L)];
+        return x;
+    }
+
+    u32 range :: (^MT state int min int max) {
+        @mut min; @mut max;
+
+        if (min > max) {
+            int temp: min;
+            min: max;
+            max: temp;
+        }
+
+        return [MT.gen(state) % [max - min + 1] + min];
+    }
 }
 
-any random.choice :: ([]any arr) {
-    usize min: 0;
-    usize max: [arr.len - 1];
+# LCG rng, quick, memory efficient, lower quality
+struct random :: {
+    uint seed: Time.since_epoch();
 
-    int randnum: random.range(min max);
-    @c [arr.data[randnum];];
+    @inline random init :: (uint seed_value) {
+        random new: |seed_value|;
+        return new;
+    }
+
+    uint gen :: (^random self) {
+        @mut self;
+        u64 A: 1664525;
+        u64 C: 1013904223;
+        u64 M: 4294967296;
+
+        self.seed: [self.seed * A + C];
+        return cast(uint [self.seed % M]);
+    }
+
+    int range :: (^random self int min int max) {
+        @mut min; @mut max;
+
+        if (min > max) {
+            int temp: min;
+            min: max;
+            max: temp;
+        }
+
+        return [random.gen(self) % [max - min + 1] + min];
+    }
+
+    any choice :: (^random self []any arr) {
+        usize min: 0;
+        usize max: [arr.len - 1];
+
+        int randnum: random.range(self min max);
+        return @c [arr.data[randnum];];
+    }
 }

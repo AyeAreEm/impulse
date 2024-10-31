@@ -1,9 +1,12 @@
-@import "base/time.imp";
 @import "base/random.imp";
 
 _ main :: () {
-    random.seed(Time.since_epoch());
-    []int nums: |1 2 3 4 5 6 7 8 9 10|;
-    int num: random.choice(nums);
-    println("%d" num);
+    let MT_rng: MT.init(Time.since_epoch());
+    random LCG_rng: @default;
+
+    loop (i < 10) [+] {
+        let MT_num: MT.range(&MT_rng 0 100);
+        let LCG_num: random.range(&LCG_rng 0 100);
+        println("MT: %d, LCG: %d" MT_num LCG_num);
+    }
 }
