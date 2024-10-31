@@ -37,6 +37,8 @@ struct string :: {
     }
 
     _ resize :: (^string word usize modifier) {
+        @mut word;
+
         word.cap: [[word.cap + modifier] * 2];
         word.data: mem.realloc(word.data word.cap);
     }
@@ -65,6 +67,7 @@ struct string :: {
     }
 
     _ push_char :: (^string word char ch) {
+        @mut word;
         usize new_len: [word.len + 1];
 
         if (new_len >= word.cap) {
@@ -77,6 +80,7 @@ struct string :: {
     }
 
     _ push_cstr :: (^string dest ^char src) {
+        @mut dest;
         usize src_len: c.strlen(src);
         usize new_len: [dest.len + src_len];
 
@@ -92,6 +96,7 @@ struct string :: {
     }
 
     _ push_string :: (^string dest string src) {
+        @mut dest;
         usize new_len :: [dest.len + src.len];
 
         if ([new_len + 1] >= dest.cap) {
@@ -106,6 +111,7 @@ struct string :: {
     }
 
     _ push_str :: (^string dest str src) {
+        @mut dest;
         usize new_len :: [dest.len + src.len];
         
         if ([new_len + 1] >= dest.cap) {
@@ -186,18 +192,24 @@ struct string :: {
     }
 
     _ to_lowercase :: (string word) {
+        @mut word;
+
         for (word) [ch i] {
             word.data[i]: @c [tolower(ch)];
         }
     }
     
     _ to_uppercase :: (string word) {
+        @mut word;
+
         for (word) [ch i] {
             word.data[i]: @c [toupper(ch)];
         }
     }
 
     _ replace_char :: (string word char from char to) {
+        @mut word;
+
         for (word) [ch i] {
             if (ch = from) {
                 word.data[i]: to;
@@ -206,6 +218,8 @@ struct string :: {
     }
 
     bool replace_index :: (str word usize index char to) {
+        @mut word;
+
         option[char] at_index: str.at(word index);
         if (at_index.none = true) {
             return false;
@@ -243,11 +257,15 @@ struct string :: {
     }
     
     _ clear :: (^string word) {
+        @mut word;
+
         word.data[0]: '\0';
         word.len: 0;
     }
 
     _ dealloc :: (^string word) {
+        @mut word;
+
         mem.dealloc(word.data);
         word.len: 0;
         word.cap: 0;

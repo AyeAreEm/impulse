@@ -37,6 +37,8 @@ struct[T] dyn :: {
     }
 
     _ push :: (typeid T dyn[T] arr $T elem) {
+        @mut arr;
+
         if ([arr.len + 1] >= arr.cap) {
             arr.cap: [[arr.cap + arr.len + 1] * 2];
             usize T_size: size_of(T);
@@ -48,6 +50,8 @@ struct[T] dyn :: {
     }
 
     option[T] pop :: (typeid T dyn[T] arr) {
+        @mut arr;
+
         option[T] ret: dyn.at(T arr [arr.len - 1]);
         if (!ret.none) {
             arr.len: [arr.len - 1];
@@ -56,6 +60,8 @@ struct[T] dyn :: {
     }
 
     option[T] deque :: (typeid T dyn[T] arr) {
+        @mut arr;
+
         option[T] ret: dyn.at(T arr [0]);
         if (!ret.none) {
             arr.len: [arr.len - 1];
@@ -67,15 +73,21 @@ struct[T] dyn :: {
     # this doesn't actually clear data but instead
     # allows for the data to be overwritten
     _ clear :: (typeid T dyn[T] arr) {
+        @mut arr;
+
         arr.len: 0;
     }
 
     _ remove :: (typeid T dyn[T] arr usize index) {
+        @mut arr;
+
         @c [mem__move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
         arr.len: [arr.len - 1];
     }
 
     _ dealloc :: (dyn[any] arr) {
+        @mut arr;
+
         mem.dealloc(arr.data);
         arr.len: 0;
         arr.cap: 0;
