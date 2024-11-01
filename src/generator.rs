@@ -1324,10 +1324,11 @@ impl Gen {
 
                     let for_code = self.handle_for(in_this, iterator);
                     self.code.push_str(&for_code.0);
-                    self.add_spaces(self.indent);
 
+                    let mut skip_extract = false;
                     let for_this_extract = match *for_this {
                         Expr::VariableName { typ, name, .. } => {
+                            if &name == "_" { skip_extract = true; }
                             if let Types::None = typ {
                                 (format!("typeof({}.data[0])", for_code.1), name)
                             } else {
@@ -1340,6 +1341,11 @@ impl Gen {
                         },
                     };
 
+                    if skip_extract {
+                        continue;
+                    }
+
+                    self.add_spaces(self.indent);
                     let var = format!("{} {} = {}.data[{}];\n", for_this_extract.0, for_this_extract.1, for_code.1, for_code.2);
                     self.code.push_str(&var);
                 },

@@ -1,16 +1,5 @@
-@import "base/random.imp";
-@import "base/time.imp";
-
 _ main :: () {
-    let rng: MT.init(Time.since_epoch());
-    [10]u32 nums;
+    [10]int nums;
 
-    for (nums) [_ i] {
-        nums.data[i]: MT.range(&rng 0 100);
-        u32 num: nums.data[i];
-        println("%d" num);
-    }
-
-    u32 num: MT.choice(&rng nums);
-    println("random.choice: %d" num);
+    ^int num: &nums.data[0];
 }

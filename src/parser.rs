@@ -3532,7 +3532,7 @@ impl ExprWeights {
     fn create_address(&self, ident: &String) -> Expr {
         let found_ident = self.find_ident(ident.clone());
         match found_ident {
-            Expr::VariableName { ref name, constant, .. } => {
+            Expr::VariableName { ref name, constant, field_data, .. } => {
                 if constant {
                     self.comp_err(&format!("using constant \"{name}\" as address dequalifies it to a variable, did you mean for \"{name}\" to be a variable?"));
                     exit(1)
@@ -3985,7 +3985,7 @@ impl ExprWeights {
         if buffer.len() > 1 {
             match &buffer[0] {
                 Expr::Address(varname) => {
-                    if let Expr::VariableName { typ, name, constant, .. } = *varname.clone() {
+                    if let Expr::VariableName { typ, name, constant, field_data, .. } = *varname.clone() {
                         if let Types::Arr { .. } = typ {
                         } else if let Types::Pointer { .. } = typ {
                         } else {
@@ -4003,7 +4003,7 @@ impl ExprWeights {
                                 reassign: false,
                                 constant,
                                 func_arg: false,
-                                field_data: (false, false)
+                                field_data
                             }));
                             if returning {
                                 return Expr::Return(Box::new(expr))
