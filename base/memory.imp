@@ -5,18 +5,22 @@
 }
 
 @inline ^_ mem.realloc :: (^_ address usize new_size) {
+    @mut address;
     @c [ return realloc(address, new_size); ];
 }
 
 @inline ^_ mem.copy :: (^_ dest ^_ src usize n) {
+    @mut dest;
     @c [ return memcpy(dest, src, n); ];
 }
 
 @inline ^_ mem.set :: (^_ s int c usize n) {
+    @mut s;
     @c [ return memset(s, c, n); ];
 }
 
 @inline ^_ mem.move :: (^_ dest ^_ src usize n) {
+    @mut dest;
     @c [ return memmove(dest, src, n); ];
 }
 
@@ -25,5 +29,6 @@
 }
 
 @inline _ mem.dealloc :: (^_ block) {
+    @mut block;
     @c [free(block);];
 }

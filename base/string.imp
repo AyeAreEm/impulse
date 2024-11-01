@@ -126,6 +126,7 @@ struct string :: {
     }
 
     _ push :: (^string dest typeid T $T src) {
+        @mut dest;
         $T real_var: src;
 
         if (type.compare(T string)) {
@@ -169,15 +170,12 @@ struct string :: {
     }
 
     bool starts_with :: (string word char ch) {
-        option[char] first_letter_op: string.at(word 0);
-        if (first_letter_op.none) {
-            return false;
-        }
-        if (first_letter_op.value != ch) {
-            return false;
+        option[char] first_letter: string.at(word 0);
+        if (first_letter) [letter] {
+            @c [return letter == ch;];
         }
 
-        return true;
+        return false;
     }
 
     bool ends_with :: (string word char ch) {

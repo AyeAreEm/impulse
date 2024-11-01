@@ -1,11 +1,10 @@
-_ change :: (^int num) {
-    @mut num; # this makes it mutable or errors if expression is actually const
-    num^: 10;
-}
+@import "base/string.imp";
 
 _ main :: () {
-    int x: 1;
-    ^int y :: &x; # impulse treats this as a constant pointer to a constant value
+    let word: string.from("hello");
+    defer string.dealloc(&word);
 
-    change(y); # error, y is constant when the argument is mutable
+    if (string.starts_with(word 'h')) {
+        println("starts with h");
+    }
 }

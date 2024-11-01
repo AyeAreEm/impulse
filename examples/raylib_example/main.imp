@@ -1,3 +1,5 @@
+# -I base/raylib/include/ -L base/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm
+
 @import "vendor/raylib/raylib.imp";
 
 f32 SPEED :: 20.0;

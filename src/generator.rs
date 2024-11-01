@@ -1387,7 +1387,6 @@ impl Gen {
                 Expr::MutateVars(variables) => {
                     for variable in variables {
                         let varname = self.handle_varname(variable.clone());
-                        println!("{varname}");
                         let new_varname = varname.strip_prefix("const ").unwrap();
                         let pos = self.code.rfind(&varname);
 

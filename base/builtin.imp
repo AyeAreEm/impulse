@@ -65,6 +65,7 @@ struct str :: {
     usize len;
 
     str from :: (^char word) {
+        @mut word;
         str value;
         value.data: word;
         value.len: c.strlen(word);
