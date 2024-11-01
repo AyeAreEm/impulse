@@ -25,6 +25,7 @@ pub struct Gen {
     default_structs: Vec<String>, // structs that have a <name>_default that has initialised values
 
     in_macro_func: bool,
+    mutate_func_args: bool,
     curl_rc: i32,
 }
 
@@ -82,6 +83,7 @@ impl Gen {
             generated_structs: Vec::new(),
             default_structs: Vec::new(),
             in_macro_func: false,
+            mutate_func_args: false,
             curl_rc: 0,
         }
     }
@@ -222,8 +224,8 @@ impl Gen {
                 return (format!("{sub_typ}*"), String::new())
             },
             Types::Generic(typeid) => {
-                if !self.in_macro_func {
-                    self.comp_err("failed to handle generic at compile time.");
+                if !self.in_macro_func && !self.mutate_func_args {
+                    self.comp_err(&format!("failed to handle generic at compile time. {typeid}"));
                     exit(1);
                 }
 
@@ -1385,6 +1387,7 @@ impl Gen {
                     self.code.push_str("continue;\n");
                 },
                 Expr::MutateVars(variables) => {
+                    self.mutate_func_args = true;
                     for variable in variables {
                         let varname = self.handle_varname(variable.clone());
                         let new_varname = varname.strip_prefix("const ").unwrap();
@@ -1400,6 +1403,7 @@ impl Gen {
                             None => (),
                         }
                     }
+                    self.mutate_func_args = false;
                 },
                 unimpl => {
                     self.comp_err(&format!("{unimpl:?} is not implemented yet"));

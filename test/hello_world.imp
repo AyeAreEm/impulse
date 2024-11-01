@@ -1,10 +1,16 @@
-@import "base/string.imp";
+@import "base/random.imp";
+@import "base/time.imp";
 
 _ main :: () {
-    let word: string.from("hello");
-    defer string.dealloc(&word);
+    let rng: MT.init(Time.since_epoch());
+    [10]u32 nums;
 
-    if (string.starts_with(word 'h')) {
-        println("starts with h");
+    for (nums) [_ i] {
+        nums.data[i]: MT.range(&rng 0 100);
+        u32 num: nums.data[i];
+        println("%d" num);
     }
+
+    u32 num: MT.choice(&rng nums);
+    println("random.choice: %d" num);
 }

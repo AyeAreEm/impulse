@@ -104,9 +104,9 @@ fn build(dir: &String, keep_gen: bool, lang: Lang, c_flags: &[String]) {
     };
 
     let (filename, expressions) = setup_step(dir);
-    // for expr in &expressions {
-    //     println!("{:?}", expr.0);
-    // }
+    for expr in &expressions {
+        println!("{:?}", expr.0);
+    }
 
     let mut gen = Gen::new(filename.to_str().unwrap(), out_filename.unwrap(), true, keep_gen, lang, c_flags);
     gen.generate(expressions);

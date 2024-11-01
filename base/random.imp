@@ -38,13 +38,13 @@ struct MT :: {
         return new;
     }
 
-    u32 gen :: (^MT state) {
-        @mut state;
+    u32 gen :: (^MT self) {
+        @mut self;
 
-        int k: state.state_index;
+        int k: self.state_index;
         int j: [k - [MT_N - 1]];
 
-        u32 x: @c [(state->state.data[k] & MT_UMASK) | (state->state.data[j] & MT_LMASK)];
+        u32 x: @c [(self->state.data[k] & MT_UMASK) | (self->state.data[j] & MT_LMASK)];
         u32 xA: @c [x >> 1];
         @c [if (x & 0x00000001UL) xA ^= MT_A;];
 
@@ -53,13 +53,13 @@ struct MT :: {
             j: [j + MT_N];
         }
 
-        x: @c [state->state.data[j] ^ xA];
-        @c [state->state.data[k++] = x;];
+        x: @c [self->state.data[j] ^ xA];
+        @c [self->state.data[k++] = x;];
 
         if (k >= MT_N) {
             k: 0;
         }
-        state.state_index: k;
+        self.state_index: k;
 
         u32 y: @c [x ^ (x >> MT_U)];
         y: @c [y ^ ((y << MT_S) & MT_B)];
@@ -69,8 +69,8 @@ struct MT :: {
         return x;
     }
 
-    u32 range :: (^MT state int min int max) {
-        @mut min; @mut max;
+    u32 range :: (^MT self int min int max) {
+        @mut self; @mut min; @mut max;
 
         if (min > max) {
             int temp: min;
@@ -78,7 +78,17 @@ struct MT :: {
             max: temp;
         }
 
-        return [MT.gen(state) % [max - min + 1] + min];
+        return [MT.gen(self) % [max - min + 1] + min];
+    }
+
+    any choice :: (^MT self []any arr) {
+        @mut self;
+
+        usize min: 0;
+        usize max: [arr.len - 1];
+
+        int randnum: MT.range(self min max);
+        return @c [arr.data[randnum];];
     }
 }
 
@@ -102,7 +112,7 @@ struct random :: {
     }
 
     int range :: (^random self int min int max) {
-        @mut min; @mut max;
+        @mut self; @mut min; @mut max;
 
         if (min > max) {
             int temp: min;
@@ -114,6 +124,8 @@ struct random :: {
     }
 
     any choice :: (^random self []any arr) {
+        @mut self;
+
         usize min: 0;
         usize max: [arr.len - 1];
 
