@@ -693,10 +693,34 @@ impl Gen {
         loop_code
     }
 
-    fn handle_for(&mut self,  in_this: Box<Expr>, iterator: String) -> (String, String, String) {
+    fn handle_for(&mut self,  in_this: Box<Expr>, iterator: String) -> (String, String, String, bool) {
         let mut for_code = String::new();
         let arr_name;
+        let mut is_addr = false;
         let length: String = match *in_this {
+            Expr::Address(var) => {
+                is_addr = true;
+                if let Expr::VariableName { typ, name, .. } = *var {
+                    if let Types::Arr { .. } = typ {
+                        arr_name = name.clone();
+                        format!("{name}.len")
+                    } else if let Types::TypeDef { type_name, .. } = typ {
+                        if type_name == String::from("dyn") || type_name == String::from("string") || type_name == String::from("str") || type_name == String::from("array")  {
+                            arr_name = name.clone();
+                            format!("{name}.len")
+                        } else {
+                            self.comp_err(&format!("unable to handle {name} in for loop as it's of type {type_name:?}"));
+                            exit(1);
+                        }
+                    } else {
+                        self.comp_err(&format!("unable to handle {name} in for loop as it's of type {typ:?}"));
+                        exit(1);
+                    }
+                } else {
+                    self.comp_err(&format!("{var:?} is not implemented yet"));
+                    exit(1);
+                }
+            },
             Expr::VariableName { typ, name, .. } => {
                 if let Types::Arr { .. } = typ {
                     arr_name = name.clone();
@@ -723,10 +747,10 @@ impl Gen {
         if iterator.is_empty() {
             let randname = rand_varname();
             for_code.push_str(&format!("for (size_t {randname} = 0; {randname} < {length}; {randname}++) {{\n"));
-            (for_code, arr_name, randname)
+            (for_code, arr_name, randname, is_addr)
         } else {
             for_code.push_str(&format!("for (size_t {iterator} = 0; {iterator} < {length}; {iterator}++) {{\n"));
-            (for_code, arr_name, iterator)
+            (for_code, arr_name, iterator, is_addr)
         }
     }
 
@@ -1346,7 +1370,13 @@ impl Gen {
                     }
 
                     self.add_spaces(self.indent);
-                    let var = format!("{} {} = {}.data[{}];\n", for_this_extract.0, for_this_extract.1, for_code.1, for_code.2);
+                    let var = format!("{} {} = {}{}.data[{}];\n", 
+                          for_this_extract.0,
+                          for_this_extract.1,
+                          if for_code.3 {"&"} else {""},
+                          for_code.1,
+                          for_code.2
+                      );
                     self.code.push_str(&var);
                 },
                 Expr::Return(value) => {

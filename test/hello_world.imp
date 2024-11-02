@@ -1,5 +1,22 @@
-_ main :: () {
-    [10]int nums;
+# fix bug where field members from captures would live after end of their scope
 
-    ^int num: &nums.data[0];
+_ main :: () {
+    []str fruits: |str.from("apple") str.from("cherry") str.from("banana")|;
+
+    # new, can modify through pointer
+    for (&fruits) [^fruit] {
+        # fruit is not constant
+        fruit^: str.from("grape");
+    }
+
+    for (fruits) [fruit] {
+        # fruit is constant
+        println("%s" fruit.data);
+    }
+
+    option[str] maybe_str: |str.from("hello world")|;
+    if (maybe_str) [value] {
+        # value is constant
+        println("%s" value.data);
+    }
 }

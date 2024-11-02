@@ -740,7 +740,7 @@ impl ExprWeights {
         return (Keyword::Pointer(tmp, typ), 0)
     }
 
-    fn create_func_propagate_field(&mut self, fname: String, user_def: String, is_ptr: bool) -> Vec<Expr> {
+    fn new_scope_propagate_field(&mut self, fname: String, user_def: String, is_ptr: bool, is_constant: bool, is_func_arg: bool) -> Vec<Expr> {
         let mut expr_param = Vec::new();
 
         if let Expr::StructDef { struct_fields, .. } | Expr::MacroStructDef { struct_fields, .. } = self.find_structure(&user_def) {
@@ -754,17 +754,17 @@ impl ExprWeights {
                                 format!("{fname}.{varname}")
                             };
                             if let Types::TypeDef { ref type_name, .. } = vartyp {
-                                expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), type_name.to_owned(), field_data.1));
+                                expr_param.append(&mut self.new_scope_propagate_field(new_name.clone(), type_name.to_owned(), field_data.1, is_constant, is_func_arg));
                             } else if let Types::Arr { .. } = vartyp {
-                                expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), String::from("array"), field_data.1));
+                                expr_param.append(&mut self.new_scope_propagate_field(new_name.clone(), String::from("array"), field_data.1, is_constant, is_func_arg));
                             }
                             let new_expr = Expr::Variable {
                                 info: Box::new(Expr::VariableName {
                                     typ: vartyp,
                                     name: new_name,
                                     reassign: false,
-                                    constant: true,
-                                    func_arg: true,
+                                    constant: is_constant,
+                                    func_arg: is_func_arg,
                                     field_data: (true, is_ptr),
                                 }),
                                 value: Box::new(Expr::None),
@@ -780,17 +780,17 @@ impl ExprWeights {
                             format!("{fname}.{varname}")
                         };
                         if let Types::TypeDef { ref type_name, .. } = vartyp {
-                            expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), type_name.to_owned(), field_data.1));
+                            expr_param.append(&mut self.new_scope_propagate_field(new_name.clone(), type_name.to_owned(), field_data.1, is_constant, is_func_arg));
                         } else if let Types::Arr { .. } = vartyp {
-                            expr_param.append(&mut self.create_func_propagate_field(new_name.clone(), String::from("array"), field_data.1));
+                            expr_param.append(&mut self.new_scope_propagate_field(new_name.clone(), String::from("array"), field_data.1, is_constant, is_func_arg));
                         }
                         let new_expr = Expr::Variable {
                             info: Box::new(Expr::VariableName {
                                 typ: vartyp,
                                 name: new_name,
                                 reassign: false,
-                                constant: true,
-                                func_arg: true,
+                                constant: is_constant,
+                                func_arg: is_func_arg,
                                 field_data: (true, is_ptr),
                             }),
                             value: Box::new(Expr::None),
@@ -986,12 +986,12 @@ impl ExprWeights {
                         if let Types::TypeDef {type_name: ref user_def, .. } = typ {
                             // THIS NEEDS TO BE DONE HERE BECAUSE WE ARE ENTERING A NEW SCOPE, THE
                             // "propagate_struct_fields" FUNCTION WORKS FOR THE CURRENT SCOPE
-                            expr_param.append(&mut self.create_func_propagate_field(ident.clone(), user_def.to_owned(), false));
+                            expr_param.append(&mut self.new_scope_propagate_field(ident.clone(), user_def.to_owned(), false, true, true));
                         } else if let Types::Arr { .. } = typ {
-                            expr_param.append(&mut self.create_func_propagate_field(ident.clone(), String::from("array"), false));
+                            expr_param.append(&mut self.new_scope_propagate_field(ident.clone(), String::from("array"), false, true, true));
                         } else if let Keyword::Pointer(.., last) = kw_buf {
                             if let Types::TypeDef { type_name: ref user_def, .. } = last {
-                                expr_param.append(&mut self.create_func_propagate_field(ident.clone(), user_def.to_owned(), true));
+                                expr_param.append(&mut self.new_scope_propagate_field(ident.clone(), user_def.to_owned(), true, true, true));
                             }
                         } else if let Types::TypeId = typ {
                             typeid_names.push(ident.to_owned());
@@ -1332,6 +1332,7 @@ impl ExprWeights {
         let mut side_affect = Expr::None;
         let mut had_index = false;
 
+        let mut found_amper = false;
         let mut pointer_counter = 0;
 
         if params.is_empty() {
@@ -1385,6 +1386,13 @@ impl ExprWeights {
                 Token::Caret => {
                     if func_brack_rc == 0 {
                         pointer_counter += 1;
+                    } else {
+                        func_params.push(param.clone());
+                    }
+                },
+                Token::Ampersand => {
+                    if func_brack_rc == 0 {
+                        found_amper = true;
                     } else {
                         func_params.push(param.clone());
                     }
@@ -1451,6 +1459,17 @@ impl ExprWeights {
                             }
                         },
                         Expr::VariableName { typ, name, reassign, constant, field_data, func_arg } => {
+                            let var = if found_amper {
+                                if constant {
+                                    self.comp_err(&format!("using constant \"{name}\" as address dequalifies it to a variable, did you mean for \"{name}\" to be a variable?"));
+                                    exit(1)
+                                }
+
+                                found_amper = false;
+                                Expr::Address(Box::new(Expr::VariableName { typ: typ.clone(), name: name.clone(), reassign, constant, field_data, func_arg }))
+                            } else {
+                                Expr::VariableName { typ: typ.clone(), name: name.clone(), reassign, constant, field_data, func_arg }
+                            };
                             if i != params.len()-1 {
                                 if let Token::Int(index) = &params[i+1] {
                                     had_index = true;
@@ -1466,10 +1485,10 @@ impl ExprWeights {
                                         func_arg
                                     });
                                 } else {
-                                    expr_params.push(Expr::VariableName { typ, name, reassign, constant, field_data, func_arg });
+                                    expr_params.push(var);
                                 }
                             } else {
-                                expr_params.push(Expr::VariableName { typ, name, reassign, constant, field_data, func_arg });
+                                expr_params.push(var);
                             }
                         },
                         Expr::None => {
@@ -1591,6 +1610,8 @@ impl ExprWeights {
         self.token_stack.clear();
 
         let captured = if params.len() == 1 && !capture.is_empty() {
+            let mut captures = Vec::new();
+
             if let Token::Ident(variable) = &params[0] {
                 let found = self.find_variable(&variable);
                 match found {
@@ -1608,7 +1629,7 @@ impl ExprWeights {
                                 let subtyp = generics[0].clone();
 
                                 match subtyp {
-                                    Types::TypeDef { ref type_name, .. } => self.propagate_struct_fields(capture.to_owned(), type_name.to_string(), false, true),
+                                    Types::TypeDef { ref type_name, .. } => captures.append(&mut self.new_scope_propagate_field(capture.to_owned(), type_name.to_string(), false, true, false)),
                                     _ => (),
                                 }
 
@@ -1618,17 +1639,18 @@ impl ExprWeights {
                                     exit(1);
                                 }
 
-                                Expr::Variable {
+                                captures.push(Expr::Variable {
                                     info: Box::new(Expr::VariableName {
                                         typ: subtyp,
                                         name: capture.to_owned(),
                                         reassign: false,
-                                        constant: false,
+                                        constant: true,
                                         func_arg: false,
                                         field_data: (false, false)
                                     }),
                                     value: Box::new(value),
-                                }
+                                });
+                                captures
                             } else {
                                 self.comp_err(&format!("{type_name} unsupported in if statement capture"));
                                 exit(1);
@@ -1645,26 +1667,26 @@ impl ExprWeights {
                 exit(1);
             }
         } else {
-            Expr::None
+            vec![Expr::None]
         };
 
         match branch_typ {
             Keyword::If => {
                 let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
-                self.new_scope(captured.clone());
+                self.new_scope_vars(captured.clone());
                 if self.in_defer {
-                    self.expr_stack.push(Expr::If(expr_params, Box::new(captured)));
+                    self.expr_stack.push(Expr::If(expr_params, Box::new(captured.last().unwrap().clone())));
                 } else {
-                    self.program_push(Expr::If(expr_params, Box::new(captured)));
+                    self.program_push(Expr::If(expr_params, Box::new(captured.last().unwrap().clone())));
                 }
             },
             Keyword::OrIf => {
                 let expr_params = self.boolean_conditions(&params, false).0; // only getting the array
-                self.new_scope(captured.clone());
+                self.new_scope_vars(captured.clone());
                 if self.in_defer {
-                    self.expr_stack.push(Expr::OrIf(expr_params, Box::new(captured)));
+                    self.expr_stack.push(Expr::OrIf(expr_params, Box::new(captured.last().unwrap().clone())));
                 } else {
-                    self.program_push(Expr::OrIf(expr_params, Box::new(captured)));
+                    self.program_push(Expr::OrIf(expr_params, Box::new(captured.last().unwrap().clone())));
                 }
             },
             Keyword::Else => {
@@ -1737,8 +1759,13 @@ impl ExprWeights {
 
     fn create_for(&mut self, params: Vec<Token>, modifier: String) {
         if params.len() > 1 {
-            self.comp_err("expected only one expression to loop through");
-            exit(1);
+            match params[0] {
+                Token::Ampersand => (),
+                _ => {
+                    self.comp_err("expected only one expression to loop through");
+                    exit(1);
+                }
+            }
         }
 
         if modifier.is_empty() {
@@ -1746,36 +1773,93 @@ impl ExprWeights {
             exit(1);
         }
 
-        let new_varnames: Vec<&str> = modifier.split(' ').collect();
+        let mut new_varnames: Vec<&str> = modifier.split(' ').collect();
         if new_varnames.len() > 2 {
             self.comp_err(&format!("expected at most two variables to extract in for loop, got {}", new_varnames.len()));
             exit(1);
         }
+
+        let is_elem_pointer = if new_varnames[0].starts_with('^') {
+            let mut chars = new_varnames[0].chars();
+            chars.next();
+            new_varnames[0] = chars.as_str();
+            true
+        } else { false };
 
         let mut expr = Expr::None;
         let mut side_effects = Vec::new();
         let in_this = self.boolean_conditions(&params, false);
 
         let for_this_typ = match &in_this.0[0] {
+            Expr::Address(var) => {
+                if let Expr::VariableName { typ, constant, .. } = *var.clone() {
+                    if let Types::Arr { typ: subtyp, .. } = typ {
+                        if let Types::TypeDef { type_name, .. } = *subtyp.clone() {
+                            side_effects.append(&mut self.new_scope_propagate_field(new_varnames[0].to_owned(), type_name, is_elem_pointer, constant, false));
+                        }
+                        if is_elem_pointer {
+                            Types::Pointer(Box::new(*subtyp.clone()))
+                        } else {
+                            *subtyp.clone()
+                        }
+                    } else if let Types::TypeDef { type_name, generics: generics_op } = typ {
+                        if type_name == "dyn" || type_name == "array" {
+                            let generics = match generics_op {
+                                Some(g) => g,
+                                None => unreachable!(),
+                            };
+                            let subtyp = generics[0].clone();
+                            match subtyp {
+                                Types::TypeDef { ref type_name, .. } => side_effects.append(&mut self.new_scope_propagate_field(new_varnames[0].to_owned(), type_name.to_string(), is_elem_pointer, constant, false)),
+                                _ => (),
+                            }
+                            if is_elem_pointer {
+                                Types::Pointer(Box::new(subtyp))
+                            } else {
+                                subtyp
+                            }
+                        } else if type_name == "string" || type_name == "str" {
+                            Types::Char
+                        } else {
+                            self.comp_err(&format!("{type_name} unsupported in for loops currently"));
+                            exit(1);
+                        }
+                    } else {
+                        self.comp_err(&format!("{typ:?} unsupported in for loops currently"));
+                        exit(1);
+                    }
+                } else {
+                    self.comp_err(&format!("{var:?} unsupported in for loops currently"));
+                    exit(1);
+                }
+            }
             Expr::VariableName { typ, constant, .. } => {
                 if let Types::Arr { typ: subtyp, .. } = typ {
                     if let Types::TypeDef { type_name, .. } = *subtyp.clone() {
-                        self.propagate_struct_fields(new_varnames[0].to_owned(), type_name, false, *constant);
+                        side_effects.append(&mut self.new_scope_propagate_field(new_varnames[0].to_owned(), type_name, is_elem_pointer, *constant, false));
                     }
-                    *subtyp.clone()
+                    if is_elem_pointer {
+                        Types::Pointer(Box::new(*subtyp.clone()))
+                    } else {
+                        *subtyp.clone()
+                    }
                 } else if let Types::TypeDef { type_name, generics: generics_op } = typ {
-                    if type_name == &String::from("dyn") || type_name == &String::from("array") {
+                    if type_name == "dyn" || type_name == "array" {
                         let generics = match generics_op {
                             Some(g) => g,
                             None => unreachable!(),
                         };
                         let subtyp = generics[0].clone();
                         match subtyp {
-                            Types::TypeDef { ref type_name, .. } => self.propagate_struct_fields(new_varnames[0].to_owned(), type_name.to_string(), false, *constant),
+                            Types::TypeDef { ref type_name, .. } => side_effects.append(&mut self.new_scope_propagate_field(new_varnames[0].to_owned(), type_name.to_string(), is_elem_pointer, *constant, false)),
                             _ => (),
                         }
-                        subtyp
-                    } else if type_name == &String::from("string") || type_name == &String::from("str") {
+                        if is_elem_pointer {
+                            Types::Pointer(Box::new(subtyp))
+                        } else {
+                            subtyp
+                        }
+                    } else if type_name == "string" || type_name == "str" {
                         Types::Char
                     } else {
                         self.comp_err(&format!("{type_name} unsupported in for loops currently"));
@@ -1797,6 +1881,7 @@ impl ExprWeights {
             Expr::VariableName { constant, .. } => {
                 if !constant {
                     self.comp_err(&format!("{} is constant. can't be used in for loop", new_varnames[0]));
+                    exit(1);
                 }
                 if new_varnames.len() == 2 {
                     expr = Expr::For { 
@@ -1828,9 +1913,9 @@ impl ExprWeights {
                     typ: for_this_typ,
                     name: new_varnames[0].to_string(),
                     reassign: false,
-                    constant: false,
+                    constant: !is_elem_pointer,
                     func_arg: false,
-                    field_data: (false, false)
+                    field_data: (is_elem_pointer, false)
                 };
 
                 if new_varnames.len() == 2 {
@@ -2148,8 +2233,7 @@ impl ExprWeights {
                         },
                         _ => (),
                     }
-                },
-                Token::Quote => (),
+                }                Token::Quote => (),
                 Token::Str(word) => {
                     if in_bracks {
                         params.push(token.clone());
@@ -2164,6 +2248,14 @@ impl ExprWeights {
                         params.push(token.clone());
                     } else {
                         self.comp_err(&format!("unexpected token Char token: `{charlit}`"));
+                        exit(1);
+                    }
+                },
+                Token::Ampersand => {
+                    if in_bracks {
+                        params.push(token.clone());
+                    } else {
+                        self.comp_err(&format!("unexpected token: {:?}", Token::Ampersand));
                         exit(1);
                     }
                 },
@@ -2847,14 +2939,13 @@ impl ExprWeights {
         return Expr::None
     }
 
-    fn handle_array_macro(&mut self, length: &String, tokens: Vec<Token>) -> Expr {
+    fn handle_array_macro(&mut self, length: &String, tokens: Vec<Token>, mut is_constant: bool) -> Expr {
         if tokens.len() < 1 {
             self.comp_err(&format!("expected keyword and identifer (int x), got {tokens:?}"));
             exit(1);
         }
 
         let mut colon_counter = 0;
-        let mut is_constant = false;
         for token in &tokens {
             match token {
                 Token::Colon => {
@@ -3161,7 +3252,7 @@ impl ExprWeights {
                 }
 
                 if let Token::Int(intlit) = &var_info[1] {
-                    return self.handle_array_macro(intlit, var_info[3..].to_vec());
+                    return self.handle_array_macro(intlit, var_info[3..].to_vec(), is_constant);
                 } else {
                     self.comp_err(&format!("unexpected token: {:?}", var_info[0]));
                     exit(1);
@@ -3532,7 +3623,7 @@ impl ExprWeights {
     fn create_address(&self, ident: &String) -> Expr {
         let found_ident = self.find_ident(ident.clone());
         match found_ident {
-            Expr::VariableName { ref name, constant, field_data, .. } => {
+            Expr::VariableName { ref name, constant, .. } => {
                 if constant {
                     self.comp_err(&format!("using constant \"{name}\" as address dequalifies it to a variable, did you mean for \"{name}\" to be a variable?"));
                     exit(1)
@@ -3661,11 +3752,11 @@ impl ExprWeights {
                         if !array_lens.is_empty() {
                             if (self.in_struct_def && !self.in_func) || self.in_defer {
                                 // TODO: make this work with multi dimensional arrays
-                                let mac = self.handle_array_macro(&array_lens[0], value[i..].to_vec());
+                                let mac = self.handle_array_macro(&array_lens[0], value[i..].to_vec(), is_constant);
                                 self.expr_stack.push(mac);
                                 return Expr::None;
                             }
-                            return self.handle_array_macro(&array_lens[0], value[i..].to_vec());
+                            return self.handle_array_macro(&array_lens[0], value[i..].to_vec(), is_constant);
                         }
 
                         match keyword_res {

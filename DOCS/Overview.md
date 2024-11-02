@@ -87,6 +87,11 @@ for (fruits) [fruit] {
 for (fruits) [fruit i] {
     # i is the current index
 }
+
+# to modify the elements, you need to pass a reference and use the pointer to the element
+for (&fruits) [^fruit] {
+    fruit^: str.from("grape");
+}
 ```
 
 The syntax is `for (<elements>) [<elem> <idx>] {}`, the index is optional.<br>

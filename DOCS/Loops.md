@@ -41,3 +41,9 @@ for (fruits) [fruit i] {
 ```
 
 The syntax is `for (<elements>) [<elem> <idx>] {}`, the index is optional. Also note that there are only a few types that the for loop supports: `array`, `dyn`, `string`
+Note: the variable inside `[]` is a copy of the data, if you want to mutate element in the array, you need to pass by reference
+```
+for (&fruits) [^fruit] {
+    fruit^: str.from("grape");
+}
+```
