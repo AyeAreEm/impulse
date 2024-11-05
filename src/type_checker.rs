@@ -303,7 +303,7 @@ pub fn compare_exprs_and_args<'a>(exprs: &'a Vec<Expr>, func_name: &'a String, f
         None => return Err(ArgError { pos: 0, error: TCError::FuncNotExist }),
     };
 
-    if exprs.len() != args.len() && (func_name != "print" && func_name != "println") {
+    if exprs.len() != args.len() && (func_name != "print" && func_name != "println" && func_name != "string__format") {
         return Err(ArgError { pos: 0, error: TCError::WrongArgLength(exprs.len(), args.len()) });
     }
 
@@ -313,6 +313,8 @@ pub fn compare_exprs_and_args<'a>(exprs: &'a Vec<Expr>, func_name: &'a String, f
             Expr::StrLit(_) => skip_check = true,
             _ => return Err(ArgError { pos: 1, error: TCError::Custom(format!("expected StrLit as first argument, got {:?}", exprs[0])) }) 
         }
+    } else if func_name == "string__format" {
+        skip_check = true;
     }
 
     if skip_check { return Ok(()) }
