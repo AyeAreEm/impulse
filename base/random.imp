@@ -103,12 +103,12 @@ struct random :: {
 
     uint gen :: (^random self) {
         @mut self;
-        u64 A: 1664525;
-        u64 C: 1013904223;
-        u64 M: 4294967296;
+        u64 A: 1103515245;
+        u64 C: 12345;
+        u64 M: 32768;
 
         self.seed: [self.seed * A + C];
-        return cast(uint [self.seed % M]);
+        return [cast(uint [self.seed / 65536]) % M];
     }
 
     int range :: (^random self int min int max) {
