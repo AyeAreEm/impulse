@@ -272,7 +272,7 @@ struct string :: {
 
 # this function is handled in the compiler but you can see the code for it below
 # returns an empty string if there's an error
-_ string.format :: () { }
+string string.format :: () { }
 
 # string.format();
 @c [
