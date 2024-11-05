@@ -11,7 +11,7 @@ if exists("b:current_syntax")
 endif
 
 syntax match impulseSymbols /\v[|$+%-;:=<>!&^()[\]{}*\/]/
-syntax keyword impulseAndOr and or
+syntax keyword impulseAndOr and or xor lshift rshift
 syntax keyword impulseKeywords break continue return
 syntax keyword impulseBranches if orif else switch case fall
 syntax keyword impulseLoops loop for

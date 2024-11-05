@@ -2,7 +2,7 @@
 The aim is for Impulse to feel simplicity and as such, there shouldn't be an absurd amount of keyword *cough cough* like C++ *cough coubh*
 
 ```
-and or
+and or xor lshift rshift
 
 if orif else
 

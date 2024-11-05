@@ -364,9 +364,9 @@ impl Gen {
                     match param {
                         Expr::IntLit(intlit) => {
                             if i == 0 {
-                                funccall_code.push_str(&intlit);
+                                funccall_code.push_str(&format!("({intlit})"));
                             } else {
-                                funccall_code.push_str(&format!(", {intlit}"))
+                                funccall_code.push_str(&format!(", ({intlit})"))
                             }
                         },
                         Expr::VariableName { typ, .. } => {
@@ -511,7 +511,7 @@ impl Gen {
 
     fn handle_value(&mut self, value: Expr) -> String {
         match value {
-            Expr::IntLit(intlit) => intlit,
+            Expr::IntLit(intlit) => format!("({intlit})"),
             Expr::CharLit(charlit) => format!("'{charlit}'"),
             Expr::StrLit(content) => format!("\"{content}\""),
             Expr::True => String::from("true"),
@@ -609,7 +609,7 @@ impl Gen {
                     had_angled = true;
                 },
                 Expr::IntLit(intlit) => {
-                    boolean_condition_code.push_str(&format!("{intlit}"))
+                    boolean_condition_code.push_str(&format!("({intlit})"))
                 },
                 Expr::CharLit(charlit) => {
                     boolean_condition_code.push_str(&format!("'{charlit}'"));

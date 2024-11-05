@@ -1,5 +1,5 @@
 use std::{path::Path, fs, collections::HashMap, process::exit};
-use crate::{declare_types::*, tokeniser::{tokeniser, Token}, type_checker::*, Gen};
+use crate::{check_ident_as_token, declare_types::*, tokeniser::{tokeniser, Token}, type_checker::*, Gen};
 use fs_extra::{dir::CopyOptions, copy_items};
 
 const CUR_PATH: &str = env!("current_path");
@@ -208,9 +208,6 @@ impl ExprWeights {
             ("case".to_string(), Keyword::Case),
             ("fall".to_string(), Keyword::Fall),
 
-            ("or".to_string(), Keyword::Or),
-            ("and".to_string(), Keyword::And),
-
             ("loop".to_string(), Keyword::Loop),
             ("for".to_string(), Keyword::For),
 
@@ -408,6 +405,7 @@ impl ExprWeights {
             ('/', Token::Divide),
             ('|', Token::Pipe),
             ('%', Token::Mod),
+            ('!', Token::Exclaim)
             // ('.', Token::Dot),
         ]);
 
@@ -417,7 +415,7 @@ impl ExprWeights {
         for (i, ch) in intlit.chars().enumerate() {
             if ch == ' ' || ch == '\n' || ch == '\r' {
                 if buf.len() > 0 {
-                    tokens.push(Token::Ident(buf.clone()));
+                    tokens.push(check_ident_as_token(&buf));
                     buf.clear();
                 }
 
@@ -429,14 +427,14 @@ impl ExprWeights {
                 match token_res {
                     Some(token) => {
                         if buf.len() > 0 {
-                            tokens.push(Token::Ident(buf.clone()));
+                            tokens.push(check_ident_as_token(&buf));
                             buf.clear();
                         }
                         tokens.push(token.clone());
                     },
                     None => {
                         buf.push(ch);
-                        tokens.push(Token::Ident(buf.clone()));
+                        tokens.push(check_ident_as_token(&buf));
                         buf.clear();
                     },
                 }
@@ -457,7 +455,7 @@ impl ExprWeights {
             match token_res {
                 Some(token) => {
                     if buf.len() > 0 {
-                        tokens.push(Token::Ident(buf.clone()));
+                        tokens.push(check_ident_as_token(&buf));
                         buf.clear();
                     }
                     tokens.push(token.clone());
@@ -521,6 +519,12 @@ impl ExprWeights {
                 Token::Lsquare => clean.push('('),
                 Token::Rsquare => clean.push(')'),
                 Token::Mod => clean.push('%'),
+                Token::And => clean.push('&'),
+                Token::Or => clean.push('|'),
+                Token::Xor => clean.push('^'),
+                Token::Lshift => clean.push_str("<<"),
+                Token::Rshift => clean.push_str(">>"),
+                Token::Exclaim => clean.push('~'),
                 Token::Ident(ident) => {
                     // TODO: LATER CHECK IF ERROR IS NUM TOO LARGE
                     let is_num = if ident.len() > 2 && (&ident[0..2].to_lowercase() == "0x" || &ident[0..2].to_lowercase() == "0b") {
@@ -1397,6 +1401,8 @@ impl ExprWeights {
                         func_params.push(param.clone());
                     }
                 },
+                Token::And => expr_params.push(Expr::And),
+                Token::Or => expr_params.push(Expr::Or),
                 Token::Ident(ident) => {
                     if func_brack_rc != 0 {
                         func_params.push(param.clone());
@@ -1430,14 +1436,6 @@ impl ExprWeights {
                     };
 
                     match keyword {
-                        Keyword::Or => {
-                            expr_params.push(Expr::Or);
-                            continue;
-                        },
-                        Keyword::And => {
-                            expr_params.push(Expr::And);
-                            continue;
-                        }
                         Keyword::None => (),
                         _ => {
                             self.comp_err(&format!("unexpected keyword {keyword:?} in boolean condition"));
@@ -2180,6 +2178,22 @@ impl ExprWeights {
                         params.push(token.clone());
                     } else {
                         self.comp_err("expected `false` in brackets");
+                        exit(1);
+                    }
+                },
+                Token::And => {
+                    if in_bracks {
+                        params.push(token.clone());
+                    } else {
+                        self.comp_err("expected `and` in brackets");
+                        exit(1);
+                    }
+                },
+                Token::Or => {
+                    if in_bracks {
+                        params.push(token.clone());
+                    } else {
+                        self.comp_err("expected `or` in brackets");
                         exit(1);
                     }
                 },

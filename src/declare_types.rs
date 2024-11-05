@@ -107,9 +107,6 @@ pub enum Keyword {
     Loop,
     For,
 
-    Or,
-    And,
-    
     Pointer(Types, Types),
     Address,
 

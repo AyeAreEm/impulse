@@ -1,22 +1,19 @@
-# fix bug where field members from captures would live after end of their scope
+int gimme_five :: () {
+    return 5;
+}
 
 _ main :: () {
-    []str fruits: |str.from("apple") str.from("cherry") str.from("banana")|;
-
-    # new, can modify through pointer
-    for (&fruits) [^fruit] {
-        # fruit is not constant
-        fruit^: str.from("grape");
+    if (gimme_five() = 5 and [0b100 or 0b010] = 6) {
+        println("it is five and six");
     }
 
-    for (fruits) [fruit] {
-        # fruit is constant
-        println("%s" fruit.data);
-    }
+    int exclusive_or: [0b100 xor 0b010];
+    println("%d" exclusive_or);
 
-    option[str] maybe_str: |str.from("hello world")|;
-    if (maybe_str) [value] {
-        # value is constant
-        println("%s" value.data);
-    }
+    int bitwise_not: [!-2];
+    println("%d" bitwise_not);
+
+    int bits: 0x12345678;
+    println("0x%x" [bits rshift 24 and 0xFF]);
+    println("0x%x" [bits rshift 16 and 0xFF]);
 }
