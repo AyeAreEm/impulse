@@ -35,7 +35,7 @@ struct[T] option :: {
     $T value;
     bool none;
 
-    T unwrap :: (typeid T option[T] opt) {
+    $T unwrap :: (typeid T option[T] opt) {
         if (opt.none) {
             @c [fprintf(stderr, "error: failed to unwrap in %s:%d\n", __FILE__, __LINE__);];
             @c [fprintf(stderr, "error: please take a look at the c file for more info\n");];
