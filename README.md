@@ -92,6 +92,19 @@ also this won't work
 _ edit_len :: ([]^int nums) {}
 ```
 
+Array return type doesn't work
+```
+[]int get_numbers :: () {}
+```
+
+Integer literal isn't recognised in loop condition<br>
+The below code produces an `incomplete condition` error
+```
+loop (i < [arr.len - 1]) [+] {
+
+}
+```
+
 ### Todos / Ideas
 #### Import libraries
 Instead of just importing a file like `base/random.imp`<br>

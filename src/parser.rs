@@ -835,8 +835,6 @@ impl ExprWeights {
                                 let mut updated_kw_buf = false;
                                 if !array_lens.is_empty() {
                                     // TODO: make this support mutli-dimensional arrays
-                                    // kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
-                                    // kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![typ]) };
                                     let typ = self.keyword_to_type(kw.clone());
                                     kw_buf = Keyword::Arr { typ: Box::new(typ), length: array_lens[0].clone() };
                                     array_lens.clear();
@@ -864,8 +862,6 @@ impl ExprWeights {
                                     Expr::StructDef { .. } => {
                                         if !array_lens.is_empty() {
                                             // TODO: make this support mutli-dimensional arrays
-                                            // kw_buf = Keyword::Arr { typ: Box::new(self.keyword_to_type(kw.clone())), length: array_lens[0].clone() };
-                                            // kw_buf = Keyword::TypeDef { type_name: String::from("array"), generics: Some(vec![typ]) };
                                             let typ = Types::TypeDef {
                                                 type_name: ident.to_string(),
                                                 generics: None,
@@ -2198,9 +2194,8 @@ impl ExprWeights {
                     }
                 },
                 Token::Int(symbols) => {
-                    if create_loop {
+                    if create_loop && !in_bracks {
                         loop_modifier = symbols.to_owned();
-                        break;
                     } else if create_for {
                         loop_modifier = symbols.to_owned();
                     } else if create_branch && !in_bracks {
@@ -3890,7 +3885,7 @@ impl ExprWeights {
                                         return Expr::None;
                                     }
                                     return self.create_func_call(&found_ident, value[i+1..].to_vec());
-                                }  else if let Expr::EnumDef { .. } = found_ident {
+                                } else if let Expr::EnumDef { .. } = found_ident {
                                     let mut k = Keyword::TypeDef {
                                         type_name: ident.clone(), 
                                         generics: None,
@@ -4301,7 +4296,9 @@ impl ExprWeights {
                         fname = word.clone();
 
                         if let Types::TypeDef { ref mut generics, .. } = typ {
-                            *generics = Some(pass_typs);
+                            if !pass_typs.is_empty() {
+                                *generics = Some(pass_typs);
+                            }
                         }
                         expr = if self.in_enum_def {
                             Expr::VariableName { typ, name: word, reassign: false, constant: true, field_data: (false, false), func_arg: false }
@@ -4559,10 +4556,6 @@ impl ExprWeights {
         }
 
         if !right.is_empty() {
-            // if self.in_struct_def && !self.in_func {
-            //     self.comp_err("can't initalise members inside a struct");
-            //     exit(1);
-            // }
             self.create_variable(left, right, is_constant);
             return
         }

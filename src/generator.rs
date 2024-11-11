@@ -224,13 +224,25 @@ impl Gen {
                 return (format!("{sub_typ}*"), String::new())
             },
             Types::Generic(typeid) => {
-                if !self.in_macro_func && !self.mutate_func_args {
-                    self.comp_err(&format!("failed to handle generic at compile time. {typeid}"));
+                if self.mutate_func_args {
+                    return (String::new(), String::new())
+                }
+
+                return (format!("{typeid}"), String::new())
+            },
+            Types::Any => {
+                if self.mutate_func_args {
+                    return (String::new(), String::new())
+                }
+
+                if self.in_macro_func {
+                    self.comp_err(&format!("cannot make variable of type any outside of function declaration"));
                     exit(1);
                 }
 
-                (format!("{typeid}"), String::new())
-            },
+                self.comp_err(&format!("failed to handle any type at compile time."));
+                exit(1);
+            }
             Types::Let => (String::from("let"), String::new()),
             Types::None => (String::new(), String::new()),
             unimpl => {
@@ -689,7 +701,12 @@ impl Gen {
         }
 
         self.curl_rc += 1;
-        loop_code.push_str(") {\n");
+
+        if self.in_macro_func {
+            loop_code.push_str(") {\\\n");
+        } else {
+            loop_code.push_str(") {\n");
+        }
         loop_code
     }
 
@@ -744,14 +761,23 @@ impl Gen {
             }
         };
 
+
+        let mut return_tuple;
         if iterator.is_empty() {
             let randname = rand_varname();
-            for_code.push_str(&format!("for (size_t {randname} = 0; {randname} < {length}; {randname}++) {{\n"));
-            (for_code, arr_name, randname, is_addr)
+            for_code.push_str(&format!("for (size_t {randname} = 0; {randname} < {length}; {randname}++) {{"));
+            return_tuple = (for_code, arr_name, randname, is_addr)
         } else {
-            for_code.push_str(&format!("for (size_t {iterator} = 0; {iterator} < {length}; {iterator}++) {{\n"));
-            (for_code, arr_name, iterator, is_addr)
+            for_code.push_str(&format!("for (size_t {iterator} = 0; {iterator} < {length}; {iterator}++) {{"));
+            return_tuple = (for_code, arr_name, iterator, is_addr)
         }
+
+        if self.in_macro_func {
+            return_tuple.0.push_str("\\\n");
+        } else {
+            return_tuple.0.push_str("\n");
+        }
+        return_tuple
     }
 
     fn generate_c(&mut self, expressions: Vec<(Expr, String, u32)>) {

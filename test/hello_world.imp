@@ -1,19 +1,11 @@
-int gimme_five :: () {
-    return 5;
+[]int get_numbers :: () {
+    []int nums: |1 2 3 4 5|;
+    return nums;
 }
 
 _ main :: () {
-    if (gimme_five() = 5 and [0b100 or 0b010] = 6) {
-        println("it is five and six");
+    []int nums: get_numbers();
+    for (nums) [num] {
+        println("%d" num);
     }
-
-    int exclusive_or: [0b100 xor 0b010];
-    println("%d" exclusive_or);
-
-    int bitwise_not: [!-2];
-    println("%d" bitwise_not);
-
-    int bits: 0x12345678;
-    println("0x%x" [bits rshift 24 and 0xFF]);
-    println("0x%x" [bits rshift 16 and 0xFF]);
 }

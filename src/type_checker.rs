@@ -164,7 +164,11 @@ fn compare_type_and_type(t1: &Types, t2: &Types) -> bool {
                 (None, Some(_)) => return false,
                 (Some(_), None) => return false,
             }
-        }
+        },
+        (Types::TypeDef { .. }, Types::ArrIndex { arr_typ, .. }) => {
+            let unwrap_arr_typ = unwrap_pointer(&arr_typ);
+            return compare_type_and_type(t1, unwrap_arr_typ);
+        },
         // TODO: maybe change the generic to the correct type when checking
         (Types::Generic(_), _) => return true,
         (_, Types::Generic(_)) => return true,
@@ -243,8 +247,8 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
             let compare = compare_type_and_expr(typ, e, funcs);
             return (compare.0, compare.1);
         },
-        // this is for enums
         (Types::TypeDef { generics, .. }, Expr::VariableName { typ, .. }) => {
+            // this is for enums
             if generics == &None && typ == &Types::None {
                 return (true, Types::None);
             }
@@ -253,9 +257,13 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
         (_, Expr::GarbageValue) => return (true, Types::None),
         (Types::TypeDef { .. }, Expr::DefaultValue) => return (true, Types::None),
         (Types::Arr { typ: arr_typ, .. }, Expr::VariableName { typ: var_typ, .. }) => {
-            if let Types::Arr { .. } = var_typ {
+            if let Types::Arr { typ: var_arr_typ, .. } = var_typ {
                 if let Types::Any = **arr_typ {
                     return (true, Types::None)
+                } else if t == var_typ {
+                    return (true, Types::None);
+                } else if arr_typ == var_arr_typ {
+                    return (true, Types::None);
                 }
             }
 
@@ -293,6 +301,9 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
         (Types::Arr { .. }, Expr::ArrayLit(_)) => return (true, Types::None),
         (Types::TypeDef { .. }, Expr::ArrayLit(_)) => return (true, Types::None),
         (Types::Bool, Expr::True | Expr::False) => return (true, Types::None),
+
+        // this is for enums
+        (Types::None, Expr::IntLit(_)) => return (true, Types::None),
         _ => return (false, Types::None),
     }
 }
