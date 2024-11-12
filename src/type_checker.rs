@@ -227,6 +227,12 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
                             return (true, Types::TypeDef { type_name: type_name.to_owned(), generics: Some(types) })
                         }
                     }
+
+                    if let Types::Generic(_) = ret_type {
+                        if types.len() == 1 {
+                            return (true, types[0].clone())
+                        }
+                    }
                     return (true, ret_type.clone())
                 },
                 None => return (false, Types::None),

@@ -1298,14 +1298,27 @@ impl Gen {
                                     } else {
                                         format!("if (!{name}.none) {{\n")
                                     };
+
+                                    self.curl_rc += 1;
                                     self.code.push_str(&if_code);
                                     self.add_spaces(self.indent);
 
-                                    let varname = self.handle_varname(*info);
-                                    let varvalue = self.handle_value(*value);
-                                    
-                                    let capture_code = format!("{varname} = {varvalue};\n");
-                                    self.code.push_str(&capture_code);
+                                    match *info {
+                                        Expr::VariableName { ref name, .. } => {
+                                            if name != "_" {
+                                                let varname = self.handle_varname(*info);
+                                                let varvalue = self.handle_value(*value);
+                                                
+                                                let capture_code = if self.in_macro_func {
+                                                    format!("{varname} = {varvalue};\\\n")
+                                                } else {
+                                                    format!("{varname} = {varvalue};\n")
+                                                };
+                                                self.code.push_str(&capture_code);
+                                            }
+                                        },
+                                        _ => (),
+                                    }
                                     continue;
                                 }
                             }
@@ -1327,18 +1340,31 @@ impl Gen {
                             if let Types::TypeDef { type_name, .. } = typ {
                                 if type_name == &String::from("option") {
                                     let if_code = if self.in_macro_func {
-                                        format!("if (!{name}.none) {{\\\n")
+                                        format!("else if (!{name}.none) {{\\\n")
                                     } else {
-                                        format!("if (!{name}.none) {{\n")
+                                        format!("else if (!{name}.none) {{\n")
                                     };
+
+                                    self.curl_rc += 1;
                                     self.code.push_str(&if_code);
                                     self.add_spaces(self.indent);
 
-                                    let varname = self.handle_varname(*info);
-                                    let varvalue = self.handle_value(*value);
-                                    
-                                    let capture_code = format!("{varname} = {varvalue};\n");
-                                    self.code.push_str(&capture_code);
+                                    match *info {
+                                        Expr::VariableName { ref name, .. } => {
+                                            if name != "_" {
+                                                let varname = self.handle_varname(*info);
+                                                let varvalue = self.handle_value(*value);
+                                                
+                                                let capture_code = if self.in_macro_func {
+                                                    format!("{varname} = {varvalue};\\\n")
+                                                } else {
+                                                    format!("{varname} = {varvalue};\n")
+                                                };
+                                                self.code.push_str(&capture_code);
+                                            }
+                                        },
+                                        _ => (),
+                                    }
                                     continue;
                                 }
                             }

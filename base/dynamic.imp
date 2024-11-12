@@ -53,7 +53,7 @@ struct[T] dyn :: {
         @mut arr;
 
         option[T] ret: dyn.at(T arr [arr.len - 1]);
-        if (!ret.none) {
+        if (ret) [_] {
             arr.len: [arr.len - 1];
         }
         return ret;
