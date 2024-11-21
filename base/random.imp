@@ -69,6 +69,7 @@ struct MT :: {
         return x;
     }
 
+    # inclusive
     u32 range :: (^MT self int min int max) {
         @mut self; @mut min; @mut max;
 
@@ -111,6 +112,7 @@ struct random :: {
         return [cast(uint [self.seed / 65536]) % M];
     }
 
+    # inclusive
     int range :: (^random self int min int max) {
         @mut self; @mut min; @mut max;
 

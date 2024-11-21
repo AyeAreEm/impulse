@@ -1,7 +1,7 @@
 @import "string.h";
 
 @inline ^$T mem.alloc :: (typeid T usize len) {
-    return @c [ (T*)calloc(len, size_of(T));];
+    @c [return (T*)calloc(len, sizeof(T));];
 }
 
 @inline ^_ mem.realloc :: (^_ address usize new_size) {
