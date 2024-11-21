@@ -6,68 +6,56 @@ f64 math.PI :: 3.14159265358979323846;
 @inline f64 math.sin_f64 :: (f64 x) { @c [return sin(x);]; }
 
 $T math.sin :: (typeid T $T x) {
-    $T result;
     if (type.compare(T f32)) {
-        result: math.sin_f32(x);
+        return math.sin_f32(x);
     } orif (type.compare(T f64)) {
-        result: math.sin_f64(x);
+        return math.sin_f64(x);
     } else {
         println("type %s can't be used in sin function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
-
-    return result;
 }
 
 @inline f32 math.cos_f32 :: (f32 x) { @c [return cosf(x);]; }
 @inline f64 math.cos_f64 :: (f64 x) { @c [return cos(x);]; }
 
 $T math.cos :: (typeid T $T x) {
-    $T result;
     if (type.compare(T f32)) {
-        result: math.cos_f32(x);
+        return math.cos_f32(x);
     } orif (type.compare(T f64)) {
-        result: math.cos_f64(x);
+        return math.cos_f64(x);
     } else {
         println("type %s can't be used in cos function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
-
-    return result;
 }
 
 @inline f32 math.sqrt_f32 :: (f32 x) { @c [return sqrtf(x);]; }
 @inline f64 math.sqrt_f64 :: (f64 x) { @c [return sqrt(x);]; }
 
 $T math.sqrt :: (typeid T $T x) {
-    $T result;
     if (type.compare(T f32)) {
-        result: math.sqrt_f32(x);
+        return math.sqrt_f32(x);
     } orif (type.compare(T f64)) {
-        result: math.sqrt_f64(x);
+        return math.sqrt_f64(x);
     } else {
         println("type %s can't be used in sqrt function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
-
-    return result;
 }
 
 @inline f32 math.pow_f32 :: (f32 x f32 y) { @c [return powf(x, y);]; }
 @inline f64 math.pow_f64 :: (f64 x f64 y) { @c [return pow(x, y);]; }
 
 $T math.pow :: (typeid T $T x $T y) {
-    $T result;
     if (type.compare(T f32)) {
-        result: math.pow_f32(x y);
+        return math.pow_f32(x y);
     } orif (type.compare(T f64)) {
-        result: math.pow_f64(x y);
+        return math.pow_f64(x y);
     } else {
         println("type %s can't be used in power function as it's not a decimal" type.to_cstr(T));
         exitcode(1);
     }
-
-    return result;
 }
 
 struct Vector2f32 :: {

@@ -1,5 +1,4 @@
-# Dynamic array library, these functions run IN PLACE and therefore
-# the arguments don't need to be passed by reference
+# Dynamic array library
 
 @import "base/memory.imp";
 
@@ -36,7 +35,7 @@ struct[T] dyn :: {
         return ret;
     }
 
-    _ push :: (typeid T dyn[T] arr $T elem) {
+    _ push :: (typeid T ^dyn[T] arr $T elem) {
         @mut arr;
 
         if ([arr.len + 1] >= arr.cap) {
@@ -49,7 +48,7 @@ struct[T] dyn :: {
         arr.len: [arr.len + 1];
     }
 
-    option[T] pop :: (typeid T dyn[T] arr) {
+    option[T] pop :: (typeid T ^dyn[T] arr) {
         @mut arr;
 
         option[T] ret: dyn.at(T arr [arr.len - 1]);
@@ -59,7 +58,7 @@ struct[T] dyn :: {
         return ret;
     }
 
-    option[T] deque :: (typeid T dyn[T] arr) {
+    option[T] deque :: (typeid T ^dyn[T] arr) {
         @mut arr;
 
         option[T] ret: dyn.at(T arr [0]);
@@ -72,20 +71,20 @@ struct[T] dyn :: {
 
     # this doesn't actually clear data but instead
     # allows for the data to be overwritten
-    _ clear :: (typeid T dyn[T] arr) {
+    _ clear :: (typeid T ^dyn[T] arr) {
         @mut arr;
 
         arr.len: 0;
     }
 
-    _ remove :: (typeid T dyn[T] arr usize index) {
+    _ remove :: (typeid T ^dyn[T] arr usize index) {
         @mut arr;
 
         @c [mem__move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
         arr.len: [arr.len - 1];
     }
 
-    _ dealloc :: (dyn[any] arr) {
+    _ dealloc :: (^dyn[any] arr) {
         @mut arr;
 
         mem.dealloc(arr.data);

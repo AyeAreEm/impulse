@@ -201,31 +201,26 @@ struct str :: {
 
 # typeid already makes this inlined but explicity is nice
 @inline usize size_of :: (typeid T) {
-    @c [sizeof(T);];
+    @c [return sizeof(T);];
 }
 
 @inline ^char type.to_cstr :: (typeid T) {
-    return @c [#T;];
+    @c [return #T;];
 }
 
 @inline bool type.compare :: (typeid T typeid K) {
     ^char str_T: type.to_cstr(T);
     ^char str_K: type.to_cstr(K);
-    bool ret: false;
 
-    if (c.strcmp(str_T str_K)) {
-        ret: true;
-    }
-
-    return ret;
+    return c.strcmp(str_T str_K);
 }
 
 @inline $T ptr_cast :: (typeid T any val) {
-    return @c [*(T*)&val;];
+    @c [return *(T*)&val;];
 }
 
 @inline $T cast :: (typeid T any val) {
-    return @c [(T)val;];
+    @c [return (T)val;];
 }
 
 # these are only here to claim the definition, these functions are made in the compiler
