@@ -4,7 +4,7 @@ use fs_extra::{dir::CopyOptions, copy_items};
 
 const CUR_PATH: &str = env!("current_path");
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     Func {
         typ: Types,

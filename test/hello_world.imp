@@ -1,11 +1,5 @@
-[]int get_numbers :: () {
-    []int nums: |1 2 3 4 5|;
-    return nums;
-}
+@import "base/dynamic.imp";
 
 _ main :: () {
-    []int nums: get_numbers();
-    for (nums) [num] {
-        println("%d" num);
-    }
+    let nums: dyn.new(int);
 }

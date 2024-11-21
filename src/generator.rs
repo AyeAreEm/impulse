@@ -21,6 +21,11 @@ pub struct Gen {
     libc_map: HashMap<String, bool>,
     defs_location: Vec<usize>,
 
+    current_func: String,
+    func_dependencies: HashMap<String, Vec<Expr>>,
+    macro_funcs: Vec<String>, // to see if a func call is a macro func
+    generated_funcs: Vec<String>, // to see if a macro func has already been generated
+
     generated_structs: Vec<String>, // for macro structs
     default_structs: Vec<String>, // structs that have a <name>_default that has initialised values
 
@@ -80,8 +85,15 @@ impl Gen {
 
             libc_map,
             defs_location: Vec::new(),
+
+            current_func: String::new(),
+            func_dependencies: HashMap::new(),
+            macro_funcs: Vec::new(),
+            generated_funcs: Vec::new(),
+
             generated_structs: Vec::new(),
             default_structs: Vec::new(),
+
             in_macro_func: false,
             mutate_func_args: false,
             curl_rc: 0,
@@ -112,12 +124,68 @@ impl Gen {
         return false;
     }
 
-    fn update_struct_definitions(&mut self, mut line_num: usize, offset: usize) {
+    fn update_definitions(&mut self, mut line_num: usize, offset: usize) {
         for i in self.defs_location.iter_mut() {
-            if i > &mut line_num {
+            if i >= &mut line_num {
                 *i += offset;
             }
         }
+    }
+
+    fn generate_new_func(&mut self, func_name: &String, types: &mut Vec<String>) {
+        if let Some(deps) = self.func_dependencies.get(func_name) {
+            for dep in deps.clone() {
+                if let Expr::FuncCall { name, gave_params: _ } = dep {
+                    // for param in gave_params {
+                    //     if let Expr::VariableName { typ, name, .. } = param {
+                    //         if let Types::TypeId = typ {
+                    //             types.push(name);
+                    //         }
+                    //     }
+                    // }
+                    self.generate_new_func(&name, types);
+                }
+            }
+        }
+
+        let mut gen_code = format!("{func_name}_IMPULSE_FUNC_GEN");
+        let mut found = false;
+        for macro_func in &self.macro_funcs {
+            if macro_func == &gen_code {
+                found = true;
+                break;
+            }
+        }
+        if !found { return; }
+
+        gen_code.push('(');
+
+        for (i, typ) in types.iter().enumerate() {
+            if i == 0 {
+                gen_code.push_str(typ);
+            } else {
+                gen_code.push_str(&format!(", {typ}"));
+            }
+        }
+        gen_code.push_str(");\n");
+
+        for generated in &self.generated_funcs {
+            if &gen_code == generated {
+                return;
+            }
+        }
+
+        let index_op = self.defs_location.last();
+        let index = match index_op {
+            Some(i) => *i,
+            None => {
+                self.comp_err(&format!("failed to generate generic during compilation, {gen_code}"));
+                exit(1);
+            }
+        };
+        self.code.insert_str(index, &gen_code);
+        self.update_definitions(index, gen_code.len());
+        self.generated_funcs.push(gen_code);
     }
 
     fn generate_new_struct(&mut self, struct_name: &String, type_names: String, types: Vec<String>) {
@@ -150,7 +218,7 @@ impl Gen {
         };
 
         self.code.insert_str(index, &gen_code);
-        self.update_struct_definitions(index, gen_code.len());
+        self.update_definitions(index, gen_code.len());
         self.generated_structs.push(fullname);
     }
 
@@ -169,18 +237,8 @@ impl Gen {
             Types::UInt => (String::from("uint"), String::new()),
             Types::F32 => (String::from("f32"), String::new()),
             Types::F64 => (String::from("f64"), String::new()),
-            Types::Usize => {
-                if !self.imports.contains("#include <stddef.h>\n") {
-                    self.imports.push_str("#include <stddef.h>\n");
-                }
-                (String::from("usize"), String::new())
-            },
-            Types::Bool => {
-                if !self.imports.contains("#include <stdbool.h>\n") {
-                    self.imports.push_str("#include <stdbool.h>\n");
-                }
-                (String::from("bool"), String::new())
-            },
+            Types::Usize => (String::from("usize"), String::new()),
+            Types::Bool => (String::from("bool"), String::new()),
             Types::TypeDef { type_name: user_def, generics: generics_op } => {
                 let replaced_def = user_def.replace(".", "__");
                 let mut typ = format!("{replaced_def}");
@@ -235,13 +293,15 @@ impl Gen {
                     return (String::new(), String::new())
                 }
 
-                if self.in_macro_func {
-                    self.comp_err(&format!("cannot make variable of type any outside of function declaration"));
-                    exit(1);
-                }
-
-                self.comp_err(&format!("failed to handle any type at compile time."));
-                exit(1);
+                // TODO: remove this before pushing
+                return (String::from("any"), String::new())
+                // if self.in_macro_func {
+                //     self.comp_err(&format!("cannot make variable of type any outside of function declaration"));
+                //     exit(1);
+                // }
+                //
+                // self.comp_err(&format!("failed to handle any type at compile time."));
+                // exit(1);
             }
             Types::Let => (String::from("let"), String::new()),
             Types::None => (String::new(), String::new()),
@@ -352,16 +412,16 @@ impl Gen {
         }
 
         match funccall {
-            Expr::FuncCall { name, gave_params } => {
+            Expr::FuncCall { ref name, ref gave_params } => {
                 let mut funccall_code = String::new();
                 let mut add_newline = false;
 
-                if name == String::from("print")  {
+                if name == "print" {
                     funccall_code.push_str("printf(");
-                } else if name == String::from("println") {
+                } else if name == "println" {
                     funccall_code.push_str("printf(");
                     add_newline = true;
-                } else if name == String::from("string__format") {
+                } else if name == "string__format" {
                     funccall_code.push_str("__IMPULSE__STRING__FORMAT__(");
                 } else {
                     funccall_code.push_str(&format!("{name}("));
@@ -370,8 +430,9 @@ impl Gen {
                 if gave_params.is_empty() {
                     funccall_code.push(')');
                     return funccall_code
-                } 
+                }
 
+                let mut types = Vec::new();
                 for (i, param) in gave_params.iter().enumerate() {
                     match param {
                         Expr::IntLit(intlit) => {
@@ -381,7 +442,11 @@ impl Gen {
                                 funccall_code.push_str(&format!(", ({intlit})"))
                             }
                         },
-                        Expr::VariableName { typ, .. } => {
+                        Expr::VariableName { typ, name, .. } => {
+                            if typ == &Types::TypeId {
+                                types.push(name.clone());
+                            }
+
                             let mut sanitised_name = self.handle_sanitise_varname(param.clone());
                             if let Types::Pointer(_) = typ {
                                 let handled_varname = handle_local_pointer(self, sanitised_name.clone(), typ.clone());
@@ -467,6 +532,16 @@ impl Gen {
                             self.comp_err(&format!("expression {unimpl:?} not implemented yet"));
                             exit(1);
                         }
+                    }
+                }
+
+                if !types.is_empty() {
+                    if self.in_macro_func {
+                        if let Some(deps) = self.func_dependencies.get_mut(&self.current_func) {
+                            deps.push(funccall.clone());
+                        }
+                    } else {
+                        self.generate_new_func(&name, &mut types);
                     }
                 }
 
@@ -629,18 +704,8 @@ impl Gen {
                 // Expr::StrLit(string) => boolean_condition_code.push_str(&format!("{string}")),
                 Expr::Or => boolean_condition_code.push_str("||"),
                 Expr::And => boolean_condition_code.push_str("&&"),
-                Expr::True => {
-                    if !self.imports.contains("#include <stdbool.h>\n") {
-                        self.imports.push_str("#include <stdbool.h>\n");
-                    }
-                    boolean_condition_code.push_str("true")
-                },
-                Expr::False => {
-                    if !self.imports.contains("#include <stdbool.h>\n") {
-                        self.imports.push_str("#include <stdbool.h>\n");
-                    }
-                    boolean_condition_code.push_str("false")
-                },
+                Expr::True => boolean_condition_code.push_str("true"),
+                Expr::False => boolean_condition_code.push_str("false"),
                 unexpected => {
                     self.comp_err(&format!("unexpected expression {unexpected:?} in branch / boolean condition"));
                     exit(1);
@@ -1090,13 +1155,6 @@ impl Gen {
                             }
                         }
 
-                        // match varname.find('*') {
-                        //     Some(idx) => {
-                        //         varname.insert_str(idx+1, " const");
-                        //     },
-                        //     None => (),
-                        // }
-
                         if i == 0 {
                             func_code.push_str(&varname);
                         } else {
@@ -1115,24 +1173,89 @@ impl Gen {
                     self.defs_location.push(self.code.len());
                     self.code.push_str(&func_code);
                 },
-                Expr::MacroFunc { params, name, .. } => {
+                Expr::MacroFunc { ref typ, ref params, ref name, .. } => {
                     self.indent += 1;
                     self.curl_rc += 1;
                     self.in_macro_func = true;
+                    self.macro_funcs.push(format!("{name}_IMPULSE_FUNC_GEN"));
+                    self.current_func = name.clone();
+                    self.func_dependencies.entry(name.clone()).or_insert(vec![]);
 
-                    let mut func_code = String::from("#define ");
-                    func_code.push_str(&format!("{name}("));
+                    let mut func_caller_code = format!("#define {name}(");
+                    let mut func_gen_code = format!("#define {name}_IMPULSE_FUNC_GEN(");
+                    let mut func_code = format!("{} {name}_", self.handle_typ(typ.clone()).0);
 
                     for (i, param) in params.iter().enumerate() {
                         if i == 0 {
-                            func_code.push_str(&self.handle_value(param.clone()));
+                            if let Expr::VariableName { typ, name, .. } = param {
+                                if let Types::TypeId = typ {
+                                    func_gen_code.push_str(&format!("{name}"));
+                                    func_code.push_str(&format!("##{name}"));
+                                }
+                            }
+                            func_caller_code.push_str(&format!("{}", self.handle_value(param.clone())));
                         } else {
-                            let comma_separated = format!(", {}", self.handle_value(param.clone()));
-                            func_code.push_str(&comma_separated);
+                            if let Expr::VariableName { typ, name, .. } = param {
+                                if let Types::TypeId = typ {
+                                    func_gen_code.push_str(&format!(", {name}"));
+                                    func_code.push_str(&format!("##{name}"));
+                                }
+                            }
+                            func_caller_code.push_str(&format!(", {}", self.handle_value(param.clone())));
                         }
                     }
-                    func_code.push_str(") ({\\\n");
+                    func_caller_code.push_str(&format!(") {name}_"));
+                    func_gen_code.push_str(")\\\n");
+                    func_code.push('(');
+
+                    let mut first_arg = true;
+                    for param in params {
+                        if first_arg {
+                            if let Expr::VariableName { typ, name, .. } = param {
+                                if let Types::TypeId = typ {
+                                    func_caller_code.push_str(&format!("##{name}"));
+                                } else {
+                                    func_code.push_str(&self.handle_varname(param.clone()));
+                                    first_arg = false;
+                                }
+                            }
+                        } else {
+                            if let Expr::VariableName { typ, name, .. } = param {
+                                if let Types::TypeId = typ {
+                                    func_caller_code.push_str(&format!("##{name}"));
+                                } else {
+                                    let comma_separated = format!(", {}", self.handle_varname(param.clone()));
+                                    func_code.push_str(&comma_separated);
+                                }
+                            }
+                        }
+                    }
+                    func_caller_code.push('(');
+                    func_code.push_str(") {\\\n");
+
+                    let mut first_caller_arg = true;
+                    for param in params {
+                        if first_caller_arg {
+                            if let Expr::VariableName { ref typ, .. } = param {
+                                if typ != &Types::TypeId {
+                                    func_caller_code.push_str(&self.handle_value(param.clone()));
+                                    first_caller_arg = false;
+                                }
+                            }
+                        } else {
+                            if let Expr::VariableName { ref typ, .. } = param {
+                                if typ != &Types::TypeId {
+                                    let comma_separated = format!(", {}", self.handle_value(param.clone()));
+                                    func_caller_code.push_str(&comma_separated);
+                                }
+                            }
+                        }
+                    }
+                    func_caller_code.push_str(")\n");
+
                     self.defs_location.push(self.code.len());
+                    self.code.push_str(&func_caller_code);
+                    self.code.push_str(&func_gen_code);
                     self.code.push_str(&func_code);
                 },
                 Expr::VariableName { typ, name, reassign, constant, field_data, func_arg } => {
@@ -1222,11 +1345,12 @@ impl Gen {
                         self.code.push_str(&format!("{varname} = {var_val};\n"));
                     }
                 },
-                Expr::FuncCall { name, gave_params } => {
+                Expr::FuncCall { .. } => {
                     self.add_spaces(self.indent);
 
-                    let call = self.handle_funccall(Expr::FuncCall { name, gave_params });
+                    let call = self.handle_funccall(expr.clone());
                     if self.in_macro_func {
+                        // println!("{:?}", self.func_dependencies);
                         self.code.push_str(&format!("{call};\\\n"));
                     } else {
                         self.code.push_str(&format!("{call};\n"));
@@ -1436,7 +1560,7 @@ impl Gen {
                     
                     let val = self.handle_value(*value);
                     if self.in_macro_func {
-                        self.code.push_str(&format!("{val};\\\n"))
+                        self.code.push_str(&format!("return {val};\\\n"))
                     } else {
                         self.code.push_str(&format!("return {val};\n"))
                     }
@@ -1456,7 +1580,7 @@ impl Gen {
                         // WATCH THIS CAREFULLY, MIGHT BREAK
                         if self.curl_rc == 0 && self.in_macro_func {
                             self.in_macro_func = false;
-                            self.code.push_str("})\n");
+                            self.code.push_str("}\n");
                         } else if self.in_macro_func {
                             self.code.push_str("}\\\n");
                         } else {

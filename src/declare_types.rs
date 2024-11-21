@@ -3,7 +3,7 @@ pub enum Lang {
     Cpp,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Types {
     U8,
     I8,
