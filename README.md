@@ -97,6 +97,12 @@ Array return type doesn't work
 []int get_numbers :: () {}
 ```
 
+Pointer Dereferencing in function call can't be understood by compiler
+```
+some_func(x^ int);
+```
+In this example, this could be read as `x^` or `^int`. The way to solve this is by adding `,` separator between expressions
+
 ### Todos / Ideas
 #### Import libraries
 Instead of just importing a file like `base/random.imp`<br>
