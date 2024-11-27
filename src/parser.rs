@@ -1813,7 +1813,11 @@ impl ExprWeights {
                                 subtyp
                             }
                         } else if type_name == "string" || type_name == "str" {
-                            Types::Char
+                            if is_elem_pointer {
+                                Types::Pointer(Box::new(Types::Char))
+                            } else {
+                                Types::Char
+                            }
                         } else {
                             self.comp_err(&format!("{type_name} unsupported in for loops currently"));
                             exit(1);
@@ -2584,7 +2588,7 @@ impl ExprWeights {
         let mut square_rc = 0;
         let mut intlit_buf = String::new();
         let mut found_amper = false;
-        let mut pointer_counter = 0;
+        let mut pointer_counter = 0; // TODO: fix deref pointers
 
         let mut expr_params = Vec::new();
         for (i, param) in params.iter().enumerate() {
@@ -2688,9 +2692,7 @@ impl ExprWeights {
                         } else {
                             expr_params.push(expr);
                         }
-                    } else if let Expr::Func { .. } = expr {
-                        nested_func = expr;
-                    } else if let Expr::MacroFunc { .. } = expr {
+                    } else if let Expr::Func { .. } | Expr::MacroFunc { .. } = expr {
                         nested_func = expr;
                     } else {
                         expr_params.push(expr);

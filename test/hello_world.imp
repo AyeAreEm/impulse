@@ -1,13 +1,8 @@
-_ whatever :: () {
-    if (type.compare(int int)) {
-        println("int is int");
-    } orif (type.compare(int u8)) {
-        println("int is u8");
-    } else {
-        println("int is none of them?");
-    }
-}
+@import "base/string.imp";
 
 _ main :: () {
-    whatever();
+    let word: string.from("hello world");
+    defer string.dealloc(&word);
+
+    println("%s" word.buf.data);
 }

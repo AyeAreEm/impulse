@@ -197,6 +197,17 @@ pub fn compare_type_and_expr(t: &Types, e: &Expr, funcs: &Vec<Expr>) -> (bool, T
                 return (false, Types::None)
             }
         },
+        (_, Expr::DerefPointer(expr)) => {
+            if let Expr::VariableName { typ, .. } = *expr.clone() {
+                if let Types::Pointer(subtyp) = typ {
+                    return (t == &*subtyp, Types::None)
+                } else {
+                    return (false, Types::None)
+                }
+            } else {
+                return (false, Types::None)
+            }
+        },
         (Types::Let, Expr::VariableName { typ, .. }) => {
             if let Types::ArrIndex { arr_typ, .. } = typ {
                 let unwrap_arr_typ = unwrap_pointer(arr_typ);

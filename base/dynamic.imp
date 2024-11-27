@@ -1,94 +1,175 @@
 # Dynamic array library
-
 @import "base/memory.imp";
 
 struct[T] dyn :: {
     ^$T data;
-    usize len;
-    usize cap;
+    usize head; # describes where the start of the array is as an index
+    usize len;  # len independent of head
+    usize cap;  # cap in number of elements, NOT number of bytes
 
     dyn[T] new :: (typeid T) {
-        dyn[T] new;
-        new.len: 0;
-        new.cap: 32;
-        new.data: mem.alloc(T new.cap);
+        dyn[T] arr;
+        arr.head: 0;
+        arr.len: 0;
+        arr.cap: 32;
+        arr.data: mem.alloc(T arr.cap);
         @c [ 
-            if (new.data == NULL) {
+            if (arr.data == NULL) {
                 panic("failed to allocate memory");
                 exit(1);
             }
          ];
-        return new;
+        return arr;
+    }
+
+    # new dyn with a set capacity
+    dyn[T] with_capacity :: (typeid T usize cap) {
+        dyn[T] arr;
+
+        if (cap > 32) {
+            arr.cap: cap;
+        } else {
+            arr.cap: 32;
+        }
+        arr.head: 0;
+        arr.len: 0;
+        arr.data: mem.alloc(T arr.cap);
+        @c [
+            if (arr.data == NULL) {
+                panic("failed to allocate memory");
+                exit(1);
+            }
+        ];
+        return arr;
+    }
+
+    dyn[T] clone :: (typeid T dyn[T] src) {
+        let dest: dyn.with_capacity(T src.cap);
+        dest.len: src.len;
+        dest.head: src.head;
+
+        mem.copy(dest.data src.data dest.cap);
+        @c [
+            if (dest.data == NULL) {
+                panic("failed to allocate memory");
+                exit(1);
+            }
+        ];
+        return dest;
+    }
+
+    _ resize :: (typeid T ^dyn[T] arr) {
+        @mut arr;
+
+        arr.cap: [arr.cap * 2];
+        arr.data: mem.realloc(arr.data arr.cap);
+        @c [
+            if (arr->data == NULL) {
+                panic("failed to reallocate memory");
+                exit(1);
+            }
+        ];
+    }
+
+    _ resize_with_size :: (typeid T ^dyn[T] self usize size) {
+        @mut self;
+
+        self.cap: [self.cap * 2 + size];
+        self.data: mem.realloc(self.data self.cap);
+        @c [
+            if (self->data == NULL) {
+                panic("failed to allocate memory");
+                exit(1);
+            }
+        ];
     }
 
     # get elemet at index
     option[T] at :: (typeid T dyn[T] arr usize index) {
         option[T] ret;
-        ret.none: false;
 
         if (index >= arr.len) {
             ret.none: true;
             return ret;
         }
 
-        ret.value: arr.data[index];
+        ret.value: arr.data[arr.head + index];
         return ret;
+    }
+
+    _ replace :: (typeid T ^dyn[T] self usize index $T elem) {
+        @mut self;
+        if ([self.head + index] >= self.cap) {
+            panic("index out of capacity bounds");
+        }
+
+        self.data[self.head + index]: elem;
     }
 
     _ push :: (typeid T ^dyn[T] arr $T elem) {
         @mut arr;
 
         if ([arr.len + 1] >= arr.cap) {
-            arr.cap: [[arr.cap + arr.len + 1] * 2];
-            usize T_size: size_of(T);
-            arr.data: mem.realloc(arr.data [arr.cap * T_size]);
+            dyn.resize(T arr);
         }
 
-        arr.data[arr.len]: elem;
+        dyn.replace(T arr arr.len elem);
         arr.len: [arr.len + 1];
     }
 
     option[T] pop :: (typeid T ^dyn[T] arr) {
         @mut arr;
 
-        option[T] ret: dyn.at(T arr [arr.len - 1]);
+        let deref_arr: arr^;
+        let ret: dyn.at(T deref_arr [arr.len - 1]);
         if (ret) [_] {
             arr.len: [arr.len - 1];
         }
         return ret;
     }
 
+    # increases head so no dangling pointers unlike before lol
     option[T] dequeue :: (typeid T ^dyn[T] arr) {
         @mut arr;
 
-        option[T] ret: dyn.at(T arr [0]);
-        if (!ret.none) {
+        let deref_arr: arr^;
+        let ret: dyn.at(T deref_arr [0]);
+        if (ret) [_] {
+            arr.head: [arr.head + 1];
             arr.len: [arr.len - 1];
-            arr.data: &arr.data[1];
         }
         return ret;
     }
 
-    # this doesn't actually clear data but instead
-    # allows for the data to be overwritten
+    # data is still there, just not available since len is 0
     _ clear :: (typeid T ^dyn[T] arr) {
         @mut arr;
 
         arr.len: 0;
+        arr.head: 0;
     }
 
-    _ remove :: (typeid T ^dyn[T] arr usize index) {
+    # returns true if successfully removed
+    bool remove :: (typeid T ^dyn[T] arr usize index) {
         @mut arr;
 
-        @c [mem__move(&arr.data[index], &arr.data[index + 1], (arr.len - index - 1) * sizeof(T));];
-        arr.len: [arr.len - 1];
+        let deref_arr: arr^;
+        let has_index: dyn.at(T deref_arr index);
+        if (has_index) [_] {
+            @c [mem__move(&arr->data[index], &arr->data[index + 1], (arr->len - index - 1) * sizeof(T));];
+            arr.len: [arr.len - 1];
+            return true;
+        }
+
+        return false;
     }
 
-    _ dealloc :: (^dyn[any] arr) {
+    _ dealloc :: (typeid T ^dyn[T] arr) {
         @mut arr;
 
-        mem.dealloc(arr.data);
         arr.len: 0;
         arr.cap: 0;
+        arr.head: 0;
+        mem.dealloc(arr.data);
     }
 }

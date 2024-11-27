@@ -1,155 +1,85 @@
 # Memory allocated string with length and null terminated for easy C interopability
-
-@import "base/memory.imp";
+@import "base/dynamic.imp";
 
 struct string :: {
-    ^char data;
-    usize cap;
-    usize len;
-    
-    string new :: () {
-        string new;
-        new.len: 0;
-        new.cap: 32; # including null terminator
-        new.data: mem.alloc(char new.cap);
-        @c [
-            if (new.data == NULL) {
-                panic("failed to allocate memory");
-                exit(1);
-            }
-        ];
+    dyn[char] buf;
 
-        return new;
+    string new :: () {
+        string s;
+        s.buf: dyn.new(char);
+        return s;
     }
 
     string with_capacity :: (usize cap) {
-        string new;
-        new.len: 0;
-        new.cap: cap;
-        new.data: mem.alloc(char new.cap);
-        @c [
-            if (new.data == NULL) {
-                panic("failed to allocate memory");
-                exit(1);
-            }
-        ];
-        return new;
-    }
-
-    _ resize :: (^string word usize modifier) {
-        @mut word;
-
-        word.cap: [[word.cap + modifier] * 2];
-        word.data: mem.realloc(word.data word.cap);
+        string s;
+        s.buf: dyn.with_capacity(char cap);
+        return s;
     }
 
     string clone :: (string src) {
-        string new: string.with_capacity(src.cap);
-        mem.copy(new.data src.data new.cap);
-        new.len: src.len;
-        new.data[new.len]: '\0';
-        return new;
+        let new_buf: dyn.clone(char src.buf);
+        string dest: |new_buf|;
+        return dest;
     }
 
-    string from :: (^char word) {
-        string new: string.new();
-        usize cstr_len: c.strlen(word);
-
-        if ([cstr_len + 1] >= new.cap) {
-            string.resize(&new [cstr_len + 1]);
-        }
-
-        new.len: cstr_len;
-        mem.copy(new.data word new.cap);
-
-        new.data[new.len]: '\0';
-        return new;
+    _ resize :: (^string self) {
+        @mut self;
+        dyn.resize(char &self.buf);
     }
 
-    _ push_char :: (^string word char ch) {
-        @mut word;
-        usize new_len: [word.len + 1];
-
-        if (new_len >= word.cap) {
-            string.resize(word 0);
-        }
-
-        word.data[word.len]: ch;
-        word.len: new_len;
-        word.data[word.len]: '\0';
+    _ resize_with_size :: (^string self usize size) {
+        @mut self;
+        dyn.resize_with_size(char &self.buf size);
     }
 
-    _ push_cstr :: (^string dest ^char src) {
-        @mut dest;
-        usize src_len: c.strlen(src);
-        usize new_len: [dest.len + src_len];
-
-        if ([new_len + 1] >= dest.cap) {
-            string.resize(dest [new_len + 1]);
-        }
-
-        ^_ end_data: [dest.data + dest.len];
-        mem.copy(end_data src src_len);
-
-        dest.len: new_len;
-        dest.data[dest.len]: '\0';
+    option[char] at :: (string self usize index) {
+        return dyn.at(char self.buf index);
     }
 
-    _ push_string :: (^string dest string src) {
-        @mut dest;
-        usize new_len :: [dest.len + src.len];
-
-        if ([new_len + 1] >= dest.cap) {
-            string.resize(dest [new_len + 1]);
-        }
-
-        ^_ end_data: [dest.data + dest.len];
-        mem.copy(end_data src.data src.len);
-
-        dest.len: new_len;
-        dest.data[dest.len]: '\0';
+    # replace char at index
+    _ replace :: (^string self usize index char to) {
+        @mut self;
+        dyn.replace(char &self.buf index to);
     }
 
-    _ push_str :: (^string dest str src) {
-        @mut dest;
-        usize new_len :: [dest.len + src.len];
-        
-        if ([new_len + 1] >= dest.cap) {
-            string.resize(dest [new_len + 1]);
-        }
-
-        ^_ end_data: [dest.data + dest.len];
-        mem.copy(end_data src.data src.len);
-        
-        dest.len: new_len;
-        dest.data[dest.len]: '\0';
+    _ push_char :: (^string self char ch) {
+        @mut self;
+        dyn.push(char &self.buf ch);
+        string.replace(self self.buf.len 0);
     }
 
-    _ push :: (^string dest typeid T $T src) {
-        @mut dest;
-        $T real_var: src;
+    _ push :: (^string self ^char cstr) {
+        @mut self;
 
-        if (type.compare(T string)) {
-            string.push_string(dest ptr_cast(string real_var));
-        } orif (type.compare(T char)) {
-            string.push_char(dest ptr_cast(char real_var));
-        } orif (type.compare(T ^char)) {
-            string.push_cstr(dest ptr_cast(^char real_var));
-        } orif (type.compare(T str)) {
-            string.push_str(dest ptr_cast(str real_var));
-        } else {
-            println("%s is not supported for pushing to a string" type.to_cstr(T));
-            exitcode(1);
+        let cstr.len: c.strlen(cstr);
+        if ([self.buf.len + cstr.len] >= self.buf.cap) {
+            string.resize_with_size(self cstr.len);
         }
+
+        loop (i < cstr.len) [+] {
+            char ch: cstr[i];
+            string.push_char(self ch);
+        }
+    }
+
+    string from :: (^char content) {
+        let content.len: c.strlen(content);
+        string s: string.new();
+
+        loop (i < content.len) [+] {
+            char ch: content[i];
+            string.push_char(&s ch);
+        }
+        return s;
     }
 
     bool compare :: (string first string second) {
-        if (first.len != second.len) {
+        if (first.buf.len != second.buf.len) {
             return false;
         }
 
         for (first) [ch i] {
-            if (ch = second.data[i]) {
+            if (ch = second.buf.data[i]) {
                 return false;
             }
         }
@@ -157,20 +87,8 @@ struct string :: {
         return true;
     }
 
-    option[char] at :: (string word usize index) {
-        option[char] ret;
-
-        if (index >= word.len) {
-            ret.none: true;
-            return ret;
-        }
-
-        ret.value: word.data[index];
-        return ret;
-    }
-
-    bool starts_with :: (string word char ch) {
-        option[char] first_letter: string.at(word 0);
+    bool starts_with :: (string self char ch) {
+        option[char] first_letter: string.at(self 0);
         if (first_letter) [letter] {
             @c [return letter == ch;];
         }
@@ -178,70 +96,45 @@ struct string :: {
         return false;
     }
 
-    bool ends_with :: (string word char ch) {
-        option[char] last_letter_op: string.at(word [word.len - 1]);
-        if (last_letter_op.none) {
-            return false;
+    bool ends_with :: (string self char ch) {
+        option[char] last_letter: string.at(self [self.buf.len - 1]);
+        if (last_letter) [letter] {
+            @c [return letter == ch;];
         }
-        if (last_letter_op.value != ch) {
-            return false;
-        }
-        return true;
+        return false;
     }
 
-    _ to_lowercase :: (string word) {
-        @mut word;
+    _ to_lowercase :: (string self) {
+        @mut self;
 
-        for (word) [ch i] {
-            word.data[i]: @c [tolower(ch)];
-        }
-    }
-    
-    _ to_uppercase :: (string word) {
-        @mut word;
-
-        for (word) [ch i] {
-            word.data[i]: @c [toupper(ch)];
+        for (&self) [^ch] {
+            ch^: @c [tolower(*ch)];
         }
     }
 
-    _ replace_char :: (string word char from char to) {
-        @mut word;
+    _ to_uppercase :: (string self) {
+        @mut self;
 
-        for (word) [ch i] {
-            if (ch = from) {
-                word.data[i]: to;
-            }
+        for (&self) [^ch] {
+            ch^: @c [toupper(*ch)];
         }
     }
 
-    bool replace_index :: (str word usize index char to) {
-        @mut word;
-
-        option[char] at_index: str.at(word index);
-        if (at_index.none = true) {
-            return false;
-        }
-
-        word.data[index]: to;
-        return true;
-    }
-
-    bool contains :: (string word ^char pattern) {
-        usize pattern.len: c.strlen(pattern);
+    bool contains :: (string self ^char pattern) {
+        let pattern.len: c.strlen(pattern);
         usize head: 0;
 
-        if (word.len < pattern.len) {
+        if (self.buf.len < pattern.len) {
             return false;
         }
 
-        for (word) [ch] {
+        for (self) [ch] {
             if (head = pattern.len) {
                 return true;
             }
 
             if (ch = pattern[head]) {
-                head: [head + 1];
+                head: [head+1];
             } else {
                 head: 0;
             }
@@ -253,20 +146,21 @@ struct string :: {
 
         return false;
     }
-    
-    _ clear :: (^string word) {
-        @mut word;
 
-        word.data[0]: '\0';
-        word.len: 0;
+    _ clear :: (^string self) {
+        @mut self;
+
+        dyn.clear(char &self.buf);
     }
 
-    _ dealloc :: (^string word) {
-        @mut word;
+    _ remove :: (^string self usize index) {
+        @mut self;
+        dyn.remove(char &self.buf index);
+    }
 
-        mem.dealloc(word.data);
-        word.len: 0;
-        word.cap: 0;
+    _ dealloc :: (^string self) {
+        @mut self;
+        dyn.dealloc(char &self.buf);
     }
 }
 
@@ -288,14 +182,14 @@ string __IMPULSE__STRING__FORMAT__(char* fmt, ...) {
         return result;
     }
 
-    if ((usize)size + 1 >= result.cap) {
-        string__resize(&result, size + 1);
+    if ((usize)size + 1 >= result.buf.cap) {
+        string__resize_with_size(&result, size + 1);
     }
 
-    vsnprintf(result.data, size + 1, fmt, args);
+    vsnprintf(result.buf.data, size + 1, fmt, args);
     va_end(args);
 
-    result.len = size;
+    result.buf.len = size;
     return result;
 }
 ];

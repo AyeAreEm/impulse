@@ -796,9 +796,12 @@ impl Gen {
                         arr_name = name.clone();
                         format!("{name}.len")
                     } else if let Types::TypeDef { type_name, .. } = typ {
-                        if type_name == String::from("dyn") || type_name == String::from("string") || type_name == String::from("str") || type_name == String::from("array")  {
+                        if type_name == String::from("dyn") || type_name == String::from("str") || type_name == String::from("array")  {
                             arr_name = name.clone();
                             format!("{name}.len")
+                        } else if type_name == String::from("string") {
+                            arr_name = name.clone();
+                            format!("{name}.buf.len")
                         } else {
                             self.comp_err(&format!("unable to handle {name} in for loop as it's of type {type_name:?}"));
                             exit(1);
@@ -817,9 +820,12 @@ impl Gen {
                     arr_name = name.clone();
                     format!("{name}.len")
                 } else if let Types::TypeDef { type_name, .. } = typ {
-                    if type_name == String::from("dyn") || type_name == String::from("string") || type_name == String::from("str") || type_name == String::from("array")  {
+                    if type_name == String::from("dyn") || type_name == String::from("str") || type_name == String::from("array")  {
                         arr_name = name.clone();
                         format!("{name}.len")
+                    } else if type_name == String::from("string") {
+                        arr_name = name.clone();
+                        format!("{name}.buf.len")
                     } else {
                         self.comp_err(&format!("unable to handle {name} in for loop as it's of type {type_name:?}"));
                         exit(1);
@@ -1530,12 +1536,35 @@ impl Gen {
                     self.add_spaces(self.indent);
                     self.indent += 1;
 
-                    let for_code = self.handle_for(in_this, iterator);
+                    let for_code = self.handle_for(in_this.clone(), iterator);
                     self.code.push_str(&for_code.0);
+
+                    // lord forgive me
+                    let is_string = if let Expr::VariableName { typ, .. } = *in_this {
+                        if let Types::TypeDef { type_name, .. } = typ {
+                            &type_name == "string"
+                        } else {
+                            false
+                        }
+                    } else if let Expr::Address(subtyp) = *in_this {
+                        if let Expr::VariableName { typ, .. } = *subtyp {
+                            if let Types::TypeDef { type_name, .. } = typ {
+                                &type_name == "string"
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    };
 
                     let mut skip_extract = false;
                     let for_this_extract = match *for_this {
                         Expr::VariableName { typ, name, .. } => {
+                            println!("{typ:?}");
+
                             if &name == "_" { skip_extract = true; }
                             if let Types::None = typ {
                                 (format!("typeof({}.data[0])", for_code.1), name)
@@ -1554,13 +1583,15 @@ impl Gen {
                     }
 
                     self.add_spaces(self.indent);
-                    let var = format!("{} {} = {}{}.data[{}];\n", 
+                    let var = format!("{0} {1} = {2}{3}{4}.data[{5}];\n",
                           for_this_extract.0,
                           for_this_extract.1,
                           if for_code.3 {"&"} else {""},
                           for_code.1,
+                          if is_string {".buf"} else {""},
                           for_code.2
-                      );
+                    );
+                    println!("{var}");
                     self.code.push_str(&var);
                 },
                 Expr::Return(value) => {
