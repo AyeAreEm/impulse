@@ -1,5 +1,13 @@
-@import "base/dynamic.imp";
+_ whatever :: () {
+    if (type.compare(int int)) {
+        println("int is int");
+    } orif (type.compare(int u8)) {
+        println("int is u8");
+    } else {
+        println("int is none of them?");
+    }
+}
 
 _ main :: () {
-    let nums: dyn.new(int);
+    whatever();
 }

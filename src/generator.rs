@@ -132,22 +132,7 @@ impl Gen {
         }
     }
 
-    fn generate_new_func(&mut self, func_name: &String, types: &mut Vec<String>) {
-        if let Some(deps) = self.func_dependencies.get(func_name) {
-            for dep in deps.clone() {
-                if let Expr::FuncCall { name, gave_params: _ } = dep {
-                    // for param in gave_params {
-                    //     if let Expr::VariableName { typ, name, .. } = param {
-                    //         if let Types::TypeId = typ {
-                    //             types.push(name);
-                    //         }
-                    //     }
-                    // }
-                    self.generate_new_func(&name, types);
-                }
-            }
-        }
-
+    fn generate_new_func(&mut self, func_name: &String, all_types: &mut Vec<String>, mut trunc_types: Vec<String>, pointer: usize) {
         let mut gen_code = format!("{func_name}_IMPULSE_FUNC_GEN");
         let mut found = false;
         for macro_func in &self.macro_funcs {
@@ -159,8 +144,7 @@ impl Gen {
         if !found { return; }
 
         gen_code.push('(');
-
-        for (i, typ) in types.iter().enumerate() {
+        for (i, typ) in trunc_types.iter().enumerate() {
             if i == 0 {
                 gen_code.push_str(typ);
             } else {
@@ -171,7 +155,32 @@ impl Gen {
 
         for generated in &self.generated_funcs {
             if &gen_code == generated {
+                if all_types.len() >= trunc_types.len()+pointer+1 {
+                    self.generate_new_func(func_name, all_types, all_types[pointer+1..trunc_types.len()+pointer+1].to_vec(), pointer + 1);
+                }
                 return;
+            }
+        }
+
+        if let Some(deps) = self.func_dependencies.get(func_name) {
+            for dep in deps.clone() {
+                if let Expr::FuncCall { name, gave_params } = dep {
+                    let mut type_arg_counter = 0;
+                    for param in gave_params {
+                        if let Expr::VariableName { typ, .. } = param {
+                            if let Types::TypeId = typ {
+                                type_arg_counter += 1;
+                            }
+                        }
+                    }
+
+                    trunc_types = if type_arg_counter < all_types.len() {
+                        all_types[pointer..type_arg_counter+pointer].to_vec()
+                    } else {
+                        all_types.to_vec()
+                    };
+                    self.generate_new_func(&name, all_types, trunc_types.clone(), pointer);
+                }
             }
         }
 
@@ -541,7 +550,7 @@ impl Gen {
                             deps.push(funccall.clone());
                         }
                     } else {
-                        self.generate_new_func(&name, &mut types);
+                        self.generate_new_func(&name, &mut types.clone(), types.clone(), 0);
                     }
                 }
 
@@ -1350,7 +1359,6 @@ impl Gen {
 
                     let call = self.handle_funccall(expr.clone());
                     if self.in_macro_func {
-                        // println!("{:?}", self.func_dependencies);
                         self.code.push_str(&format!("{call};\\\n"));
                     } else {
                         self.code.push_str(&format!("{call};\n"));

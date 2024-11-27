@@ -58,7 +58,7 @@ struct[T] dyn :: {
         return ret;
     }
 
-    option[T] deque :: (typeid T ^dyn[T] arr) {
+    option[T] dequeue :: (typeid T ^dyn[T] arr) {
         @mut arr;
 
         option[T] ret: dyn.at(T arr [0]);
