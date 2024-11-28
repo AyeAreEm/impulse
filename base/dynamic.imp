@@ -62,7 +62,8 @@ struct[T] dyn :: {
         @mut arr;
 
         arr.cap: [arr.cap * 2];
-        arr.data: mem.realloc(arr.data arr.cap);
+        usize T_size :: @c [sizeof(T);];
+        arr.data: mem.realloc(arr.data [T_size * arr.cap]);
         @c [
             if (arr->data == NULL) {
                 panic("failed to reallocate memory");
@@ -75,7 +76,8 @@ struct[T] dyn :: {
         @mut self;
 
         self.cap: [self.cap * 2 + size];
-        self.data: mem.realloc(self.data self.cap);
+        usize T_size :: @c [sizeof(T);];
+        self.data: mem.realloc(self.data [T_size * self.cap]);
         @c [
             if (self->data == NULL) {
                 panic("failed to allocate memory");

@@ -1,8 +1,0 @@
-@import "base/string.imp";
-
-_ main :: () {
-    let word: string.from("hello world");
-    defer string.dealloc(&word);
-
-    println("%s" word.buf.data);
-}

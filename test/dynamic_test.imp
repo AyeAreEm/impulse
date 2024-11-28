@@ -1,0 +1,14 @@
+@import "base/dynamic.imp";
+
+_ main :: () {
+    let nums: dyn.new(int);
+    defer dyn.dealloc(int &nums);
+
+    loop (i < 50) [+] {
+        dyn.push(int &nums [i + 1]);
+    }
+
+    for (nums) [num] {
+        println("%d" num);
+    }
+}
