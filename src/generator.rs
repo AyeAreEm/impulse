@@ -1200,22 +1200,23 @@ impl Gen {
                     let mut func_gen_code = format!("#define {name}_IMPULSE_FUNC_GEN(");
                     let mut func_code = format!("{} {name}_", self.handle_typ(typ.clone()).0);
 
+                    let mut first_arg = true;
                     for (i, param) in params.iter().enumerate() {
-                        if i == 0 {
-                            if let Expr::VariableName { typ, name, .. } = param {
-                                if let Types::TypeId = typ {
+                        if let Expr::VariableName { typ, name, .. } = param {
+                            if let Types::TypeId = typ {
+                                if first_arg {
                                     func_gen_code.push_str(&format!("{name}"));
-                                    func_code.push_str(&format!("##{name}"));
+                                    first_arg = false;
+                                } else {
+                                    func_gen_code.push_str(&format!(", {name}"));
                                 }
+                                func_code.push_str(&format!("##{name}"));
                             }
+                        }
+
+                        if i == 0 {
                             func_caller_code.push_str(&format!("{}", self.handle_value(param.clone())));
                         } else {
-                            if let Expr::VariableName { typ, name, .. } = param {
-                                if let Types::TypeId = typ {
-                                    func_gen_code.push_str(&format!(", {name}"));
-                                    func_code.push_str(&format!("##{name}"));
-                                }
-                            }
                             func_caller_code.push_str(&format!(", {}", self.handle_value(param.clone())));
                         }
                     }
@@ -1223,7 +1224,7 @@ impl Gen {
                     func_gen_code.push_str(")\\\n");
                     func_code.push('(');
 
-                    let mut first_arg = true;
+                    first_arg = true;
                     for param in params {
                         if first_arg {
                             if let Expr::VariableName { typ, name, .. } = param {
@@ -1563,8 +1564,6 @@ impl Gen {
                     let mut skip_extract = false;
                     let for_this_extract = match *for_this {
                         Expr::VariableName { typ, name, .. } => {
-                            println!("{typ:?}");
-
                             if &name == "_" { skip_extract = true; }
                             if let Types::None = typ {
                                 (format!("typeof({}.data[0])", for_code.1), name)
@@ -1591,7 +1590,6 @@ impl Gen {
                           if is_string {".buf"} else {""},
                           for_code.2
                     );
-                    println!("{var}");
                     self.code.push_str(&var);
                 },
                 Expr::Return(value) => {
