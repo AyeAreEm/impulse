@@ -3,13 +3,11 @@
 
 struct[T] dyn :: {
     ^$T data;
-    usize head; # describes where the start of the array is as an index
-    usize len;  # len independent of head
+    usize len; 
     usize cap;  # cap in number of elements, NOT number of bytes
 
     dyn[T] new :: (typeid T) {
         dyn[T] arr;
-        arr.head: 0;
         arr.len: 0;
         arr.cap: 32;
         arr.data: mem.alloc(T arr.cap);
@@ -31,7 +29,6 @@ struct[T] dyn :: {
         } else {
             arr.cap: 32;
         }
-        arr.head: 0;
         arr.len: 0;
         arr.data: mem.alloc(T arr.cap);
         @c [
@@ -46,7 +43,6 @@ struct[T] dyn :: {
     dyn[T] clone :: (typeid T dyn[T] src) {
         let dest: dyn.with_capacity(T src.cap);
         dest.len: src.len;
-        dest.head: src.head;
 
         mem.copy(dest.data src.data dest.cap);
         @c [
@@ -95,17 +91,17 @@ struct[T] dyn :: {
             return ret;
         }
 
-        ret.value: arr.data[arr.head + index];
+        ret.value: arr.data[index];
         return ret;
     }
 
     _ replace :: (typeid T ^dyn[T] self usize index $T elem) {
         @mut self;
-        if ([self.head + index] >= self.cap) {
+        if (index >= self.cap) {
             panic("index out of capacity bounds");
         }
 
-        self.data[self.head + index]: elem;
+        self.data[index]: elem;
     }
 
     _ push :: (typeid T ^dyn[T] arr $T elem) {
@@ -130,25 +126,10 @@ struct[T] dyn :: {
         return ret;
     }
 
-    # increases head so no dangling pointers unlike before lol
-    option[T] dequeue :: (typeid T ^dyn[T] arr) {
-        @mut arr;
-
-        let deref_arr: arr^;
-        let ret: dyn.at(T deref_arr [0]);
-        if (ret) [_] {
-            arr.head: [arr.head + 1];
-            arr.len: [arr.len - 1];
-        }
-        return ret;
-    }
-
     # data is still there, just not available since len is 0
     _ clear :: (typeid T ^dyn[T] arr) {
         @mut arr;
-
         arr.len: 0;
-        arr.head: 0;
     }
 
     # returns true if successfully removed
@@ -171,7 +152,6 @@ struct[T] dyn :: {
 
         arr.len: 0;
         arr.cap: 0;
-        arr.head: 0;
         mem.dealloc(arr.data);
     }
 }
