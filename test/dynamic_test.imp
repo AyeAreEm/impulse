@@ -8,6 +8,10 @@ _ main :: () {
         dyn.push(int &nums [i + 1]);
     }
 
+    # this line below wouldn't work before because
+    # it uses a option[T] which wouldn't be generated with the new system
+    # now fixed
+    let first: dyn.remove(int &nums 0);
     for (nums) [num] {
         println("%d" num);
     }

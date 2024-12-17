@@ -22,7 +22,7 @@ pub struct Gen {
     defs_location: Vec<usize>,
 
     current_func: String,
-    func_dependencies: HashMap<String, Vec<Expr>>,
+    func_dependencies: HashMap<String, Vec<Expr>>, // FuncCall | VariableName (Types::TypeDef)
     macro_funcs: Vec<String>, // to see if a func call is a macro func
     generated_funcs: Vec<String>, // to see if a macro func has already been generated
 
@@ -164,22 +164,48 @@ impl Gen {
 
         if let Some(deps) = self.func_dependencies.get(func_name) {
             for dep in deps.clone() {
-                if let Expr::FuncCall { name, gave_params } = dep {
-                    let mut type_arg_counter = 0;
-                    for param in gave_params {
-                        if let Expr::VariableName { typ, .. } = param {
-                            if let Types::TypeId = typ {
-                                type_arg_counter += 1;
+                match dep {
+                    Expr::FuncCall { name, gave_params } => {
+                        let mut type_arg_counter = 0;
+                        for param in gave_params {
+                            if let Expr::VariableName { typ, .. } = param {
+                                if let Types::TypeId = typ {
+                                    type_arg_counter += 1;
+                                }
                             }
                         }
-                    }
 
-                    trunc_types = if type_arg_counter < all_types.len() {
-                        all_types[pointer..type_arg_counter+pointer].to_vec()
-                    } else {
-                        all_types.to_vec()
-                    };
-                    self.generate_new_func(&name, all_types, trunc_types.clone(), pointer);
+                        trunc_types = if type_arg_counter < all_types.len() {
+                            all_types[pointer..type_arg_counter+pointer].to_vec()
+                        } else {
+                            all_types.to_vec()
+                        };
+                        self.generate_new_func(&name, all_types, trunc_types.clone(), pointer);
+                    },
+                    Expr::VariableName { typ, .. } => {
+                        if let Types::TypeDef { type_name: struct_name, generics: generics_op } = typ {
+                            match generics_op {
+                                Some(_) => {
+                                    let mut type_names = String::new();
+                                    let mut types = Vec::new();
+
+                                    for (i, gen_typ) in trunc_types.iter().enumerate() {
+                                        types.push(gen_typ.clone());
+
+                                        let gen = &gen_typ.replace("*", "ptr");
+                                        if i == 0 {
+                                            type_names.push_str(&format!("{gen}"));
+                                        } else {
+                                            type_names.push_str(&format!("_{gen}"));
+                                        }
+                                    }
+                                    self.generate_new_struct(&struct_name, type_names, types);
+                                },
+                                None => (),
+                            }
+                        }
+                    },
+                    _ => (),
                 }
             }
         }
@@ -302,7 +328,7 @@ impl Gen {
                     return (String::new(), String::new())
                 }
 
-                // TODO: remove this before pushing
+                // TODO: remove this before pushing to main
                 return (String::from("any"), String::new())
                 // if self.in_macro_func {
                 //     self.comp_err(&format!("cannot make variable of type any outside of function declaration"));
@@ -341,23 +367,26 @@ impl Gen {
                     match generics_op {
                         Some(generics) => {
                             if !generics.is_empty() {
-                                let mut type_names = String::new();
-                                let mut types = Vec::new();
-
-                                for (i, generic) in generics.iter().enumerate() {
-                                    let mut gen_typ = self.handle_typ(generic.clone()).0;
-                                    types.push(gen_typ.clone());
-
-                                    gen_typ = gen_typ.replace("*", "ptr");
-                                    if i == 0 {
-                                        type_names.push_str(&format!("{gen_typ}"));
-                                    } else {
-                                        type_names.push_str(&format!("_{gen_typ}"));
-                                    }
-                                }
-
                                 if !self.in_macro_func {
+                                    let mut type_names = String::new();
+                                    let mut types = Vec::new();
+
+                                    for (i, generic) in generics.iter().enumerate() {
+                                        let mut gen_typ = self.handle_typ(generic.clone()).0;
+                                        types.push(gen_typ.clone());
+
+                                        gen_typ = gen_typ.replace("*", "ptr");
+                                        if i == 0 {
+                                            type_names.push_str(&format!("{gen_typ}"));
+                                        } else {
+                                            type_names.push_str(&format!("_{gen_typ}"));
+                                        }
+                                    }
                                     self.generate_new_struct(struct_name, type_names, types);
+                                } else {
+                                    if let Some(deps) = self.func_dependencies.get_mut(&self.current_func) {
+                                        deps.push(varname.clone());
+                                    }
                                 }
                             }
                         },
